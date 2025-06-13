@@ -117,12 +117,6 @@ def ExtractCommands(response: str) -> List[CommandInput]:
   return commands
 
 
-class NoOpFileAccessPolicy(FileAccessPolicy):
-
-  def allow_access(self, path: str) -> bool:
-    return True
-
-
 def main() -> None:
   import argparse
 
