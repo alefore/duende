@@ -14,6 +14,7 @@ from openai.types.chat import (
 )
 from typing import List, Dict, Optional, Tuple, Union
 
+from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
 from notify_command import NotifyCommand
 from read_file_command import ReadFileCommand
@@ -137,6 +138,10 @@ def main() -> None:
   registry.Register("search", SearchFileCommand(file_access_policy))
   registry.Register("select", SelectTextCommand(file_access_policy))
   registry.Register("select_overwrite", SelectOverwriteCommand())
+
+  if any(
+      file.endswith('.py') for file in list_all_files('.', file_access_policy)):
+    registry.Register("select_python", SelectPythonCommand(file_access_policy))
 
   validate_script: str = "agent/validate.sh"
   if not os.path.isfile(validate_script):
