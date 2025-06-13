@@ -3,7 +3,6 @@ from typing import List, Optional
 import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
-import csv
 import os
 
 
@@ -62,19 +61,13 @@ class SearchFileCommand(AgentCommand):
         errors.append(f"{file_path}: {str(e)}")
 
     if match_count > match_limit:
-      # TODO: This is very stupid. Don't write this into a file but, instead
-      # just return the CSV file directly as the multi-line output. Perhaps
-      # we can just generate the output directly (and remove the dependency
-      # on the csv module).
-      csv_file_path = "search_results_summary.csv"
-      with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["path", "lines_match", "file_lines_total"])
-        csv_writer.writerows(csv_data)
+      # Construct CSV data as a string
+      csv_content = "path,lines_match,file_lines_total\n"
+      csv_content += "\n".join([",".join(map(str, row)) for row in csv_data])
 
       result = (f"Files searched: {file_count}, Lines scanned: {line_count}, "
                 f"Matches found: {match_count}. Too many matches to display. "
-                f"See {csv_file_path} for details.")
+                f"Files with matches:\n{csv_content}")
     else:
       header = f"Files searched: {file_count}, Lines scanned: {line_count}, Matches found: {match_count}"
       result = header + "\n" + ("\n".join(matches) if matches else
