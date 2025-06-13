@@ -8,7 +8,7 @@ class FileAccessPolicy(abc.ABC):
 
   @abc.abstractmethod
   def allow_access(self, path: str) -> bool:
-    """Determine if the given path is allowed access"""
+    """Determine if the given path is allowed access. The path is the absolute path."""
     pass
 
 
@@ -19,6 +19,7 @@ class RegexFileAccessPolicy(FileAccessPolicy):
 
   def allow_access(self, path: str) -> bool:
     """Check if a path matches the regex pattern for access"""
+    # TODO: Don't match the full path, but rather the path relative to cwd.
     return bool(self.pattern.match(path))
 
 
