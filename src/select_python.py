@@ -1,17 +1,17 @@
 import ast
-from typing import Optional, List
+from typing import List
 from agent_command import AgentCommand, CommandInput, CommandOutput
 from file_access_policy import FileAccessPolicy
-from select_commands import Selection
-
-current_selection: Optional[Selection] = None  # Initialize current_selection
+from selection_manager import Selection, SelectionManager
 
 
 class SelectPythonCommand(AgentCommand):
   """Command to select Python code elements based on identifier."""
 
-  def __init__(self, file_access_policy: FileAccessPolicy) -> None:
+  def __init__(self, file_access_policy: FileAccessPolicy,
+               selection_manager: SelectionManager) -> None:
     self.file_access_policy = file_access_policy
+    self.selection_manager = selection_manager
 
   def GetDescription(self) -> str:
     return (
@@ -22,8 +22,6 @@ class SelectPythonCommand(AgentCommand):
         "will be selected.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    global current_selection
-
     if len(command_input.arguments) != 2:
       return CommandOutput(
           output=[],
@@ -54,9 +52,9 @@ class SelectPythonCommand(AgentCommand):
           if node.name == identifier and node.lineno is not None and node.end_lineno is not None:
             start_line_content: str = lines[node.lineno - 1].strip()
             end_line_content: str = lines[node.end_lineno - 1].strip()
-            current_selection = Selection(path, start_line_content,
-                                          end_line_content)
-            selected_lines: List[str] = current_selection.Read()
+            selection = Selection(path, start_line_content, end_line_content)
+            selected_lines: List[str] = selection.Read()
+            self.selection_manager.set_selection(selection)
             return CommandOutput(
                 output=[f"select <<\n{''.join(selected_lines)}\n#end ({path})"],
                 errors=[],

@@ -22,6 +22,7 @@ from list_files_command import ListFilesCommand
 from write_file_command import WriteFileCommand
 from search_file_command import SearchFileCommand  # Import the new command
 from select_commands import SelectTextCommand, SelectOverwriteCommand
+from selection_manager import SelectionManager
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CurrentDirectoryFileAccessPolicy,
                                 CompositeFileAccessPolicy)
@@ -136,12 +137,18 @@ def main() -> None:
   registry.Register("list_files", ListFilesCommand(file_access_policy))
   registry.Register("write_file", WriteFileCommand(file_access_policy))
   registry.Register("search", SearchFileCommand(file_access_policy))
-  registry.Register("select", SelectTextCommand(file_access_policy))
-  registry.Register("select_overwrite", SelectOverwriteCommand())
+
+  selection_manager = SelectionManager()
+  registry.Register("select",
+                    SelectTextCommand(file_access_policy, selection_manager))
+  registry.Register("select_overwrite",
+                    SelectOverwriteCommand(selection_manager))
 
   if any(
       file.endswith('.py') for file in list_all_files('.', file_access_policy)):
-    registry.Register("select_python", SelectPythonCommand(file_access_policy))
+    registry.Register(
+        "select_python",
+        SelectPythonCommand(file_access_policy, selection_manager))
 
   validate_script: str = "agent/validate.sh"
   if not os.path.isfile(validate_script):
