@@ -24,7 +24,6 @@ class ListFilesCommand(AgentCommand):
       )
 
     directory = command_input.arguments[0] if command_input.arguments else "."
-    logging.info(f"Listing files in directory: {directory}")
 
     try:
       files = list_all_files(directory, self.file_access_policy)
@@ -34,7 +33,8 @@ class ListFilesCommand(AgentCommand):
               f"\n#end ({directory})\n"
           ],
           errors=[],
-          summary=f"Listed files in directory '{directory}'.")
+          summary=f"Listed files in directory '{directory}', matches: {len(files)}"
+      )
     except NotADirectoryError:
       return CommandOutput(
           output=[],
