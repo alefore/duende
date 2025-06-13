@@ -1,3 +1,4 @@
+
 import json
 import os
 import sys
@@ -78,27 +79,16 @@ def ExtractCommands(response: str) -> List[CommandInput]:
     """
   lines = response.splitlines()
   commands: List[CommandInput] = []
-  # TODO: Instead of declaring current_cmd, current_args, multiline_content,
-  # create a CommandInput and populate its value through the execution of this
-  # method (adding it to commands when ready, and resetting it to a new one).
-  current_cmd = None
-  current_args: List[str] = []
-  multiline_content: None | List[str] = None
+  current_input: Optional[CommandInput] = None
 
   for line in lines:
-    if multiline_content is not None:
-      assert current_cmd
+    if current_input is not None:
+      assert current_input.multiline_content is not None
       if line.strip() == "#end":
-        commands.append(
-            CommandInput(
-                command_name=current_cmd,
-                arguments=current_args,
-                multiline_content="\n".join(multiline_content)))
-        current_cmd = None
-        current_args = []
-        multiline_content = None
+        commands.append(current_input)
+        current_input = None
       else:
-        multiline_content.append(line)  # Preserve leading/trailing whitespace
+        current_input.multiline_content.append(line)  # Preserve leading/trailing whitespace
       continue
 
     line = line.strip()
@@ -110,22 +100,16 @@ def ExtractCommands(response: str) -> List[CommandInput]:
         # Single-line command with arguments
         args = parts[1].split()
         if args[-1] == "<<":
-          current_cmd = cmd
-          current_args = args[:-1]
-          multiline_content = []
+          current_input = CommandInput(command_name=cmd, arguments=args[:-1], multiline_content=[])
         else:
           commands.append(CommandInput(command_name=cmd, arguments=args))
       else:
         # Single-line command with no arguments
         commands.append(CommandInput(command_name=cmd, arguments=[]))
 
-  if current_cmd:
-    assert multiline_content is not None
-    commands.append(
-        CommandInput(
-            command_name=current_cmd,
-            arguments=current_args,
-            multiline_content="\n".join(multiline_content)))
+  if current_input:
+    assert current_input.multiline_content is not None
+    commands.append(current_input)
   return commands
 
 
