@@ -4,19 +4,6 @@ from agent_command import AgentCommand, CommandInput
 import logging
 from file_access_policy import FileAccessPolicy
 
-# TODO: We should implement a new command that can modify only parts of files.
-# Often the ai just wants to modify one or two small sections in a large file,
-# so there should be a better way than having to rewrite the whole file. This
-# requires coming up with the ideal "language" for the AI to express the types
-# of modifications it wants to apply and implement it. One option would be a
-# "patch" command, but I'm not sure (it may be tricky for the ai to get the line
-# offests right, no?). Ideally it would be something very expressive like
-# "rewrite function MyClass.MethodFoo in file agent_bar.py << ... contents" but
-# that would require us to implement the parser for python files, which may be
-# tricky. Consider whether you can come up with a generic approach for various
-# text-oriented formats (e.g., c++, Java, Python…) or, if you prefer, implement
-# something specific to Python.
-
 
 class WriteFileCommand(AgentCommand):
 
