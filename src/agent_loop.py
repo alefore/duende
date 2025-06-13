@@ -1,4 +1,3 @@
-
 import json
 import os
 import sys
@@ -83,12 +82,12 @@ def ExtractCommands(response: str) -> List[CommandInput]:
 
   for line in lines:
     if current_input is not None:
-      assert current_input.multiline_content is not None
       if line.strip() == "#end":
         commands.append(current_input)
         current_input = None
       else:
-        current_input.multiline_content.append(line)  # Preserve leading/trailing whitespace
+        assert current_input.multiline_content is not None
+        current_input.multiline_content.append(line)
       continue
 
     line = line.strip()
@@ -100,7 +99,8 @@ def ExtractCommands(response: str) -> List[CommandInput]:
         # Single-line command with arguments
         args = parts[1].split()
         if args[-1] == "<<":
-          current_input = CommandInput(command_name=cmd, arguments=args[:-1], multiline_content=[])
+          current_input = CommandInput(
+              command_name=cmd, arguments=args[:-1], multiline_content=[])
         else:
           commands.append(CommandInput(command_name=cmd, arguments=args))
       else:

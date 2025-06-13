@@ -5,7 +5,7 @@ from typing import List, NamedTuple, Optional
 class CommandInput(NamedTuple):
   command_name: str
   arguments: List[str]
-  multiline_content: Optional[str] = None
+  multiline_content: Optional[List[str]] = None
 
 
 class AgentCommand(ABC):
