@@ -69,13 +69,13 @@ def CallChatgpt(model: str, messages: List[Message]) -> str | None:
   return response.choices[0].message.content
 
 
-def ExtractCommands(response: str) -> List[Tuple[str, CommandInput]]:
+def ExtractCommands(response: str) -> List[CommandInput]:
   """
     Parses commands from a ChatGPT response.
     New format supports multi-line arguments for commands before #end.
     """
   lines = response.splitlines()
-  commands: List[Tuple[str, CommandInput]] = []
+  commands: List[CommandInput] = []
   current_cmd = None
   current_args: List[str] = []
   multiline_content: None | List[str] = None
@@ -84,11 +84,11 @@ def ExtractCommands(response: str) -> List[Tuple[str, CommandInput]]:
     if multiline_content is not None:
       assert current_cmd
       if line.strip() == "#end":
-        commands.append((current_cmd,
-                         CommandInput(
-                             command_name=current_cmd,
-                             arguments=current_args,
-                             multiline_content="\n".join(multiline_content))))
+        commands.append(
+            CommandInput(
+                command_name=current_cmd,
+                arguments=current_args,
+                multiline_content="\n".join(multiline_content)))
         current_cmd = None
         current_args = []
         multiline_content = None
@@ -109,10 +109,10 @@ def ExtractCommands(response: str) -> List[Tuple[str, CommandInput]]:
           current_args = args[:-1]
           multiline_content = []
         else:
-          commands.append((cmd, CommandInput(command_name=cmd, arguments=args)))
+          commands.append(CommandInput(command_name=cmd, arguments=args))
       else:
         # Single-line command with no arguments
-        commands.append((cmd, CommandInput(command_name=cmd, arguments=[])))
+        commands.append(CommandInput(command_name=cmd, arguments=[]))
 
   return commands
 
@@ -193,7 +193,8 @@ def main() -> None:
 
     commands = ExtractCommands(response)
 
-    if confirm_regex and any(confirm_regex.match(cmd) for cmd, _ in commands):
+    if confirm_regex and any(
+        confirm_regex.match(ci.command_name) for ci in commands):
       print(f"\nAssistant:\n{response}\n")
       input(
           "Confirmation required for the response. Press return to continue or Ctrl+C to abort."
@@ -207,15 +208,15 @@ def main() -> None:
           "Use #done if you are done with your task."
       ]
     else:
-      for cmd_name, cmd_input in commands:
-        if cmd_name == "done":
+      for cmd_input in commands:
+        if cmd_input.command_name == "done":
           logging.info("Received #done. Stopping.")
           SaveConversation(conversation_path, messages)
           return
 
-        command = registry.Get(cmd_name)
+        command = registry.Get(cmd_input.command_name)
         if not command:
-          output = f"Unknown command: {cmd_name}"
+          output = f"Unknown command: {cmd_input.command_name}"
           logging.error(output)
           all_output.append(output)
           continue
