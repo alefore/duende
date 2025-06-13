@@ -21,20 +21,25 @@ class SearchFileCommand(AgentCommand):
     logging.info(
         f"Searching for '{search_term}' in directory and subdirectories.")
 
-    try:
-      matches = []
-      for file_path in list_all_files(".", self.file_access_policy):
-        with open(file_path, 'r') as file:
+    matches = []
+    errors = []
+
+    for file_path in list_all_files(".", self.file_access_policy):
+      try:
+        with open(file_path, 'r', encoding='utf-8') as file:
           lines = file.readlines()
 
         for i, line in enumerate(lines):
           if search_term in line:
             matches.append(f"{file_path}:{i + 1}: {line.strip()}")
 
-      if matches:
-        return "\n".join(matches)
-      else:
-        return f"No matches found for '{search_term}'."
+      except Exception as e:
+        errors.append(f"{file_path}: {str(e)}")
 
-    except Exception as e:
-      return f"Error: {str(e)}"
+    result = "\n".join(
+        matches) if matches else f"No matches found for '{search_term}'."
+
+    if errors:
+      result += "\n\nSome files raised exceptions:\n" + "\n".join(errors)
+
+    return result
