@@ -38,9 +38,7 @@ class SearchFileCommand(AgentCommand):
 
     csv_data = []
 
-    # TODO: Optimize this: once the limit of matches is reached, stop appending
-    # things into matches (since it will just be thrown away). This may matter
-    # when the number of matches is truly very large.
+    match_limit = 200  # Define a limit for the number of matches
     for file_path in files_to_search:
       try:
         file_count += 1
@@ -53,8 +51,9 @@ class SearchFileCommand(AgentCommand):
         for i, line in enumerate(lines):
           if search_term in line:
             file_matches += 1
-            matches.append(f"{file_path}:{i + 1}: {line.strip()}")
             match_count += 1
+            if match_count < match_limit:
+              matches.append(f"{file_path}:{i + 1}: {line.strip()}")
 
         if file_matches > 0:
           csv_data.append([file_path, file_matches, file_lines_total])
@@ -62,7 +61,7 @@ class SearchFileCommand(AgentCommand):
       except Exception as e:
         errors.append(f"{file_path}: {str(e)}")
 
-    if match_count > 200:
+    if match_count > match_limit:
       # TODO: This is very stupid. Don't write this into a file but, instead
       # just return the CSV file directly as the multi-line output.
       csv_file_path = "search_results_summary.csv"
