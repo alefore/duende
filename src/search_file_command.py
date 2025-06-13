@@ -24,20 +24,28 @@ class SearchFileCommand(AgentCommand):
     matches = []
     errors = []
 
+    file_count = 0
+    line_count = 0
+    match_count = 0
+
     for file_path in list_all_files(".", self.file_access_policy):
       try:
+        file_count += 1
         with open(file_path, 'r', encoding='utf-8') as file:
           lines = file.readlines()
+          line_count += len(lines)
 
         for i, line in enumerate(lines):
           if search_term in line:
             matches.append(f"{file_path}:{i + 1}: {line.strip()}")
+            match_count += 1
 
       except Exception as e:
         errors.append(f"{file_path}: {str(e)}")
 
-    result = "\n".join(
-        matches) if matches else f"No matches found for '{search_term}'."
+    header = f"Files searched: {file_count}, Lines scanned: {line_count}, Matches found: {match_count}"
+    result = header + "\n" + ("\n".join(matches) if matches else
+                              f"No matches found for '{search_term}'.")
 
     if errors:
       result += "\n\nSome files raised exceptions:\n" + "\n".join(errors)
