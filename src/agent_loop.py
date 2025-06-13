@@ -19,6 +19,7 @@ from search_file_command import SearchFileCommand  # Import the new command
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CurrentDirectoryFileAccessPolicy,
                                 CompositeFileAccessPolicy)
+from list_files import list_all_files
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -147,19 +148,28 @@ def main() -> None:
       type=str,
       default='',
       help="Regex to match commands requiring confirmation before execution.")
+  parser.add_argument(
+      '--test_file_access',
+      action='store_true',
+      help="Test the file access policy by listing all matched files and exit.")
   args = parser.parse_args()
 
   # Load API key
   with open(args.api_key, 'r') as f:
     openai.api_key = f.read().strip()
 
-  prompt_path = args.task
-  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
-
   policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
   if args.file_access_regex:
     policies.append(RegexFileAccessPolicy(args.file_access_regex))
   file_access_policy = CompositeFileAccessPolicy(policies)
+
+  if args.test_file_access:
+    for file in list_all_files('.', file_access_policy):
+      print(file)
+    return
+
+  prompt_path = args.task
+  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
 
   registry = CommandRegistry()
   registry.Register("notify", NotifyCommand())
