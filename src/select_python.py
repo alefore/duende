@@ -50,9 +50,7 @@ class SelectPythonCommand(AgentCommand):
         if isinstance(node,
                       (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
           if node.name == identifier and node.lineno is not None and node.end_lineno is not None:
-            start_line_content: str = lines[node.lineno - 1].strip()
-            end_line_content: str = lines[node.end_lineno - 1].strip()
-            selection = Selection(path, start_line_content, end_line_content)
+            selection = Selection(path, node.lineno - 1, node.end_lineno - 1)
             selected_lines: List[str] = selection.Read()
             self.selection_manager.set_selection(selection)
             return CommandOutput(

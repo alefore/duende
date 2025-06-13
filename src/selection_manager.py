@@ -4,11 +4,10 @@ import os
 
 class Selection:
 
-  def __init__(self, path: str, start_line_content: str,
-               end_line_content: str) -> None:
+  def __init__(self, path: str, start_index: int, end_index: int) -> None:
     self.path = path
-    self.start_line_content = start_line_content
-    self.end_line_content = end_line_content
+    self.start_index = start_index
+    self.end_index = end_index
     self.selected_lines: List[str] = []
 
   def Read(self) -> List[str]:
@@ -19,20 +18,10 @@ class Selection:
     with open(self.path, "r") as file:
       lines: List[str] = file.readlines()
 
-    start_index = end_index = None
-    for index, line in enumerate(lines):
-      if start_index is None and self.start_line_content in line:
-        start_index = index
-      elif start_index is not None and self.end_line_content in line:
-        end_index = index
-        break
+    if self.start_index < 0 or self.end_index >= len(lines):
+      raise ValueError("Start or end index out of range.")
 
-    if start_index is None:
-      raise ValueError("Could not find the specified start line content.")
-    if end_index is None:
-      raise ValueError("Could not find the specified end line content.")
-
-    self.selected_lines = lines[start_index:end_index + 1]
+    self.selected_lines = lines[self.start_index:self.end_index + 1]
     return self.selected_lines
 
   def Overwrite(self, new_contents: List[str]):
@@ -47,31 +36,41 @@ class Selection:
     with open(self.path, "r") as file:
       lines = file.readlines()
 
-    start_index = None
+    if self.start_index < 0 or self.end_index >= len(lines):
+      raise ValueError("Start or end index out of range.")
+
+    # Replace lines between start_index and end_index
+    new_contents_with_newlines = [f"{line}\n" for line in new_contents]
+    lines = lines[:self.start_index] + new_contents_with_newlines + lines[
+        self.end_index + 1:]
+
+    with open(self.path, "w") as file:
+      file.writelines(lines)
+
+  @classmethod
+  def FromLineContent(cls, path: str, start_line_content: str,
+                      end_line_content: str) -> 'Selection':
+    """Creates a Selection object based on line content."""
+    if not os.path.exists(path):
+      raise FileNotFoundError(f"File not found: {path}")
+
+    with open(path, "r") as file:
+      lines: List[str] = file.readlines()
+
+    start_index = end_index = None
     for index, line in enumerate(lines):
-      if self.start_line_content in line:
+      if start_index is None and start_line_content in line:
         start_index = index
+      elif start_index is not None and end_line_content in line:
+        end_index = index
         break
 
     if start_index is None:
       raise ValueError("Could not find the specified start line content.")
-
-    end_index = None
-    for index in range(start_index, len(lines)):
-      if self.end_line_content in lines[index]:
-        end_index = index
-        break
-
     if end_index is None:
       raise ValueError("Could not find the specified end line content.")
 
-    # Replace lines between start_index and end_index
-    new_contents_with_newlines = [f"{line}\n" for line in new_contents]
-    lines = lines[:start_index] + new_contents_with_newlines + lines[end_index +
-                                                                     1:]
-
-    with open(self.path, "w") as file:
-      file.writelines(lines)
+    return cls(path, start_index, end_index)
 
 
 class SelectionManager:

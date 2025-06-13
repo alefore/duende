@@ -41,7 +41,8 @@ class SelectTextCommand(AgentCommand):
           summary="Select command access denied.")
 
     try:
-      selection = Selection(path, start_line_content, end_line_content)
+      selection = Selection.FromLineContent(path, start_line_content,
+                                            end_line_content)
       selected_lines = selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(
