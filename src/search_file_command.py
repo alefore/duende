@@ -12,7 +12,7 @@ class SearchFileCommand(AgentCommand):
     self.file_access_policy = file_access_policy
 
   def GetDescription(self) -> str:
-    return "SearchFileCommand: Searches for a specific term in specified files (if provided) or in all files in the current directory and subdirectories."
+    return "#search <content> [file1 file2 …]: Searches for the specific <content> in specified files (if provided) or in all files in the current directory and subdirectories."
 
   def Execute(self, command_input: CommandInput) -> str:
     if len(command_input.arguments) < 1:
