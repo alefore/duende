@@ -86,11 +86,13 @@ class SelectTextCommand(AgentCommand):
 
   def GetDescription(self) -> str:
     return (
-        "select <path> <start line content> <end line content>: "
-        "Creates a new selection for the content in the path specified starting at the first line matching "
-        "<start line content> and ending at the first following line matching <end line content>. "
+        "#select <path> <start line content> <end line content>: "
+        "Creates a new selection for the content in the path specified starting at the first line containing "
+        "<start line content> and ending at the first following line containing <end line content>. "
         "The contents selected will be returned. "
-        "Use select_overwrite to overwrite the selection with new contents.")
+        "Use select_overwrite to overwrite the selection with new contents. "
+        "If your patterns contain spaces, you probably want to put quotes around them (e.g., #select my_foo.py 'def Foo' 'def Blah(')."
+    )
 
   def Execute(self, command_input: CommandInput) -> str:
     global current_selection
