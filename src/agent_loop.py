@@ -114,6 +114,9 @@ def ExtractCommands(response: str) -> List[CommandInput]:
         # Single-line command with no arguments
         commands.append(CommandInput(command_name=cmd, arguments=[]))
 
+  assert not current_cmd
+  assert multiline_content is None
+
   return commands
 
 
