@@ -28,48 +28,49 @@ class SearchFileCommand(AgentCommand):
     matches = []
     errors = []
 
-    file_count = 0
-    line_count = 0
-    match_count = 0
+    global_file_count = 0
+    global_line_count = 0
+    global_match_count = 0
 
     files_to_search = specified_files or list_all_files(".",
                                                         self.file_access_policy)
 
-    csv_data = []
+    files_data: List[str] = []
 
     match_limit = 200  # Define a limit for the number of matches
     for file_path in files_to_search:
       try:
-        file_count += 1
+        global_file_count += 1
         with open(file_path, 'r', encoding='utf-8') as file:
           lines = file.readlines()
-          file_lines_total = len(lines)
-          line_count += file_lines_total
+          file_line_count: int = len(lines)
+          global_line_count += file_line_count
 
-        file_matches = 0
+        file_match_count = 0
         for i, line in enumerate(lines):
           if search_term in line:
-            file_matches += 1
-            match_count += 1
-            if match_count < match_limit:
+            file_match_count += 1
+            global_match_count += 1
+            if global_match_count < match_limit:
               matches.append(f"{file_path}:{i + 1}: {line.strip()}")
 
-        if file_matches > 0:
-          csv_data.append([file_path, file_matches, file_lines_total])
+        if file_match_count > 0:
+          files_data.append(
+              f"{file_path}, {file_match_count}, {file_line_count}")
 
       except Exception as e:
         errors.append(f"{file_path}: {str(e)}")
 
-    if match_count > match_limit:
+    header = f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"
+    if global_match_count > match_limit:
       # Construct CSV data as a string
-      csv_content = "path,lines_match,file_lines_total\n"
-      csv_content += "\n".join([",".join(map(str, row)) for row in csv_data])
+      csv_content = "path,lines_match,file_line_count\n"
+      csv_content += "\n".join(files_data)
 
-      result = (f"Files searched: {file_count}, Lines scanned: {line_count}, "
-                f"Matches found: {match_count}. Too many matches to display. "
-                f"Files with matches:\n{csv_content}")
+      result = (
+          f"Too many matches to display ({global_match_count}, limit is {match_limit}). {header}.\n"
+          f"Files with matches:\n{csv_content}")
     else:
-      header = f"Files searched: {file_count}, Lines scanned: {line_count}, Matches found: {match_count}"
       result = header + "\n" + ("\n".join(matches) if matches else
                                 f"No matches found for '{search_term}'.")
 
