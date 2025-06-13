@@ -13,9 +13,7 @@ class ReadFileCommand(AgentCommand):
 
   def Execute(self, command_input: CommandInput) -> str:
     if len(command_input.arguments) != 1:
-      # TODO: Use command_input.command_name in the error message (rather than
-      # hard-coding "read").
-      return "Error: read expects exactly one argument: the file path."
+      return f"Error: {command_input.command_name} expects exactly one argument: the file path."
     path = command_input.arguments[0]
     logging.info(f"Read: {path}")
 
@@ -27,7 +25,7 @@ class ReadFileCommand(AgentCommand):
     try:
       with open(path, "r") as f:
         contents = f.read()
-        return f"#read {path} <<\n{contents}\n#end ({path})"
+        return f"#{command_input.command_name} {path} <<\n{contents}\n#end ({path})"
     except FileNotFoundError:
       return f"Error: File not found: {path}"
     except Exception as e:
