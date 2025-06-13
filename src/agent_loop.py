@@ -78,6 +78,9 @@ def ExtractCommands(response: str) -> List[CommandInput]:
     """
   lines = response.splitlines()
   commands: List[CommandInput] = []
+  # TODO: Instead of declaring current_cmd, current_args, multiline_content,
+  # create a CommandInput and populate its value through the execution of this
+  # method (adding it to commands when ready, and resetting it to a new one).
   current_cmd = None
   current_args: List[str] = []
   multiline_content: None | List[str] = None
@@ -116,9 +119,13 @@ def ExtractCommands(response: str) -> List[CommandInput]:
         # Single-line command with no arguments
         commands.append(CommandInput(command_name=cmd, arguments=[]))
 
-  assert not current_cmd
-  assert multiline_content is None
-
+  if current_cmd:
+    assert multiline_content is not None
+    commands.append(
+        CommandInput(
+            command_name=current_cmd,
+            arguments=current_args,
+            multiline_content="\n".join(multiline_content)))
   return commands
 
 
@@ -142,7 +149,8 @@ def main() -> None:
   parser.add_argument(
       '--file_access_regex',
       type=str,
-      help="Regex to match allowed file paths. Defaults to allowing all paths.")
+      help="Regex to match allowed file paths. Defaults to allowing all paths. Match is based on relative path to current directory."
+  )
   parser.add_argument(
       '--confirm',
       type=str,
