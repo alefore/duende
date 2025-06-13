@@ -1,4 +1,4 @@
-from agent_command import AgentCommand
+from agent_command import AgentCommand, CommandInput
 from typing import List
 import logging
 from file_access_policy import FileAccessPolicy
@@ -13,13 +13,13 @@ class SearchFileCommand(AgentCommand):
   def GetDescription(self) -> str:
     return "SearchFileCommand: Searches for a specific term in all files in the current directory and subdirectories."
 
-  # TODO: Execute is incorrect! It should receive a CommandInput rather than
-  # a list of strings!
-  def Execute(self, arguments: List[str]) -> str:
-    if len(arguments) != 1:
-      return "Usage: #search_file <search_term>"
+  def Execute(self, command_input: CommandInput) -> str:
+    # TODO: Don't hard-code `search_file` as the name of this command in the
+    # various error prompts; instead, take it from `command_input.command_name`.
+    if len(command_input.arguments) != 1:
+      return "Error: Invalid usage, expected: #search_file <search_term>"
 
-    search_term = arguments[0]
+    search_term = command_input.arguments[0]
     logging.info(
         f"Searching for '{search_term}' in directory and subdirectories.")
 
