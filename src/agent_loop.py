@@ -184,6 +184,7 @@ def main() -> None:
       break
 
     messages.append({'role': 'assistant', 'content': response})
+    SaveConversation(conversation_path, messages)
 
     commands = ExtractCommands(response)
 
