@@ -4,6 +4,7 @@ import sys
 import openai
 import logging
 import re
+import shlex
 from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
@@ -98,7 +99,7 @@ def ExtractCommands(response: str) -> List[CommandInput]:
 
       if len(parts) > 1:
         # Single-line command with arguments
-        args = parts[1].split()
+        args = shlex.split(parts[1])
         if args[-1] == "<<":
           current_input = CommandInput(
               command_name=cmd, arguments=args[:-1], multiline_content=[])
