@@ -13,9 +13,9 @@ class WriteFileCommand(AgentCommand):
 
   def Execute(self, command_input: CommandInput) -> str:
     if len(command_input.arguments) != 1 or not command_input.multiline_content:
-      # TODO: Use command_input.command_name in the error message (rather than
-      # hard-coding "write").
-      return "Error: write expects exactly one argument: the file path and requires content."
+      return (
+          f"Error: {command_input.command_name} expects exactly one argument: "
+          "the file path and requires content.")
 
     path = command_input.arguments[0]
     content = command_input.multiline_content
@@ -29,6 +29,6 @@ class WriteFileCommand(AgentCommand):
     try:
       with open(path, "w") as f:
         f.write(content)
-      return f"#write {path}: Success."
+      return f"#{command_input.command_name} {path}: Success."
     except Exception as e:
       return f"Error writing to {path}: {str(e)}"
