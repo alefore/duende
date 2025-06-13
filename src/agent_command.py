@@ -2,6 +2,12 @@ from abc import ABC, abstractmethod
 from typing import List, NamedTuple, Optional
 
 
+class CommandOutput(NamedTuple):
+  output: List[str]
+  errors: List[str]
+  summary: str
+
+
 class CommandInput(NamedTuple):
   command_name: str
   arguments: List[str]
@@ -20,6 +26,6 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  def Execute(self, command_input: CommandInput) -> str:
+  def Execute(self, command_input: CommandInput) -> CommandOutput:
     """Executes the command with the given CommandInput."""
     pass

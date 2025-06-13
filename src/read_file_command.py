@@ -1,5 +1,6 @@
-from agent_command import AgentCommand, CommandInput
+from agent_command import AgentCommand, CommandInput, CommandOutput
 import logging
+
 from file_access_policy import FileAccessPolicy
 
 
@@ -11,22 +12,38 @@ class ReadFileCommand(AgentCommand):
   def GetDescription(self) -> str:
     return "read <path>: Outputs the contents of a file under the current directory. Rejects paths outside this tree."
 
-  def Execute(self, command_input: CommandInput) -> str:
+  def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) != 1:
-      return f"Error: {command_input.command_name} expects exactly one argument: the file path."
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"{command_input.command_name} expects exactly one argument: the file path."
+          ],
+          summary="Failed to execute read command due to incorrect argument count."
+      )
+
     path = command_input.arguments[0]
     logging.info(f"Read: {path}")
 
     if not self.file_access_policy.allow_access(path):
-      return (f"Error: Access to '{path}' is not allowed. "
-              "Only files in the current directory (and subdirectories) "
-              "can be read and must satisfy the access policy.")
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"Access to '{path}' is not allowed. Only files in the current directory (and subdirectories) can be read and must satisfy the access policy."
+          ],
+          summary="Read command access denied.")
 
     try:
       with open(path, "r") as f:
         contents = f.read()
-        return f"#{command_input.command_name} {path} <<\n{contents}\n#end ({path})"
-    except FileNotFoundError:
-      return f"Error: File not found: {path}"
+        return CommandOutput(
+            output=[
+                f"#{command_input.command_name} {path} <<\n{contents}\n#end ({path})"
+            ],
+            errors=[],
+            summary=f"Read file {path}.")
     except Exception as e:
-      return f"Error: #read {path}: {e}"
+      return CommandOutput(
+          output=[],
+          errors=[f"#read {path}: {e}"],
+          summary=f"Read command error: {path}: {e}")

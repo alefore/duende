@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput
+from agent_command import AgentCommand, CommandInput, CommandOutput
 from typing import List, Optional
 import logging
 from file_access_policy import FileAccessPolicy
@@ -14,9 +14,14 @@ class SearchFileCommand(AgentCommand):
   def GetDescription(self) -> str:
     return "#search <content> [file1 file2 …]: Searches for the specific <content> in specified files (if provided) or in all files in the current directory and subdirectories."
 
-  def Execute(self, command_input: CommandInput) -> str:
+  def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) < 1:
-      return f"Error: Invalid usage, expected: #{command_input.command_name} <search_term> [file1 file2 ...]"
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"Invalid usage, expected: #{command_input.command_name} <search_term> [file1 file2 ...]"
+          ],
+          summary="Search command failed due to insufficient arguments.")
 
     search_term: str = command_input.arguments[0]
     specified_files: List[str] = command_input.arguments[1:] if len(
@@ -26,7 +31,7 @@ class SearchFileCommand(AgentCommand):
     )
 
     matches = []
-    errors = []
+    errors: List[str] = []
 
     global_file_count = 0
     global_line_count = 0
@@ -67,14 +72,14 @@ class SearchFileCommand(AgentCommand):
       csv_content = "path,lines_match,file_line_count\n"
       csv_content += "\n".join(files_data)
 
-      result = (
+      output = (
           f"Too many matches to display ({global_match_count}, limit is {match_limit}). {header}.\n"
           f"Files with matches:\n{csv_content}")
     else:
-      result = header + "\n" + ("\n".join(matches) if matches else
+      output = header + "\n" + ("\n".join(matches) if matches else
                                 f"No matches found for '{search_term}'.")
 
+    summary = f"Searched {global_file_count} files, found {global_match_count} matches."
     if errors:
-      result += "\n\nSome files raised exceptions:\n" + "\n".join(errors)
-
-    return result
+      summary += f" Errors: {len(errors)}"
+    return CommandOutput(output=[output], errors=errors, summary=summary)

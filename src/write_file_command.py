@@ -1,7 +1,7 @@
 from typing import List
-
-from agent_command import AgentCommand, CommandInput
 import logging
+
+from agent_command import AgentCommand, CommandInput, CommandOutput
 from file_access_policy import FileAccessPolicy
 
 
@@ -13,24 +13,36 @@ class WriteFileCommand(AgentCommand):
   def GetDescription(self) -> str:
     return "#write path << … multi-line-content … #end: Writes the given content to a specified file. Creates the file if it does not exist."
 
-  def Execute(self, command_input: CommandInput) -> str:
+  def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) != 1 or not command_input.multiline_content:
-      return (
-          f"Error: {command_input.command_name} expects exactly one argument: "
-          "the file path and requires content.")
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"{command_input.command_name} expects exactly one argument: the file path and requires content."
+          ],
+          summary="Write command failed due to incorrect arguments.")
 
     path = command_input.arguments[0]
     content: List[str] = command_input.multiline_content
     logging.info(f"Write: {path}")
 
     if not self.file_access_policy.allow_access(path):
-      return (f"Error: Access to '{path}' is not allowed. "
-              "Only files in the current directory (and subdirectories) "
-              "can be written to and must satisfy the access policy.")
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"Access to '{path}' is not allowed. Only files in the current directory (and subdirectories) can be written to and must satisfy the access policy."
+          ],
+          summary="Write command access denied.")
 
     try:
       with open(path, "w") as f:
         f.write("\n".join(content))
-      return f"#{command_input.command_name} {path}: Success."
+      return CommandOutput(
+          output=[f"#{command_input.command_name} {path}: Success."],
+          errors=[],
+          summary=f"Wrote to file {path}.")
     except Exception as e:
-      return f"Error writing to {path}: {str(e)}"
+      return CommandOutput(
+          output=[],
+          errors=[f"Error writing to {path}: {str(e)}"],
+          summary="Write command encountered an error.")

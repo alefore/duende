@@ -23,7 +23,6 @@ from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CompositeFileAccessPolicy)
 from list_files import list_all_files
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 
 # Constants
@@ -249,7 +248,12 @@ def main() -> None:
           all_output.append(output)
           continue
 
-        all_output.append(command.Execute(cmd_input))
+        command_output = command.Execute(cmd_input)
+        all_output.extend(command_output.output)
+        if command_output.errors:
+          all_output.extend(
+              f"Error: {error}" for error in command_output.errors)
+        logging.info(command_output.summary)
 
     user_feedback = '\n\n'.join(all_output)
     messages.append({'role': 'user', 'content': user_feedback})

@@ -1,7 +1,7 @@
 from typing import List, Optional
 import os
 
-from agent_command import AgentCommand, CommandInput
+from agent_command import AgentCommand, CommandInput, CommandOutput
 from file_access_policy import FileAccessPolicy
 
 
@@ -98,23 +98,37 @@ class SelectTextCommand(AgentCommand):
         "If your patterns contain spaces, you probably want to put quotes around them (e.g., #select my_foo.py 'def Foo' 'def Blah(')."
     )
 
-  def Execute(self, command_input: CommandInput) -> str:
+  def Execute(self, command_input: CommandInput) -> CommandOutput:
     global current_selection
 
     if len(command_input.arguments) != 3:
-      return "Error: select requires exactly three arguments: <path> <start line content> <end line content>."
+      return CommandOutput(
+          output=[],
+          errors=[
+              "select requires exactly three arguments: <path> <start_line_content> <end_line_content>."
+          ],
+          summary="Select command failed due to incorrect arguments.")
 
     path, start_line_content, end_line_content = command_input.arguments
 
     if not self.file_access_policy.allow_access(path):
-      return f"Error: Access to '{path}' is not allowed."
+      return CommandOutput(
+          output=[],
+          errors=[f"Access to '{path}' is not allowed."],
+          summary="Select command access denied.")
 
     try:
       current_selection = Selection(path, start_line_content, end_line_content)
       selected_lines = current_selection.Read()
-      return f"select <<\n{''.join(selected_lines)}\n#end ({path})"
+      return CommandOutput(
+          output=[f"select <<\n{''.join(selected_lines)}\n#end ({path})"],
+          errors=[],
+          summary=f"Selected content from file {path}.")
     except Exception as e:
-      return f"Error: select: {str(e)}"
+      return CommandOutput(
+          output=[],
+          errors=[f"select: {str(e)}"],
+          summary=f"Select command error: {str(e)}")
 
 
 class SelectOverwriteCommand(AgentCommand):
@@ -122,17 +136,29 @@ class SelectOverwriteCommand(AgentCommand):
   def GetDescription(self) -> str:
     return "select_overwrite <<\\n … new contents …\\n #end: Replaces the contents of the selection with new contents."
 
-  def Execute(self, command_input: CommandInput) -> str:
+  def Execute(self, command_input: CommandInput) -> CommandOutput:
     global current_selection
 
     if not command_input.multiline_content:
-      return "Error: select_overwrite requires new contents as multiline input."
+      return CommandOutput(
+          output=[],
+          errors=["select_overwrite requires new contents as multiline input."],
+          summary="Select overwrite failed due to missing content.")
 
     if current_selection is None:
-      return "Error: No selection exists (call #select first?)."
+      return CommandOutput(
+          output=[],
+          errors=["No selection exists (call #select first?)."],
+          summary="Select overwrite failed because no selection exists.")
 
     try:
       current_selection.Overwrite(command_input.multiline_content)
-      return "The selection was successfully overwritten."
+      return CommandOutput(
+          output=["The selection was successfully overwritten."],
+          errors=[],
+          summary="Successfully overwrote the selection.")
     except Exception as e:
-      return f"Error overwriting selection: {str(e)}"
+      return CommandOutput(
+          output=[],
+          errors=[f"Error overwriting selection: {str(e)}"],
+          summary="Select overwrite encountered an error.")
