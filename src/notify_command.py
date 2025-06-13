@@ -10,11 +10,12 @@ class NotifyCommand(AgentCommand):
   def Execute(self, command_input: CommandInput) -> str:
     if not command_input.arguments and not command_input.multiline_content:
       return "Error: #notify requires a message."
-    # TODO: If notify is given both arguments and multiline_content, display
-    # both (perhaps the args are pre-pended as a single line before the
-    # multiline_content.
-    message = (
-        command_input.multiline_content if command_input.multiline_content
-        is not None else " ".join(command_input.arguments))
-    print(message, file=sys.stderr)
+
+    message_parts = []
+    if command_input.arguments:
+      message_parts.append(" ".join(command_input.arguments))
+    if command_input.multiline_content:
+      message_parts.append(command_input.multiline_content)
+
+    print("\n".join(message_parts), file=sys.stderr)
     return "#notify: Human operator has been notified."
