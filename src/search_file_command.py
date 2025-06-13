@@ -63,7 +63,9 @@ class SearchFileCommand(AgentCommand):
 
     if match_count > match_limit:
       # TODO: This is very stupid. Don't write this into a file but, instead
-      # just return the CSV file directly as the multi-line output.
+      # just return the CSV file directly as the multi-line output. Perhaps
+      # we can just generate the output directly (and remove the dependency
+      # on the csv module).
       csv_file_path = "search_results_summary.csv"
       with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
         csv_writer = csv.writer(csvfile)
