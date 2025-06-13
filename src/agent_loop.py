@@ -200,10 +200,18 @@ def main() -> None:
 
     if confirm_regex and any(
         confirm_regex.match(ci.command_name) for ci in commands):
-      print(f"\nAssistant:\n{response}\n")
-      input(
-          "Confirmation required for the response. Press return to continue or Ctrl+C to abort."
-      )
+      print("\nAssistant:\n" + response + "\n")
+
+      guidance = input(
+          "Confirm operations? Enter a message to provide guidance to the AI: "
+      ).strip()
+
+      if guidance:
+        print("Your guidance will be sent to the AI.")
+        messages.append({
+            'role': 'user',
+            'content': f"Message from the human operator: {guidance}"
+        })
 
     all_output: List[str] = []
     if not commands:
