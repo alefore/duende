@@ -46,7 +46,7 @@ class SelectTextCommand(AgentCommand):
       selected_lines = selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(
-          output=[f"select <<\n{''.join(selected_lines)}\n#end ({path})"],
+          output=[f"select <<\n{''.join(selected_lines)}#end ({path})"],
           errors=[],
           summary=f"Selected from {path}: lines: {len(selected_lines)}")
     except Exception as e:
