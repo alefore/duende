@@ -42,9 +42,10 @@ class Selection:
 
   def Overwrite(self, new_contents: List[str]):
     """
-        Replaces the selection with new contents (deleting previous contents).
-        The file (self.path) will be updated on disk.
-        """
+    Replaces the selection with new contents (deleting previous contents).
+    'new_contents' should not include newline characters at the end of each line.
+    The file (self.path) will be updated on disk.
+    """
     if not os.path.exists(self.path):
       raise FileNotFoundError(f"File not found: {self.path}")
 
@@ -70,7 +71,10 @@ class Selection:
       raise ValueError("Could not find the specified end line content.")
 
     # Replace lines between start_index and end_index
-    lines = lines[:start_index] + new_contents + lines[end_index + 1:]
+    # Add newline characters back to each line in 'new_contents'
+    new_contents_with_newlines = [f"{line}\n" for line in new_contents]
+    lines = lines[:start_index] + new_contents_with_newlines + lines[end_index +
+                                                                     1:]
 
     with open(self.path, "w") as file:
       file.writelines(lines)

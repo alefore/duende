@@ -5,6 +5,7 @@ from typing import List, NamedTuple, Optional
 class CommandInput(NamedTuple):
   command_name: str
   arguments: List[str]
+  # multiline_content does not include newline characters.
   multiline_content: Optional[List[str]] = None
 
 
