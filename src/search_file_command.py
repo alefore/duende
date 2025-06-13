@@ -3,11 +3,8 @@ from typing import List, Optional
 import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
-
-# TODO: If more than 200 lines match, don't return any individual matches;
-# instead, return a header describing this, including the total number of
-# matches. Then return a CSV file like this: path, lines_match, total_lines.
-# (Include a header so that the AI knows how to interpret this).
+import csv
+import os
 
 
 class SearchFileCommand(AgentCommand):
@@ -39,24 +36,48 @@ class SearchFileCommand(AgentCommand):
     files_to_search = specified_files or list_all_files(".",
                                                         self.file_access_policy)
 
+    csv_data = []
+
+    # TODO: Optimize this: once the limit of matches is reached, stop appending
+    # things into matches (since it will just be thrown away). This may matter
+    # when the number of matches is truly very large.
     for file_path in files_to_search:
       try:
         file_count += 1
         with open(file_path, 'r', encoding='utf-8') as file:
           lines = file.readlines()
-          line_count += len(lines)
+          file_lines_total = len(lines)
+          line_count += file_lines_total
 
+        file_matches = 0
         for i, line in enumerate(lines):
           if search_term in line:
+            file_matches += 1
             matches.append(f"{file_path}:{i + 1}: {line.strip()}")
             match_count += 1
+
+        if file_matches > 0:
+          csv_data.append([file_path, file_matches, file_lines_total])
 
       except Exception as e:
         errors.append(f"{file_path}: {str(e)}")
 
-    header = f"Files searched: {file_count}, Lines scanned: {line_count}, Matches found: {match_count}"
-    result = header + "\n" + ("\n".join(matches) if matches else
-                              f"No matches found for '{search_term}'.")
+    if match_count > 200:
+      # TODO: This is very stupid. Don't write this into a file but, instead
+      # just return the CSV file directly as the multi-line output.
+      csv_file_path = "search_results_summary.csv"
+      with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(["path", "lines_match", "file_lines_total"])
+        csv_writer.writerows(csv_data)
+
+      result = (f"Files searched: {file_count}, Lines scanned: {line_count}, "
+                f"Matches found: {match_count}. Too many matches to display. "
+                f"See {csv_file_path} for details.")
+    else:
+      header = f"Files searched: {file_count}, Lines scanned: {line_count}, Matches found: {match_count}"
+      result = header + "\n" + ("\n".join(matches) if matches else
+                                f"No matches found for '{search_term}'.")
 
     if errors:
       result += "\n\nSome files raised exceptions:\n" + "\n".join(errors)
