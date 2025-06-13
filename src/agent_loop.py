@@ -15,6 +15,7 @@ from notify_command import NotifyCommand
 from read_file_command import ReadFileCommand
 from list_files_command import ListFilesCommand
 from write_file_command import WriteFileCommand
+from search_file_command import SearchFileCommand  # Import the new command
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CurrentDirectoryFileAccessPolicy,
                                 CompositeFileAccessPolicy)
@@ -165,6 +166,8 @@ def main() -> None:
   registry.Register("read_file", ReadFileCommand(file_access_policy))
   registry.Register("list_files", ListFilesCommand(file_access_policy))
   registry.Register("write_file", WriteFileCommand(file_access_policy))
+  registry.Register(
+      "search", SearchFileCommand(file_access_policy))  # Add the new command
 
   messages = LoadConversation(conversation_path)
   if not messages:
