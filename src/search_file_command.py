@@ -4,7 +4,13 @@ import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
+# TODO: Adjust Execute to optionally receive a list of files to search? If present, it should only search in those files. Adjust the help message to make this clear.
 
+
+# TODO: If more than 200 lines match, don't return any individual matches;
+# instead, return a header describing this, including the total number of
+# matches. Then return a CSV file like this: path, lines_match, total_lines.
+# (Include a header so that the AI knows how to interpret this).
 class SearchFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy):
