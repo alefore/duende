@@ -26,7 +26,7 @@ class ListFilesCommand(AgentCommand):
     directory = command_input.arguments[0] if command_input.arguments else "."
 
     try:
-      files = list_all_files(directory, self.file_access_policy)
+      files = list(list_all_files(directory, self.file_access_policy))
       return CommandOutput(
           output=[
               f"Files in '{directory} <<':\n" + "\n".join(files) +
