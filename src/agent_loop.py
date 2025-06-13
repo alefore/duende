@@ -146,6 +146,10 @@ def main() -> None:
       '--test_file_access',
       action='store_true',
       help="Test the file access policy by listing all matched files and exit.")
+  parser.add_argument(
+      '--confirm_done',
+      action='store_true',
+      help="Require confirmation before executing the done command.")
   args = parser.parse_args()
 
   # Load API key
@@ -223,6 +227,17 @@ def main() -> None:
     else:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
+          if args.confirm_done:
+            guidance = input(
+                "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue."
+            ).strip()
+            if guidance:
+              print("Your guidance will be sent to the AI.")
+              messages.append({
+                  'role': 'user',
+                  'content': f"Message from the human operator: {guidance}"
+              })
+              continue
           logging.info("Received #done. Stopping.")
           SaveConversation(conversation_path, messages)
           return
