@@ -14,10 +14,8 @@ class SearchFileCommand(AgentCommand):
     return "SearchFileCommand: Searches for a specific term in all files in the current directory and subdirectories."
 
   def Execute(self, command_input: CommandInput) -> str:
-    # TODO: Don't hard-code `search_file` as the name of this command in the
-    # various error prompts; instead, take it from `command_input.command_name`.
     if len(command_input.arguments) != 1:
-      return "Error: Invalid usage, expected: #search_file <search_term>"
+      return f"Error: Invalid usage, expected: #{command_input.command_name} <search_term>"
 
     search_term = command_input.arguments[0]
     logging.info(

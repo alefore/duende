@@ -15,9 +15,7 @@ class ListFilesCommand(AgentCommand):
 
   def Execute(self, command_input: CommandInput) -> str:
     if len(command_input.arguments) > 1:
-      # TODO: Use command_input.command_name in the error message (rather than
-      # hard-coding "list_files").
-      return "Error: list_files expects at most one argument: the directory path."
+      return f"Error: {command_input.command_name} expects at most one argument: the directory path."
 
     directory = command_input.arguments[0] if command_input.arguments else "."
     logging.info(f"Listing files in directory: {directory}")
