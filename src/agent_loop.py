@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import sys
@@ -5,12 +6,14 @@ import openai
 import logging
 import re
 import shlex
+import subprocess
 from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 )
 from typing import List, Dict, Optional, Tuple, Union
+
 from agent_command import AgentCommand, CommandInput
 from notify_command import NotifyCommand
 from read_file_command import ReadFileCommand
@@ -21,6 +24,7 @@ from select_commands import SelectTextCommand, SelectOverwriteCommand
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CurrentDirectoryFileAccessPolicy,
                                 CompositeFileAccessPolicy)
+from validate_command import ValidateCommand
 from list_files import list_all_files
 from parsing import ExtractCommands  # Importing the ExtractCommands from parsing.py
 
@@ -74,8 +78,6 @@ def CallChatgpt(model: str, messages: List[Message]) -> str | None:
 
 
 def main() -> None:
-  import argparse
-
   parser = argparse.ArgumentParser()
   parser.add_argument(
       '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
@@ -135,6 +137,19 @@ def main() -> None:
   registry.Register("search", SearchFileCommand(file_access_policy))
   registry.Register("select", SelectTextCommand(file_access_policy))
   registry.Register("select_overwrite", SelectOverwriteCommand())
+
+  validate_script: str = "agent/validate.sh"
+  if not os.path.isfile(validate_script):
+    logging.info(f"{validate_script} does not exist.")
+  elif not os.access(validate_script, os.X_OK):
+    logging.warning(
+        f"{validate_script} exists but does not have execution permission.")
+  else:
+    process = subprocess.run([validate_script], capture_output=True, text=True)
+    if process.returncode != 0:
+      logging.error(process.stderr)
+      return
+    registry.Register("validate", ValidateCommand())
 
   messages = LoadConversation(conversation_path)
   if not messages:
