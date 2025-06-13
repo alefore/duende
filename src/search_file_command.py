@@ -1,31 +1,33 @@
 from agent_command import AgentCommand, CommandInput
-from typing import List
+from typing import List, Optional
 import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
-
-# TODO: Adjust Execute to optionally receive a list of files to search? If present, it should only search in those files. Adjust the help message to make this clear.
-
 
 # TODO: If more than 200 lines match, don't return any individual matches;
 # instead, return a header describing this, including the total number of
 # matches. Then return a CSV file like this: path, lines_match, total_lines.
 # (Include a header so that the AI knows how to interpret this).
+
+
 class SearchFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy):
     self.file_access_policy = file_access_policy
 
   def GetDescription(self) -> str:
-    return "SearchFileCommand: Searches for a specific term in all files in the current directory and subdirectories."
+    return "SearchFileCommand: Searches for a specific term in specified files (if provided) or in all files in the current directory and subdirectories."
 
   def Execute(self, command_input: CommandInput) -> str:
-    if len(command_input.arguments) != 1:
-      return f"Error: Invalid usage, expected: #{command_input.command_name} <search_term>"
+    if len(command_input.arguments) < 1:
+      return f"Error: Invalid usage, expected: #{command_input.command_name} <search_term> [file1 file2 ...]"
 
-    search_term = command_input.arguments[0]
+    search_term: str = command_input.arguments[0]
+    specified_files: List[str] = command_input.arguments[1:] if len(
+        command_input.arguments) > 1 else []
     logging.info(
-        f"Searching for '{search_term}' in directory and subdirectories.")
+        f"Searching for '{search_term}' in specified files or directory and subdirectories."
+    )
 
     matches = []
     errors = []
@@ -34,7 +36,10 @@ class SearchFileCommand(AgentCommand):
     line_count = 0
     match_count = 0
 
-    for file_path in list_all_files(".", self.file_access_policy):
+    files_to_search = specified_files or list_all_files(".",
+                                                        self.file_access_policy)
+
+    for file_path in files_to_search:
       try:
         file_count += 1
         with open(file_path, 'r', encoding='utf-8') as file:
