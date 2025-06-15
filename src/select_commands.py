@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import os
 
 from agent_command import AgentCommand, CommandInput, CommandOutput
@@ -60,7 +60,7 @@ class SelectTextCommand(AgentCommand):
 class SelectOverwriteCommand(AgentCommand):
 
   def __init__(self, selection_manager: SelectionManager,
-               validation_manager: ValidationManager):
+               validation_manager: Optional[ValidationManager]):
     self.selection_manager = selection_manager
     self.validation_manager = validation_manager
 
@@ -84,7 +84,8 @@ class SelectOverwriteCommand(AgentCommand):
 
     try:
       current_selection.Overwrite(command_input.multiline_content)
-      self.validation_manager.RegisterChange()
+      if self.validation_manager:
+        self.validation_manager.RegisterChange()
       return CommandOutput(
           output=["The selection was successfully overwritten."],
           errors=[],

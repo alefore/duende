@@ -14,16 +14,13 @@ class ValidationManager:
   def RegisterChange(self) -> None:
     self.contents_changed = True
 
-  def Validate(self) -> Optional[subprocess.CompletedProcess]:
-    if not self._is_script_available():
-      logging.info("Validation script is unavailable or not executable.")
-      return None
-
+  def Validate(self) -> subprocess.CompletedProcess:
     if not self.contents_changed and self.last_validation_successful:
       logging.info(
           "No changes detected and last validation was successful. Skipping re-validation."
       )
-      return None
+      return subprocess.CompletedProcess(
+          args=[self.validation_script], returncode=0)
 
     result = self._execute_validation_script()
     self.contents_changed = False
@@ -36,10 +33,6 @@ class ValidationManager:
 
     return result
 
-  def _is_script_available(self) -> bool:
-    return os.path.isfile(self.validation_script) and os.access(
-        self.validation_script, os.X_OK)
-
   def _execute_validation_script(self) -> subprocess.CompletedProcess:
     try:
       return subprocess.run([self.validation_script],
@@ -49,3 +42,12 @@ class ValidationManager:
       logging.error(f"Error executing validation script: {str(e)}")
       return subprocess.CompletedProcess(
           args=[self.validation_script], returncode=1, stderr=str(e))
+
+
+def CreateValidationManager() -> Optional[ValidationManager]:
+  script_path = "agent/validate.sh"
+  if os.path.isfile(script_path) and os.access(script_path, os.X_OK):
+    return ValidationManager()
+  else:
+    logging.info("Validation script is unavailable or not executable.")
+    return None

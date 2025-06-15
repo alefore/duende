@@ -16,7 +16,7 @@ from typing import List, Dict, Optional, Tuple, Union
 
 from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
-from validation import ValidationManager
+from validation import ValidationManager, CreateValidationManager
 from notify_command import NotifyCommand
 from read_file_command import ReadFileCommand
 from list_files_command import ListFilesCommand
@@ -137,12 +137,13 @@ def main() -> None:
   registry.Register("read_file", ReadFileCommand(file_access_policy))
   registry.Register("list_files", ListFilesCommand(file_access_policy))
 
-  # Instantiate ValidationManager
-  validation_manager = ValidationManager()
-  initial_validation_result = validation_manager.Validate()
-  if initial_validation_result and initial_validation_result.returncode != 0:
-    logging.error("Initial validation failed, aborting further operations.")
-    return
+  validation_manager = CreateValidationManager()
+  if validation_manager:
+    initial_validation_result = validation_manager.Validate()
+    if initial_validation_result and initial_validation_result.returncode != 0:
+      logging.error("Initial validation failed, aborting further operations.")
+      return
+    registry.Register("validate", ValidateCommand(validation_manager))
 
   registry.Register("write_file",
                     WriteFileCommand(file_access_policy, validation_manager))
@@ -160,8 +161,6 @@ def main() -> None:
     registry.Register(
         "select_python",
         SelectPythonCommand(file_access_policy, selection_manager))
-
-  registry.Register("validate", ValidateCommand(validation_manager))
 
   messages = LoadConversation(conversation_path)
   if not messages:

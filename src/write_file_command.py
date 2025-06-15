@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import logging
 
 from agent_command import AgentCommand, CommandInput, CommandOutput
@@ -9,7 +9,7 @@ from file_access_policy import FileAccessPolicy
 class WriteFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy,
-               validation_manager: ValidationManager):
+               validation_manager: Optional[ValidationManager]):
     self.file_access_policy = file_access_policy
     self.validation_manager = validation_manager
 
@@ -40,7 +40,8 @@ class WriteFileCommand(AgentCommand):
     try:
       with open(path, "w") as f:
         f.write("\n".join(content))
-      self.validation_manager.RegisterChange()
+      if self.validation_manager:
+        self.validation_manager.RegisterChange()
       return CommandOutput(
           output=[f"#{command_input.command_name} {path}: Success."],
           errors=[],
