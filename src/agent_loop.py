@@ -79,7 +79,7 @@ def CallChatgpt(model: str, messages: List[Message]) -> str | None:
   return response.choices[0].message.content
 
 
-def main() -> None:
+def ParseArguments() -> argparse.Namespace:
   parser = argparse.ArgumentParser()
   parser.add_argument(
       '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
@@ -112,35 +112,34 @@ def main() -> None:
       '--confirm_done',
       action='store_true',
       help="Require confirmation before executing the done command.")
-  args = parser.parse_args()
+  return parser.parse_args()
 
-  # Load API key
-  with open(args.api_key, 'r') as f:
+
+def LoadOpenAIAPIKey(api_key_path: str):
+  with open(api_key_path, 'r') as f:
     openai.api_key = f.read().strip()
 
+
+def CreateFileAccessPolicy(args: argparse.Namespace) -> FileAccessPolicy:
   policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
   if args.file_access_regex:
     policies.append(RegexFileAccessPolicy(args.file_access_regex))
-  file_access_policy = CompositeFileAccessPolicy(policies)
+  return CompositeFileAccessPolicy(policies)
 
-  if args.test_file_access:
-    for file in list_all_files('.', file_access_policy):
-      print(file)
-    return
 
-  prompt_path = args.task
-  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
+def TestFileAccess(file_access_policy: FileAccessPolicy):
+  for file in list_all_files('.', file_access_policy):
+    print(file)
 
+
+def CreateCommandRegistry(
+    file_access_policy: FileAccessPolicy,
+    validation_manager: Optional[ValidationManager]) -> CommandRegistry:
   registry = CommandRegistry()
   registry.Register("read_file", ReadFileCommand(file_access_policy))
   registry.Register("list_files", ListFilesCommand(file_access_policy))
 
-  validation_manager = CreateValidationManager()
   if validation_manager:
-    initial_validation_result = validation_manager.Validate()
-    if initial_validation_result and initial_validation_result.returncode != 0:
-      logging.error("Initial validation failed, aborting further operations.")
-      return
     registry.Register("validate", ValidateCommand(validation_manager))
 
   registry.Register("write_file",
@@ -160,6 +159,12 @@ def main() -> None:
         "select_python",
         SelectPythonCommand(file_access_policy, selection_manager))
 
+  return registry
+
+
+def LoadOrCreateConversation(
+    prompt_path: str, registry: CommandRegistry) -> Tuple[List[Message], str]:
+  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
   messages = LoadConversation(conversation_path)
   if not messages:
     prompt = "You are a coding assistant operating in a command loop environment. Use commands prefixed with `#`. Anything that is not a command will be ignored.\n\n"
@@ -169,10 +174,12 @@ def main() -> None:
     prompt += "\nAvailable commands:\n" + registry.HelpText()
     messages.append({'role': 'system', 'content': prompt})
 
-  # Compile the confirmation regex if provided
+  return messages, conversation_path
+
+
+def SetupAndRunMainLoop(args, registry, messages, conversation_path):
   confirm_regex = re.compile(args.confirm) if args.confirm else None
 
-  # Main loop
   while True:
     logging.info("Querying ChatGPT...")
     response = CallChatgpt(args.model, messages)
@@ -248,6 +255,28 @@ def main() -> None:
     user_feedback = '\n\n'.join(all_output)
     messages.append({'role': 'user', 'content': user_feedback})
     SaveConversation(conversation_path, messages)
+
+
+def main() -> None:
+  args = ParseArguments()
+  LoadOpenAIAPIKey(args.api_key)
+
+  file_access_policy = CreateFileAccessPolicy(args)
+
+  if args.test_file_access:
+    TestFileAccess(file_access_policy)
+    return
+
+  validation_manager = CreateValidationManager()
+  if validation_manager:
+    initial_validation_result = validation_manager.Validate()
+    if initial_validation_result and initial_validation_result.returncode != 0:
+      logging.error("Initial validation failed, aborting further operations.")
+      return
+
+  registry = CreateCommandRegistry(file_access_policy, validation_manager)
+  messages, conversation_path = LoadOrCreateConversation(args.task, registry)
+  SetupAndRunMainLoop(args, registry, messages, conversation_path)
 
 
 if __name__ == '__main__':
