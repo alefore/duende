@@ -165,22 +165,7 @@ def main() -> None:
     prompt = "You are a coding assistant operating in a command loop environment. Use commands prefixed with `#`. Anything that is not a command will be ignored.\n\n"
     with open(prompt_path, 'r') as f:
       prompt += f.read() + "\n\n"
-    prompt += """Some commands accept multi-line information, like this:
-
-#write_file foo.py
-line0
-line1
-...
-#end
-
-(i.e., #command_name arg0 arg1 ... << \n multiple lines \n #end \n).
-
-When you're done (or if you get stuck), issue #done to notify the human and stop this conversation.
-
-Anything sent outside of commands will be treated as plain text.\n
-
-You are encouraged to send many commands per response (not just one). For example, if you want to read 5 files, you can issue 5 #read_file commands at once.
-"""
+    prompt += "Some commands accept multi-line information, like this:\n\n#write_file foo.py\nline0\nline1\n…\n#end\n\n(i.e., #command_name arg0 arg1 ... << \\n multiple lines \\n #end \\n).\n\nWhen you're done (or if you get stuck), issue #done to notify the human and stop this conversation.\n\nAnything sent outside of commands will be treated as plain text.\n\nYou are encouraged to send many commands per response (not just one). For example, if you want to read 5 files, you can issue 5 #read_file commands at once."
     prompt += "\nAvailable commands:\n" + registry.HelpText()
     messages.append({'role': 'system', 'content': prompt})
 
@@ -203,8 +188,9 @@ You are encouraged to send many commands per response (not just one). For exampl
     if non_command_lines:
       print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
 
-    if confirm_regex and any(
-        confirm_regex.match(ci.command_name) for ci in commands):
+    if confirm_regex and (any(
+        confirm_regex.match(ci.command_name) for ci in commands) or
+                          non_command_lines):
       print("\nAssistant:\n" + response + "\n")
 
       guidance = input(
