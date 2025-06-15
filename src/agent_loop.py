@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 import sys
@@ -79,51 +78,16 @@ def CallChatgpt(model: str, messages: List[Message]) -> Optional[str]:
   return response.choices[0].message.content
 
 
-def ParseArguments() -> argparse.Namespace:
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
-  parser.add_argument(
-      '--task',
-      type=str,
-      required=True,
-      help="File path for task prompt. The conversation will be stored in a corresponding .conversation.json file."
-  )
-  parser.add_argument(
-      '--model',
-      type=str,
-      default='gpt-4o',
-      help="The model name to use for OpenAI API requests.")
-  parser.add_argument(
-      '--file_access_regex',
-      type=str,
-      help="Regex to match allowed file paths. Defaults to allowing all paths. Match is based on relative path to current directory."
-  )
-  parser.add_argument(
-      '--confirm',
-      type=str,
-      default='',
-      help="Regex to match commands requiring confirmation before execution.")
-  parser.add_argument(
-      '--test_file_access',
-      action='store_true',
-      help="Test the file access policy by listing all matched files and exit.")
-  parser.add_argument(
-      '--confirm_done',
-      action='store_true',
-      help="Require confirmation before executing the done command.")
-  return parser.parse_args()
-
-
 def LoadOpenAIAPIKey(api_key_path: str):
   with open(api_key_path, 'r') as f:
     openai.api_key = f.read().strip()
 
 
-def CreateFileAccessPolicy(args: argparse.Namespace) -> FileAccessPolicy:
+def CreateFileAccessPolicy(
+    file_access_regex: Optional[str]) -> FileAccessPolicy:
   policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
-  if args.file_access_regex:
-    policies.append(RegexFileAccessPolicy(args.file_access_regex))
+  if file_access_regex:
+    policies.append(RegexFileAccessPolicy(file_access_regex))
   return CompositeFileAccessPolicy(policies)
 
 

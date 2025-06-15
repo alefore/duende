@@ -1,4 +1,5 @@
 import os
+import argparse
 from flask import Flask, request, render_template_string, redirect, url_for
 from agent_loop import AgentLoop, CreateCommandRegistry, CreateFileAccessPolicy, LoadOrCreateConversation, LoadOpenAIAPIKey, CreateValidationManager
 from confirmation import AsyncConfirmationManager
@@ -38,6 +39,26 @@ HTML_TEMPLATE = """
 """
 
 
+def parse_arguments() -> argparse.Namespace:
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--port', type=int, default=5000, help="Port to run the web server on.")
+  parser.add_argument(
+      '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
+  parser.add_argument(
+      '--task', type=str, required=True, help="File path for task prompt.")
+  parser.add_argument(
+      '--model',
+      type=str,
+      default='gpt-4o',
+      help="The model name to use for OpenAI API requests.")
+  parser.add_argument(
+      '--file_access_regex',
+      type=str,
+      help="Regex to match allowed file paths. Defaults to allowing all paths.")
+  return parser.parse_args()
+
+
 @app.route("/", methods=["GET", "POST"])
 def interact():
   global agent_loop_instance, confirmation_manager
@@ -71,7 +92,7 @@ def start_agent_loop(args):
   global agent_loop_instance, confirmation_manager
   LoadOpenAIAPIKey(args.api_key)
 
-  file_access_policy = CreateFileAccessPolicy(args)
+  file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
   validation_manager = CreateValidationManager()
 
   if validation_manager:
@@ -88,26 +109,11 @@ def start_agent_loop(args):
   Thread(target=agent_loop_instance.run).start()
 
 
-def run_server(args):
+def run_server():
+  args = parse_arguments()
   start_agent_loop(args)
   app.run(port=args.port)
 
 
 if __name__ == "__main__":
-  import argparse
-
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--port', type=int, default=5000, help="Port to run the web server on.")
-  parser.add_argument(
-      '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
-  parser.add_argument(
-      '--task', type=str, required=True, help="File path for task prompt.")
-  parser.add_argument(
-      '--model',
-      type=str,
-      default='gpt-4o',
-      help="The model name to use for OpenAI API requests.")
-  args = parser.parse_args()
-
-  run_server(args)
+  run_server()
