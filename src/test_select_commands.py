@@ -5,6 +5,7 @@ from agent_command import CommandInput, CommandOutput
 from select_commands import SelectTextCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from file_access_policy import FileAccessPolicy
+from validation import ValidationManager
 
 
 class TestSelectCommands(unittest.TestCase):
@@ -12,9 +13,10 @@ class TestSelectCommands(unittest.TestCase):
   def setUp(self):
     self.file_access_policy = MagicMock(FileAccessPolicy)
     self.selection_manager = SelectionManager()
+    self.validation_manager = MagicMock(ValidationManager)
     self.select_text_cmd = SelectTextCommand(self.file_access_policy,
                                              self.selection_manager)
-    self.select_overwrite_cmd = SelectOverwriteCommand(self.selection_manager)
+    self.select_overwrite_cmd = SelectOverwriteCommand(self.selection_manager, self.validation_manager)
     self.file_access_policy.allow_access.return_value = True
 
   def test_select_valid_selection(self):

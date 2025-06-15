@@ -16,6 +16,7 @@ from typing import List, Dict, Optional, Tuple, Union
 
 from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
+from validation import ValidationManager
 from notify_command import NotifyCommand
 from read_file_command import ReadFileCommand
 from list_files_command import ListFilesCommand
@@ -135,14 +136,24 @@ def main() -> None:
   registry.Register("notify", NotifyCommand())
   registry.Register("read_file", ReadFileCommand(file_access_policy))
   registry.Register("list_files", ListFilesCommand(file_access_policy))
-  registry.Register("write_file", WriteFileCommand(file_access_policy))
+
+  # Instantiate ValidationManager
+  validation_manager = ValidationManager()
+  initial_validation_result = validation_manager.Validate()
+  if initial_validation_result and initial_validation_result.returncode != 0:
+    logging.error("Initial validation failed, aborting further operations.")
+    return
+
+  registry.Register("write_file",
+                    WriteFileCommand(file_access_policy, validation_manager))
   registry.Register("search", SearchFileCommand(file_access_policy))
 
   selection_manager = SelectionManager()
   registry.Register("select",
                     SelectTextCommand(file_access_policy, selection_manager))
-  registry.Register("select_overwrite",
-                    SelectOverwriteCommand(selection_manager))
+  registry.Register(
+      "select_overwrite",
+      SelectOverwriteCommand(selection_manager, validation_manager))
 
   if any(
       file.endswith('.py') for file in list_all_files('.', file_access_policy)):
@@ -150,18 +161,7 @@ def main() -> None:
         "select_python",
         SelectPythonCommand(file_access_policy, selection_manager))
 
-  validate_script: str = "agent/validate.sh"
-  if not os.path.isfile(validate_script):
-    logging.info(f"{validate_script} does not exist.")
-  elif not os.access(validate_script, os.X_OK):
-    logging.warning(
-        f"{validate_script} exists but does not have execution permission.")
-  else:
-    process = subprocess.run([validate_script], capture_output=True, text=True)
-    if process.returncode != 0:
-      logging.error(process.stderr)
-      return
-    registry.Register("validate", ValidateCommand())
+  registry.Register("validate", ValidateCommand(validation_manager))
 
   messages = LoadConversation(conversation_path)
   if not messages:

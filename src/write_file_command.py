@@ -2,13 +2,16 @@ from typing import List
 import logging
 
 from agent_command import AgentCommand, CommandInput, CommandOutput
+from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 
 
 class WriteFileCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy):
+  def __init__(self, file_access_policy: FileAccessPolicy,
+               validation_manager: ValidationManager):
     self.file_access_policy = file_access_policy
+    self.validation_manager = validation_manager
 
   def GetDescription(self) -> str:
     return "#write path << … multi-line-content … #end: Writes the given content to a specified file. Creates the file if it does not exist."
@@ -37,6 +40,7 @@ class WriteFileCommand(AgentCommand):
     try:
       with open(path, "w") as f:
         f.write("\n".join(content))
+      self.validation_manager.RegisterChange()
       return CommandOutput(
           output=[f"#{command_input.command_name} {path}: Success."],
           errors=[],

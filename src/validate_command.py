@@ -1,8 +1,12 @@
 import subprocess
 from agent_command import AgentCommand, CommandInput, CommandOutput
+from validation import ValidationManager
 
 
 class ValidateCommand(AgentCommand):
+
+  def __init__(self, validation_manager: ValidationManager) -> None:
+    self.validation_manager = validation_manager
 
   def GetDescription(self) -> str:
     return ("Executes validation script to verify code integrity. "
@@ -10,27 +14,20 @@ class ValidateCommand(AgentCommand):
             "Usage: #validate")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    validate_script = "agent/validate.sh"
-    try:
-      process = subprocess.run([validate_script],
-                               capture_output=True,
-                               text=True)
-      if process.returncode != 0:
-        return CommandOutput(
-            output=[],
-            errors=[f"Validation failed: {process.stderr.strip()}"],
-            summary="Validation script failed.")
-      return CommandOutput(
-          output=["#validate: Success (all checks passed)."],
-          errors=[],
-          summary="Validation script succeeded.")
-    except FileNotFoundError:
+    result = self.validation_manager.Validate()
+    if not result:
       return CommandOutput(
           output=[],
-          errors=["Validation script not found."],
-          summary="Validation script does not exist.")
-    except Exception as e:
+          errors=["Validation script not found or not executable."],
+          summary="Validation script not found or permission denied.")
+
+    if result.returncode != 0:
       return CommandOutput(
           output=[],
-          errors=[f"Error executing validation script: {str(e)}"],
-          summary="Validation script execution error.")
+          errors=[f"Validation failed: {result.stderr.strip()}"],
+          summary="Validation script failed.")
+
+    return CommandOutput(
+        output=["#validate: Success (all checks passed)."],
+        errors=[],
+        summary="Validation script succeeded.")
