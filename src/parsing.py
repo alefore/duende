@@ -29,12 +29,16 @@ def ExtractCommands(response: str) -> List[CommandInput]:
 
       if len(parts) > 1:
         # Single-line command with arguments
-        args = shlex.split(parts[1])
-        if args[-1] == "<<":
-          current_input = CommandInput(
-              command_name=cmd, arguments=args[:-1], multiline_content=[])
-        else:
-          commands.append(CommandInput(command_name=cmd, arguments=args))
+        try:
+          args = shlex.split(parts[1])
+          if args[-1] == "<<":
+            current_input = CommandInput(
+                command_name=cmd, arguments=args[:-1], multiline_content=[])
+          else:
+            commands.append(CommandInput(command_name=cmd, arguments=args))
+        except ValueError:
+          # If shlex raises an exception, treat the whole line as a single argument
+          commands.append(CommandInput(command_name=cmd, arguments=[parts[1]]))
       else:
         # Single-line command with no arguments
         commands.append(CommandInput(command_name=cmd, arguments=[]))
