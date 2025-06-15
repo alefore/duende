@@ -5,14 +5,12 @@ import sys
 import openai
 import logging
 import re
-import shlex
-import subprocess
 from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 )
-from typing import List, Dict, Optional, Tuple, Union
+from typing import List, Dict, Optional, Tuple, Union, Pattern
 
 from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
@@ -20,7 +18,7 @@ from validation import ValidationManager, CreateValidationManager
 from read_file_command import ReadFileCommand
 from list_files_command import ListFilesCommand
 from write_file_command import WriteFileCommand
-from search_file_command import SearchFileCommand  # Import the new command
+from search_file_command import SearchFileCommand
 from select_commands import SelectTextCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
@@ -28,7 +26,7 @@ from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CompositeFileAccessPolicy)
 from validate_command import ValidateCommand
 from list_files import list_all_files
-from parsing import ExtractCommands  # Importing the ExtractCommands from parsing.py
+from parsing import ExtractCommands
 
 logging.basicConfig(level=logging.INFO)
 
@@ -74,7 +72,7 @@ def SaveConversation(path: str, messages: List[Message]):
     json.dump({CONVERSATION_KEY: messages}, f, indent=2)
 
 
-def CallChatgpt(model: str, messages: List[Message]) -> str | None:
+def CallChatgpt(model: str, messages: List[Message]) -> Optional[str]:
   response = openai.chat.completions.create(model=model, messages=messages)
   return response.choices[0].message.content
 
@@ -177,40 +175,56 @@ def LoadOrCreateConversation(
   return messages, conversation_path
 
 
-def SetupAndRunMainLoop(args, registry, messages, conversation_path):
-  confirm_regex = re.compile(args.confirm) if args.confirm else None
+class AgentLoop:
 
-  while True:
-    logging.info("Querying ChatGPT...")
-    response = CallChatgpt(args.model, messages)
-    if not response:
-      logging.warning("No response from chatgpt.")
-      break
+  def __init__(self,
+               model: str,
+               messages: List[Message],
+               registry: CommandRegistry,
+               confirm_regex: Optional[Pattern] = None,
+               confirm_done: bool = False):
+    self.model = model
+    self.messages = messages
+    self.registry = registry
+    self.confirm_regex = confirm_regex
+    self.confirm_done = confirm_done
 
-    messages.append({'role': 'assistant', 'content': response})
-    SaveConversation(conversation_path, messages)
+  def run(self):
+    while True:
+      logging.info("Querying ChatGPT...")
+      response = CallChatgpt(self.model, self.messages)
+      if not response:
+        logging.warning("No response from chatgpt.")
+        break
 
-    commands, non_command_lines = ExtractCommands(response)
+      self.messages.append({'role': 'assistant', 'content': response})
+      commands, non_command_lines = ExtractCommands(response)
 
-    if non_command_lines:
-      print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
+      if non_command_lines:
+        print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
 
-    if confirm_regex and (any(
-        confirm_regex.match(ci.command_name) for ci in commands) or
-                          non_command_lines):
-      print("\nAssistant:\n" + response + "\n")
+      if self.confirm_regex and (any(
+          self.confirm_regex.match(ci.command_name) for ci in commands) or
+                                 non_command_lines):
+        print("\nAssistant:\n" + response + "\n")
 
-      guidance = input(
-          "Confirm operations? Enter a message to provide guidance to the AI: "
-      ).strip()
+        guidance = input(
+            "Confirm operations? Enter a message to provide guidance to the AI: "
+        ).strip()
 
-      if guidance:
-        print("Your guidance will be sent to the AI.")
-        messages.append({
-            'role': 'user',
-            'content': f"Message from the human operator: {guidance}"
-        })
+        if guidance:
+          print("Your guidance will be sent to the AI.")
+          self.messages.append({
+              'role': 'user',
+              'content': f"Message from the human operator: {guidance}"
+          })
 
+      all_output = self._execute_commands(commands, non_command_lines)
+
+      user_feedback = '\n\n'.join(all_output)
+      self.messages.append({'role': 'user', 'content': user_feedback})
+
+  def _execute_commands(self, commands, non_command_lines):
     all_output: List[str] = []
     if not commands:
       if non_command_lines:
@@ -223,22 +237,20 @@ def SetupAndRunMainLoop(args, registry, messages, conversation_path):
     else:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
-          if args.confirm_done:
+          if self.confirm_done:
             guidance = input(
-                "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue."
+                "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue. "
             ).strip()
             if guidance:
               print("Your guidance will be sent to the AI.")
-              messages.append({
+              self.messages.append({
                   'role': 'user',
                   'content': f"Message from the human operator: {guidance}"
               })
               continue
-          logging.info("Received #done. Stopping.")
-          SaveConversation(conversation_path, messages)
-          return
+          return all_output
 
-        command = registry.Get(cmd_input.command_name)
+        command = self.registry.Get(cmd_input.command_name)
         if not command:
           output = f"Unknown command: {cmd_input.command_name}"
           logging.error(output)
@@ -252,9 +264,7 @@ def SetupAndRunMainLoop(args, registry, messages, conversation_path):
               f"Error: {error}" for error in command_output.errors)
         logging.info(command_output.summary)
 
-    user_feedback = '\n\n'.join(all_output)
-    messages.append({'role': 'user', 'content': user_feedback})
-    SaveConversation(conversation_path, messages)
+    return all_output
 
 
 def main() -> None:
@@ -276,7 +286,11 @@ def main() -> None:
 
   registry = CreateCommandRegistry(file_access_policy, validation_manager)
   messages, conversation_path = LoadOrCreateConversation(args.task, registry)
-  SetupAndRunMainLoop(args, registry, messages, conversation_path)
+
+  confirm_regex = re.compile(args.confirm) if args.confirm else None
+  loop = AgentLoop(args.model, messages, registry, confirm_regex,
+                   args.confirm_done)
+  loop.run()
 
 
 if __name__ == '__main__':
