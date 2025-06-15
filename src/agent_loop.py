@@ -12,6 +12,7 @@ from openai.types.chat import (
 )
 from typing import List, Dict, Optional, Tuple, Union, Pattern
 from abc import ABC, abstractmethod
+from confirmation import ConfirmationManager, CLIConfirmationManager
 
 from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
@@ -41,23 +42,6 @@ Message = Union[
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 ]
-
-
-class ConfirmationManager(ABC):
-
-  @abstractmethod
-  def RequireConfirmation(self, message: str) -> Optional[str]:
-    """Blocks execution until confirmation is given, returning additional guidance if provided by the user."""
-    pass
-
-
-class CLIConfirmationManager(ConfirmationManager):
-
-  def RequireConfirmation(self, message: str) -> Optional[str]:
-    print(message)
-    return input(
-        "Confirm operations? Enter a message to provide guidance to the AI: "
-    ).strip()
 
 
 class CommandRegistry:
