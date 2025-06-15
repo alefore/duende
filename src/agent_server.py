@@ -2,10 +2,12 @@ import os
 import argparse
 import re
 from flask import Flask, request, render_template_string, redirect, url_for
-from agent_loop import AgentLoop, CreateCommandRegistry, CreateFileAccessPolicy, LoadOrCreateConversation, LoadOpenAIAPIKey, CreateValidationManager
-from confirmation import AsyncConfirmationManager
 import logging
 from threading import Thread
+
+from args_common import create_common_parser
+from agent_loop import AgentLoop, CreateCommandRegistry, CreateFileAccessPolicy, LoadOrCreateConversation, LoadOpenAIAPIKey, CreateValidationManager
+from confirmation import AsyncConfirmationManager
 
 app = Flask(__name__)
 agent_loop_instance = None
@@ -41,26 +43,9 @@ HTML_TEMPLATE = """
 
 
 def parse_arguments() -> argparse.Namespace:
-  parser = argparse.ArgumentParser()
+  parser = create_common_parser()
   parser.add_argument(
       '--port', type=int, default=5000, help="Port to run the web server on.")
-  parser.add_argument(
-      '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
-  parser.add_argument(
-      '--task', type=str, required=True, help="File path for task prompt.")
-  parser.add_argument(
-      '--model',
-      type=str,
-      default='gpt-4o',
-      help="The model name to use for OpenAI API requests.")
-  parser.add_argument(
-      '--file_access_regex',
-      type=str,
-      help="Regex to match allowed file paths. Defaults to allowing all paths.")
-  parser.add_argument(
-      '--confirm_regexp',
-      type=str,
-      help="Regex pattern to determine which operations require confirmation.")
   return parser.parse_args()
 
 
