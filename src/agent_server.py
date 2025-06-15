@@ -1,5 +1,6 @@
 import os
 import argparse
+import re
 from flask import Flask, request, render_template_string, redirect, url_for
 from agent_loop import AgentLoop, CreateCommandRegistry, CreateFileAccessPolicy, LoadOrCreateConversation, LoadOpenAIAPIKey, CreateValidationManager
 from confirmation import AsyncConfirmationManager
@@ -56,6 +57,10 @@ def parse_arguments() -> argparse.Namespace:
       '--file_access_regex',
       type=str,
       help="Regex to match allowed file paths. Defaults to allowing all paths.")
+  parser.add_argument(
+      '--confirm_regexp',
+      type=str,
+      help="Regex pattern to determine which operations require confirmation.")
   return parser.parse_args()
 
 
@@ -88,7 +93,7 @@ def confirm():
   return redirect(url_for('interact'))
 
 
-def start_agent_loop(args):
+def start_agent_loop(args: argparse.Namespace) -> None:
   global agent_loop_instance, confirmation_manager
   LoadOpenAIAPIKey(args.api_key)
 
@@ -104,8 +109,16 @@ def start_agent_loop(args):
   registry = CreateCommandRegistry(file_access_policy, validation_manager)
   messages, conversation_path = LoadOrCreateConversation(args.task, registry)
 
-  agent_loop_instance = AgentLoop(args.model, messages, registry,
-                                  confirmation_manager)
+  confirm_regex = re.compile(
+      args.confirm_regexp) if args.confirm_regexp else None
+
+  agent_loop_instance = AgentLoop(
+      args.model,
+      messages,
+      registry,
+      confirm_regex,  # Use the confirm_regex from args
+      False,  # Default for confirm_done
+      confirmation_manager)
   Thread(target=agent_loop_instance.run).start()
 
 
