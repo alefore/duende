@@ -1,15 +1,15 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import shlex
 from agent_command import CommandInput
 
 
-def ExtractCommands(response: str) -> List[CommandInput]:
+def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
   """
-    Parses commands from a ChatGPT response.
-    New format supports multi-line arguments for commands before #end.
+    Parses commands from a ChatGPT response and also collects non-command lines.
     """
   lines = response.splitlines()
   commands: List[CommandInput] = []
+  non_command_lines: List[str] = []
   current_input: Optional[CommandInput] = None
 
   for line in lines:
@@ -37,13 +37,16 @@ def ExtractCommands(response: str) -> List[CommandInput]:
           else:
             commands.append(CommandInput(command_name=cmd, arguments=args))
         except ValueError:
-          # If shlex raises an exception, treat the whole line as a single argument
+          # If shlex throws, treat the whole line as a single argument
           commands.append(CommandInput(command_name=cmd, arguments=[parts[1]]))
       else:
         # Single-line command with no arguments
         commands.append(CommandInput(command_name=cmd, arguments=[]))
+    else:
+      non_command_lines.append(line)
 
   if current_input:
     assert current_input.multiline_content is not None
     commands.append(current_input)
-  return commands
+
+  return commands, non_command_lines

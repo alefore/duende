@@ -17,7 +17,6 @@ from typing import List, Dict, Optional, Tuple, Union
 from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
 from validation import ValidationManager, CreateValidationManager
-from notify_command import NotifyCommand
 from read_file_command import ReadFileCommand
 from list_files_command import ListFilesCommand
 from write_file_command import WriteFileCommand
@@ -133,7 +132,6 @@ def main() -> None:
   conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
 
   registry = CommandRegistry()
-  registry.Register("notify", NotifyCommand())
   registry.Register("read_file", ReadFileCommand(file_access_policy))
   registry.Register("list_files", ListFilesCommand(file_access_policy))
 
@@ -167,7 +165,22 @@ def main() -> None:
     prompt = "You are a coding assistant operating in a command loop environment. Use commands prefixed with `#`. Anything that is not a command will be ignored.\n\n"
     with open(prompt_path, 'r') as f:
       prompt += f.read() + "\n\n"
-    prompt += "To send multi-line arguments, use a command followed by `<<` (e.g., #notify <<`) followed by multiple lines of text, ending with a line `#end`.\nWhen you're done (or if you get stuck), issue #done to notify the human and stop this conversation.\nAny information that you send outside of commands will be ignored (use #notify to reach the human!).\nYou can send many commands per response (not just one)."
+    prompt += """Some commands accept multi-line information, like this:
+
+#write_file foo.py
+line0
+line1
+...
+#end
+
+(i.e., #command_name arg0 arg1 ... << \n multiple lines \n #end \n).
+
+When you're done (or if you get stuck), issue #done to notify the human and stop this conversation.
+
+Anything sent outside of commands will be treated as plain text.\n
+
+You are encouraged to send many commands per response (not just one). For example, if you want to read 5 files, you can issue 5 #read_file commands at once.
+"""
     prompt += "\nAvailable commands:\n" + registry.HelpText()
     messages.append({'role': 'system', 'content': prompt})
 
@@ -185,7 +198,10 @@ def main() -> None:
     messages.append({'role': 'assistant', 'content': response})
     SaveConversation(conversation_path, messages)
 
-    commands = ExtractCommands(response)
+    commands, non_command_lines = ExtractCommands(response)
+
+    if non_command_lines:
+      print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
 
     if confirm_regex and any(
         confirm_regex.match(ci.command_name) for ci in commands):
@@ -204,11 +220,13 @@ def main() -> None:
 
     all_output: List[str] = []
     if not commands:
-      all_output = [
-          "Error: No commands found in response! "
-          "Did you mean to use #notify? "
-          "Use #done if you are done with your task."
-      ]
+      if non_command_lines:
+        all_output = non_command_lines
+      else:
+        all_output = [
+            "Error: No commands or non-command lines found in response! "
+            "Use #done if you are done with your task."
+        ]
     else:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
