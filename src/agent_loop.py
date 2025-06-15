@@ -11,6 +11,7 @@ from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
 )
 from typing import List, Dict, Optional, Tuple, Union, Pattern
+from abc import ABC, abstractmethod
 
 from select_python import SelectPythonCommand
 from agent_command import AgentCommand, CommandInput
@@ -40,6 +41,23 @@ Message = Union[
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 ]
+
+
+class ConfirmationManager(ABC):
+
+  @abstractmethod
+  def RequireConfirmation(self, message: str) -> Optional[str]:
+    """Blocks execution until confirmation is given, returning additional guidance if provided by the user."""
+    pass
+
+
+class CLIConfirmationManager(ConfirmationManager):
+
+  def RequireConfirmation(self, message: str) -> Optional[str]:
+    print(message)
+    return input(
+        "Confirm operations? Enter a message to provide guidance to the AI: "
+    ).strip()
 
 
 class CommandRegistry:
@@ -182,12 +200,14 @@ class AgentLoop:
                messages: List[Message],
                registry: CommandRegistry,
                confirm_regex: Optional[Pattern] = None,
-               confirm_done: bool = False):
+               confirm_done: bool = False,
+               confirmation_manager: Optional[ConfirmationManager] = None):
     self.model = model
     self.messages = messages
     self.registry = registry
     self.confirm_regex = confirm_regex
     self.confirm_done = confirm_done
+    self.confirmation_manager = confirmation_manager or CLIConfirmationManager()
 
   def run(self):
     while True:
@@ -208,9 +228,9 @@ class AgentLoop:
                                  non_command_lines):
         print("\nAssistant:\n" + response + "\n")
 
-        guidance = input(
+        guidance = self.confirmation_manager.RequireConfirmation(
             "Confirm operations? Enter a message to provide guidance to the AI: "
-        ).strip()
+        )
 
         if guidance:
           print("Your guidance will be sent to the AI.")
@@ -238,9 +258,9 @@ class AgentLoop:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
           if self.confirm_done:
-            guidance = input(
+            guidance = self.confirmation_manager.RequireConfirmation(
                 "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue. "
-            ).strip()
+            )
             if guidance:
               print("Your guidance will be sent to the AI.")
               self.messages.append({
@@ -268,28 +288,31 @@ class AgentLoop:
 
 
 def main() -> None:
-  args = ParseArguments()
+  args: argparse.Namespace = ParseArguments()
+
   LoadOpenAIAPIKey(args.api_key)
 
-  file_access_policy = CreateFileAccessPolicy(args)
+  file_access_policy: FileAccessPolicy = CreateFileAccessPolicy(args)
 
   if args.test_file_access:
     TestFileAccess(file_access_policy)
     return
 
-  validation_manager = CreateValidationManager()
+  validation_manager: Optional[ValidationManager] = CreateValidationManager()
   if validation_manager:
     initial_validation_result = validation_manager.Validate()
     if initial_validation_result and initial_validation_result.returncode != 0:
       logging.error("Initial validation failed, aborting further operations.")
       return
 
-  registry = CreateCommandRegistry(file_access_policy, validation_manager)
+  registry: CommandRegistry = CreateCommandRegistry(file_access_policy,
+                                                    validation_manager)
   messages, conversation_path = LoadOrCreateConversation(args.task, registry)
 
-  confirm_regex = re.compile(args.confirm) if args.confirm else None
-  loop = AgentLoop(args.model, messages, registry, confirm_regex,
-                   args.confirm_done)
+  confirm_regex: Optional[Pattern] = re.compile(
+      args.confirm) if args.confirm else None
+  loop: AgentLoop = AgentLoop(args.model, messages, registry, confirm_regex,
+                              args.confirm_done)
   loop.run()
 
 
