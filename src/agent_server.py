@@ -1,13 +1,15 @@
 import os
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, redirect, url_for
 from agent_loop import AgentLoop, CreateCommandRegistry, CreateFileAccessPolicy, LoadOrCreateConversation, LoadOpenAIAPIKey, CreateValidationManager
+from confirmation import AsyncConfirmationManager
 import logging
 from threading import Thread
 
 app = Flask(__name__)
 agent_loop_instance = None
+confirmation_manager = AsyncConfirmationManager()
 
-# Basic HTML template for displaying the conversation and a prompt input field
+# Basic HTML template for displaying the conversation, a confirmation message, and a prompt input field
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="en">
@@ -21,6 +23,14 @@ HTML_TEMPLATE = """
       <textarea name="prompt" rows="4" cols="50" placeholder="Enter prompt..."></textarea><br>
       <input type="submit" value="Submit Prompt">
     </form>
+    <h2>Confirmation</h2>
+    <div>{{ confirmation_message or "No confirmation needed." }}</div>
+    {% if confirmation_message %}
+    <form action="/confirm" method="post">
+      <input type="text" name="confirmation" placeholder="Enter confirmation..."><br>
+      <input type="submit" value="Submit Confirmation">
+    </form>
+    {% endif %}
     <h2>Conversation</h2>
     <div style="white-space: pre-wrap;">{{ conversation }}</div>
   </body>
@@ -30,21 +40,35 @@ HTML_TEMPLATE = """
 
 @app.route("/", methods=["GET", "POST"])
 def interact():
-  global agent_loop_instance
+  global agent_loop_instance, confirmation_manager
   if request.method == "POST":
     prompt = request.form.get("prompt")
     if agent_loop_instance:
       agent_loop_instance.messages.append({'role': 'user', 'content': prompt})
+      return redirect(url_for('interact'))
 
   conversation = "\n".join(f"{message['role']}: {message['content']}"
                            for message in agent_loop_instance.messages
                           ) if agent_loop_instance else "No conversation yet."
 
-  return render_template_string(HTML_TEMPLATE, conversation=conversation)
+  confirmation_message = confirmation_manager.get_pending_message()
+  return render_template_string(
+      HTML_TEMPLATE,
+      conversation=conversation,
+      confirmation_message=confirmation_message)
+
+
+@app.route("/confirm", methods=["POST"])
+def confirm():
+  global confirmation_manager
+  confirmation = request.form.get("confirmation")
+  if confirmation:
+    confirmation_manager.provide_confirmation(confirmation)
+  return redirect(url_for('interact'))
 
 
 def start_agent_loop(args):
-  global agent_loop_instance
+  global agent_loop_instance, confirmation_manager
   LoadOpenAIAPIKey(args.api_key)
 
   file_access_policy = CreateFileAccessPolicy(args)
@@ -59,7 +83,8 @@ def start_agent_loop(args):
   registry = CreateCommandRegistry(file_access_policy, validation_manager)
   messages, conversation_path = LoadOrCreateConversation(args.task, registry)
 
-  agent_loop_instance = AgentLoop(args.model, messages, registry)
+  agent_loop_instance = AgentLoop(args.model, messages, registry,
+                                  confirmation_manager)
   Thread(target=agent_loop_instance.run).start()
 
 
