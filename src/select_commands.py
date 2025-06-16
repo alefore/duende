@@ -28,6 +28,8 @@ class SelectTextCommand(AgentCommand):
     )
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
+    self.selection_manager.clear_selection()
+
     if len(command_input.arguments) != 3:
       return CommandOutput(
           output=[],

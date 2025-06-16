@@ -25,6 +25,8 @@ class SelectPythonCommand(AgentCommand):
         "will be selected.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
+    self.selection_manager.clear_selection()
+
     if len(command_input.arguments) != 2:
       return CommandOutput(
           output=[],
