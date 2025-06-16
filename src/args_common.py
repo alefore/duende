@@ -2,9 +2,12 @@ import argparse
 import os
 import re
 import sys
-from typing import Optional, Pattern
-from agent_loop import AgentLoopOptions, LoadOrCreateConversation, CreateCommandRegistry, CreateFileAccessPolicy, CreateValidationManager, TestFileAccess
+from typing import Optional, Pattern, List, Tuple
+from agent_loop import AgentLoopOptions, CreateCommandRegistry, CreateValidationManager, Message, LoadConversation
 from confirmation import ConfirmationManager
+from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
+from list_files import list_all_files
+from command_registry import CommandRegistry
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -68,3 +71,46 @@ def CreateAgentLoopOptions(
       confirmation_manager=confirmation_manager,
       commands_registry=registry,
       confirm_regex=confirm_regex)
+
+
+def LoadOrCreateConversation(
+    prompt_path: str, registry: CommandRegistry) -> Tuple[List[Message], str]:
+  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
+  messages = LoadConversation(conversation_path)
+  if not messages:
+    prompt = (
+        "You are a coding assistant operating in a command loop environment. "
+        "Use commands prefixed with `#`. "
+        "Anything that is not a command will be relayed to the human.\n\n")
+    with open(prompt_path, 'r') as f:
+      prompt += f.read() + "\n\n"
+    prompt += (
+        "Some commands accept multi-line information, like this:\n\n"
+        "#write_file foo.py <<\n"
+        "line0\n"
+        "line1\n"
+        "…\n"
+        "#end\n\n"
+        "When you're done (or if you get stuck), "
+        "issue #done to notify the human and stop this conversation.\n\n"
+        "Anything sent outside of commands will be treated as plain text.\n\n"
+        "You can send many commands per message. "
+        "For example, if you want to read 5 files, "
+        "you can issue 5 #read_file commands at once.\n\n")
+    prompt += "Available commands:\n" + registry.HelpText()
+    messages.append({'role': 'system', 'content': prompt})
+
+  return messages, conversation_path
+
+
+def CreateFileAccessPolicy(
+    file_access_regex: Optional[str]) -> FileAccessPolicy:
+  policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
+  if file_access_regex:
+    policies.append(RegexFileAccessPolicy(file_access_regex))
+  return CompositeFileAccessPolicy(policies)
+
+
+def TestFileAccess(file_access_policy: FileAccessPolicy):
+  for file in list_all_files('.', file_access_policy):
+    print(file)

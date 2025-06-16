@@ -67,49 +67,6 @@ def LoadOpenAIAPIKey(api_key_path: str):
     openai.api_key = f.read().strip()
 
 
-def CreateFileAccessPolicy(
-    file_access_regex: Optional[str]) -> FileAccessPolicy:
-  policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
-  if file_access_regex:
-    policies.append(RegexFileAccessPolicy(file_access_regex))
-  return CompositeFileAccessPolicy(policies)
-
-
-def TestFileAccess(file_access_policy: FileAccessPolicy):
-  for file in list_all_files('.', file_access_policy):
-    print(file)
-
-
-def LoadOrCreateConversation(
-    prompt_path: str, registry: CommandRegistry) -> Tuple[List[Message], str]:
-  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
-  messages = LoadConversation(conversation_path)
-  if not messages:
-    prompt = (
-        "You are a coding assistant operating in a command loop environment. "
-        "Use commands prefixed with `#`. "
-        "Anything that is not a command will be relayed to the human.\n\n")
-    with open(prompt_path, 'r') as f:
-      prompt += f.read() + "\n\n"
-    prompt += (
-        "Some commands accept multi-line information, like this:\n\n"
-        "#write_file foo.py <<\n"
-        "line0\n"
-        "line1\n"
-        "…\n"
-        "#end\n\n"
-        "When you're done (or if you get stuck), "
-        "issue #done to notify the human and stop this conversation.\n\n"
-        "Anything sent outside of commands will be treated as plain text.\n\n"
-        "You can send many commands per message. "
-        "For example, if you want to read 5 files, "
-        "you can issue 5 #read_file commands at once.\n\n")
-    prompt += "Available commands:\n" + registry.HelpText()
-    messages.append({'role': 'system', 'content': prompt})
-
-  return messages, conversation_path
-
-
 class AgentLoop:
 
   def __init__(self, options: AgentLoopOptions):
