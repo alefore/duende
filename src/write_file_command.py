@@ -52,12 +52,13 @@ class WriteFileCommand(AgentCommand):
       if self.validation_manager:
         self.validation_manager.RegisterChange()
 
-      output_msg = f"#{command_input.command_name} {path}: Success."
+      line_count = len(content)
+      output_msg = f"#{command_input.command_name} {path}: Success with {line_count} lines written."
       if selection_invalidated:
         output_msg += " Selection invalidated due to write operation on the same file."
 
       return CommandOutput(
-          output=[output_msg], errors=[], summary=f"Wrote to file {path}.")
+          output=[output_msg], errors=[], summary=f"Wrote to file {path} with {line_count} lines.")
     except Exception as e:
       return CommandOutput(
           output=[],

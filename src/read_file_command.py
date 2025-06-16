@@ -35,13 +35,14 @@ class ReadFileCommand(AgentCommand):
 
     try:
       with open(path, "r") as f:
-        contents = f.read()
+        contents = f.readlines()
+        line_count = len(contents)
         return CommandOutput(
             output=[
-                f"#{command_input.command_name} {path} <<\n{contents}\n#end ({path})"
+                f"#{command_input.command_name} {path} <<\n{''.join(contents)}\n#end ({path})"
             ],
             errors=[],
-            summary=f"Read file {path}.")
+            summary=f"Read file {path} with {line_count} lines.")
     except Exception as e:
       return CommandOutput(
           output=[],

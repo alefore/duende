@@ -49,7 +49,7 @@ class SelectTextCommand(AgentCommand):
       return CommandOutput(
           output=[f"select <<\n{''.join(selected_lines)}#end ({path})"],
           errors=[],
-          summary=f"Selected from {path}: lines: {len(selected_lines)}")
+          summary=f"Selected from {path}: {len(selected_lines)} lines.")
     except Exception as e:
       return CommandOutput(
           output=[],
@@ -86,10 +86,12 @@ class SelectOverwriteCommand(AgentCommand):
       current_selection.Overwrite(command_input.multiline_content)
       if self.validation_manager:
         self.validation_manager.RegisterChange()
+      line_count = len(command_input.multiline_content)
       return CommandOutput(
           output=["The selection was successfully overwritten."],
           errors=[],
-          summary="Successfully overwrote the selection.")
+          summary=f"Successfully overwrote the selection with {line_count} lines."
+      )
     except Exception as e:
       return CommandOutput(
           output=[],
