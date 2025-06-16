@@ -43,15 +43,6 @@ Message = Union[
 ]
 
 
-class AgentLoopOptions(NamedTuple):
-  model: str
-  messages: List[Message]
-  commands_registry: CommandRegistry
-  confirmation_manager: ConfirmationManager
-  confirm_regex: Optional[Pattern] = None
-  confirm_done: bool = False
-
-
 class CommandRegistry:
 
   def __init__(self) -> None:
@@ -66,6 +57,15 @@ class CommandRegistry:
   def HelpText(self) -> str:
     return '\n'.join(f"{COMMAND_PREFIX}{name}: {cmd.GetDescription()}"
                      for name, cmd in self.commands.items())
+
+
+class AgentLoopOptions(NamedTuple):
+  model: str
+  messages: List[Message]
+  commands_registry: CommandRegistry
+  confirmation_manager: ConfirmationManager
+  confirm_regex: Optional[Pattern] = None
+  confirm_done: bool = False
 
 
 def LoadConversation(path: str) -> List[Message]:
