@@ -14,8 +14,7 @@ from select_commands import (
     SelectionManager,
 )
 from select_python import SelectPythonCommand
-
-COMMAND_PREFIX = "#"
+from git_commands import ResetFileCommand
 
 
 class CommandRegistry:
@@ -39,6 +38,7 @@ def CreateCommandRegistry(
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
+  registry.Register(ResetFileCommand())
 
   if validation_manager:
     registry.Register(ValidateCommand(validation_manager))
