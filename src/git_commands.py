@@ -58,14 +58,14 @@ def EnsureGitRepoIsClean() -> bool:
                    stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE)
 
-    # Check if the git repository is clean (no changes)
-    result = subprocess.run(["git", "status", "--porcelain"],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
+    for cmd in [["git", "diff", "--quiet"],
+                ["git", "diff", "--cached", "--quiet"]]:
+      result = subprocess.run(
+          cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    if result.stdout != b'':
-      print("Error: The repository has uncommitted changes.", file=sys.stderr)
-      sys.exit(1)
+      if result.returncode != 0:
+        print("Error: The repository has uncommitted changes.", file=sys.stderr)
+        sys.exit(1)
 
     return True
 
