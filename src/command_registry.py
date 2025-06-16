@@ -14,7 +14,7 @@ from select_commands import (
     SelectionManager,
 )
 from select_python import SelectPythonCommand
-from git_commands import ResetFileCommand
+from git_commands import ResetFileCommand, EnsureGitRepoIsClean
 
 
 class CommandRegistry:
@@ -38,7 +38,9 @@ def CreateCommandRegistry(
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
-  registry.Register(ResetFileCommand(file_access_policy))
+
+  if EnsureGitRepoIsClean():
+    registry.Register(ResetFileCommand(file_access_policy))
 
   if validation_manager:
     registry.Register(ValidateCommand(validation_manager))

@@ -1,5 +1,6 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput
 import subprocess
+import sys
 from file_access_policy import FileAccessPolicy
 
 
@@ -47,3 +48,26 @@ class ResetFileCommand(AgentCommand):
     success_message = f"Reset files: {', '.join(paths)}"
     return CommandOutput(
         output=[success_message], errors=[], summary=success_message)
+
+
+def EnsureGitRepoIsClean() -> bool:
+  try:
+    # Check if we are inside a git repository
+    subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
+                   check=True,
+                   stdout=subprocess.PIPE,
+                   stderr=subprocess.PIPE)
+
+    # Check if the git repository is clean (no changes)
+    result = subprocess.run(["git", "status", "--porcelain"],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+
+    if result.stdout != b'':
+      print("Error: The repository has uncommitted changes.", file=sys.stderr)
+      sys.exit(1)
+
+    return True
+
+  except subprocess.CalledProcessError:
+    return False
