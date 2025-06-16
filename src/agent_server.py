@@ -84,7 +84,7 @@ def start_agent_loop(args: argparse.Namespace) -> None:
   LoadOpenAIAPIKey(args.api_key)
 
   try:
-    options = CreateAgentLoopOptions(args)
+    options = CreateAgentLoopOptions(args, confirmation_manager)
   except RuntimeError as e:
     logging.error(e)
     return

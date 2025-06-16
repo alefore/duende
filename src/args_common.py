@@ -4,7 +4,7 @@ import re
 import sys
 from typing import Optional, Pattern
 from agent_loop import AgentLoopOptions, LoadOrCreateConversation, CreateCommandRegistry, CreateFileAccessPolicy, CreateValidationManager, TestFileAccess
-from confirmation import CLIConfirmationManager
+from confirmation import ConfirmationManager
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -39,7 +39,9 @@ def CreateCommonParser() -> argparse.ArgumentParser:
   return parser
 
 
-def CreateAgentLoopOptions(args: argparse.Namespace) -> AgentLoopOptions:
+def CreateAgentLoopOptions(
+    args: argparse.Namespace,
+    confirmation_manager: ConfirmationManager) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
   if args.test_file_access:
     TestFileAccess(file_access_policy)
@@ -63,6 +65,6 @@ def CreateAgentLoopOptions(args: argparse.Namespace) -> AgentLoopOptions:
   return AgentLoopOptions(
       model=args.model,
       messages=messages,
+      confirmation_manager=confirmation_manager,
       commands_registry=registry,
-      confirm_regex=confirm_regex,
-      confirmation_manager=CLIConfirmationManager())
+      confirm_regex=confirm_regex)

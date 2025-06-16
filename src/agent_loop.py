@@ -47,9 +47,9 @@ class AgentLoopOptions(NamedTuple):
   model: str
   messages: List[Message]
   commands_registry: CommandRegistry
+  confirmation_manager: ConfirmationManager
   confirm_regex: Optional[Pattern] = None
   confirm_done: bool = False
-  confirmation_manager: Optional[ConfirmationManager] = None
 
 
 class CommandRegistry:
@@ -190,7 +190,7 @@ class AgentLoop:
       user_feedback = '\n\n'.join(all_output)
       self.options.messages.append({'role': 'user', 'content': user_feedback})
 
-  def _execute_commands(self, commands, non_command_lines):
+  def _execute_commands(self, commands, non_command_lines) -> List[str]:
     all_output: List[str] = []
     if not commands:
       if non_command_lines:
