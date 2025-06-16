@@ -1,6 +1,4 @@
 import json
-import os
-import sys
 import openai
 import logging
 import re
@@ -9,23 +7,17 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 )
-from typing import List, Dict, Optional, Tuple, Union, Pattern, NamedTuple
-from abc import ABC, abstractmethod
-from confirmation import ConfirmationManager, CLIConfirmationManager
+from typing import List, Optional, Tuple, Union, Pattern, NamedTuple
 
-from select_python import SelectPythonCommand
-from agent_command import AgentCommand, CommandInput
-from validation import ValidationManager, CreateValidationManager
-from read_file_command import ReadFileCommand
-from list_files_command import ListFilesCommand
-from write_file_command import WriteFileCommand
-from search_file_command import SearchFileCommand
-from select_commands import SelectTextCommand, SelectOverwriteCommand
-from selection_manager import SelectionManager
+from confirmation import ConfirmationManager
+
+from command_registry import CommandRegistry, CreateCommandRegistry
+from agent_command import CommandInput
+from validation import CreateValidationManager
+
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CurrentDirectoryFileAccessPolicy,
                                 CompositeFileAccessPolicy)
-from validate_command import ValidateCommand
 from list_files import list_all_files
 from parsing import ExtractCommands
 
@@ -33,7 +25,6 @@ logging.basicConfig(level=logging.INFO)
 
 # Constants
 CONVERSATION_KEY = 'conversation'
-COMMAND_PREFIX = '#'
 
 # Type alias for messages
 Message = Union[
@@ -41,22 +32,6 @@ Message = Union[
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 ]
-
-
-class CommandRegistry:
-
-  def __init__(self) -> None:
-    self.commands: Dict[str, AgentCommand] = {}
-
-  def Register(self, name: str, command: AgentCommand):
-    self.commands[name] = command
-
-  def Get(self, name: str) -> Optional[AgentCommand]:
-    return self.commands.get(name)
-
-  def HelpText(self) -> str:
-    return '\n'.join(f"{COMMAND_PREFIX}{name}: {cmd.GetDescription()}"
-                     for name, cmd in self.commands.items())
 
 
 class AgentLoopOptions(NamedTuple):
@@ -105,48 +80,31 @@ def TestFileAccess(file_access_policy: FileAccessPolicy):
     print(file)
 
 
-def CreateCommandRegistry(
-    file_access_policy: FileAccessPolicy,
-    validation_manager: Optional[ValidationManager]) -> CommandRegistry:
-  registry = CommandRegistry()
-  registry.Register("read_file", ReadFileCommand(file_access_policy))
-  registry.Register("list_files", ListFilesCommand(file_access_policy))
-
-  if validation_manager:
-    registry.Register("validate", ValidateCommand(validation_manager))
-
-  selection_manager = SelectionManager()
-  registry.Register(
-      "write_file",
-      WriteFileCommand(file_access_policy, validation_manager,
-                       selection_manager))
-  registry.Register("search", SearchFileCommand(file_access_policy))
-
-  registry.Register("select",
-                    SelectTextCommand(file_access_policy, selection_manager))
-  registry.Register(
-      "select_overwrite",
-      SelectOverwriteCommand(selection_manager, validation_manager))
-
-  if any(
-      file.endswith('.py') for file in list_all_files('.', file_access_policy)):
-    registry.Register(
-        "select_python",
-        SelectPythonCommand(file_access_policy, selection_manager))
-
-  return registry
-
-
 def LoadOrCreateConversation(
     prompt_path: str, registry: CommandRegistry) -> Tuple[List[Message], str]:
   conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
   messages = LoadConversation(conversation_path)
   if not messages:
-    prompt = "You are a coding assistant operating in a command loop environment. Use commands prefixed with `#`. Anything that is not a command will be ignored.\n\n"
+    prompt = (
+        "You are a coding assistant operating in a command loop environment. "
+        "Use commands prefixed with `#`. "
+        "Anything that is not a command will be relayed to the human.\n\n")
     with open(prompt_path, 'r') as f:
       prompt += f.read() + "\n\n"
-    prompt += "Some commands accept multi-line information, like this:\n\n#write_file foo.py\nline0\nline1\n…\n#end\n\n(i.e., #command_name arg0 arg1 ... << \\n multiple lines \\n #end \\n).\n\nWhen you're done (or if you get stuck), issue #done to notify the human and stop this conversation.\n\nAnything sent outside of commands will be treated as plain text.\n\nYou are encouraged to send many commands per response (not just one). For example, if you want to read 5 files, you can issue 5 #read_file commands at once."
-    prompt += "\nAvailable commands:\n" + registry.HelpText()
+    prompt += (
+        "Some commands accept multi-line information, like this:\n\n"
+        "#write_file foo.py <<\n"
+        "line0\n"
+        "line1\n"
+        "…\n"
+        "#end\n\n"
+        "When you're done (or if you get stuck), "
+        "issue #done to notify the human and stop this conversation.\n\n"
+        "Anything sent outside of commands will be treated as plain text.\n\n"
+        "You can send many commands per message. "
+        "For example, if you want to read 5 files, "
+        "you can issue 5 #read_file commands at once.\n\n")
+    prompt += "Available commands:\n" + registry.HelpText()
     messages.append({'role': 'system', 'content': prompt})
 
   return messages, conversation_path
