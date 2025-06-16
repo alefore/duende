@@ -23,8 +23,8 @@ class CLIConfirmationManager(ConfirmationManager):
 
 class AsyncConfirmationManager(ConfirmationManager):
 
-  def __init__(self):
-    self.confirm_queue = queue.Queue()
+  def __init__(self) -> None:
+    self.confirm_queue: queue.Queue = queue.Queue()
     self.message_lock = threading.Lock()
     self.current_message: Optional[str] = None
 
