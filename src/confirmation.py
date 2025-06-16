@@ -15,10 +15,7 @@ class ConfirmationManager(ABC):
 class CLIConfirmationManager(ConfirmationManager):
 
   def RequireConfirmation(self, message: str) -> Optional[str]:
-    print(message)
-    return input(
-        "Confirm operations? Enter a message to provide guidance to the AI: "
-    ).strip()
+    return input(message).strip()
 
 
 class AsyncConfirmationManager(ConfirmationManager):
