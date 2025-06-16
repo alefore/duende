@@ -115,11 +115,13 @@ def CreateCommandRegistry(
   if validation_manager:
     registry.Register("validate", ValidateCommand(validation_manager))
 
-  registry.Register("write_file",
-                    WriteFileCommand(file_access_policy, validation_manager))
+  selection_manager = SelectionManager()
+  registry.Register(
+      "write_file",
+      WriteFileCommand(file_access_policy, validation_manager,
+                       selection_manager))
   registry.Register("search", SearchFileCommand(file_access_policy))
 
-  selection_manager = SelectionManager()
   registry.Register("select",
                     SelectTextCommand(file_access_policy, selection_manager))
   registry.Register(

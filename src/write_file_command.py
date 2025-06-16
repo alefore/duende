@@ -4,14 +4,17 @@ import logging
 from agent_command import AgentCommand, CommandInput, CommandOutput
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
+from selection_manager import SelectionManager
 
 
 class WriteFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy,
-               validation_manager: Optional[ValidationManager]):
+               validation_manager: Optional[ValidationManager],
+               selection_manager: SelectionManager):
     self.file_access_policy = file_access_policy
     self.validation_manager = validation_manager
+    self.selection_manager = selection_manager
 
   def GetDescription(self) -> str:
     return "#write path << … multi-line-content … #end: Writes the given content to a specified file. Creates the file if it does not exist."
@@ -37,15 +40,24 @@ class WriteFileCommand(AgentCommand):
           ],
           summary="Write command access denied.")
 
+    selection_invalidated = False
+    current_selection = self.selection_manager.get_selection()
+    if current_selection and current_selection.path == path:
+      self.selection_manager.clear_selection()
+      selection_invalidated = True
+
     try:
       with open(path, "w") as f:
         f.write("\n".join(content))
       if self.validation_manager:
         self.validation_manager.RegisterChange()
+
+      output_msg = f"#{command_input.command_name} {path}: Success."
+      if selection_invalidated:
+        output_msg += " Selection invalidated due to write operation on the same file."
+
       return CommandOutput(
-          output=[f"#{command_input.command_name} {path}: Success."],
-          errors=[],
-          summary=f"Wrote to file {path}.")
+          output=[output_msg], errors=[], summary=f"Wrote to file {path}.")
     except Exception as e:
       return CommandOutput(
           output=[],
