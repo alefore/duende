@@ -74,8 +74,7 @@ def interact():
 def confirm():
   global confirmation_manager
   confirmation = request.form.get("confirmation")
-  if confirmation:
-    confirmation_manager.provide_confirmation(confirmation)
+  confirmation_manager.provide_confirmation(confirmation)
   return redirect(url_for('interact'))
 
 
