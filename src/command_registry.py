@@ -23,41 +23,36 @@ class CommandRegistry:
   def __init__(self) -> None:
     self.commands: Dict[str, AgentCommand] = {}
 
-  def Register(self, name: str, command: AgentCommand):
-    self.commands[name] = command
+  def Register(self, command: AgentCommand):
+    self.commands[command.Name()] = command
 
   def Get(self, name: str) -> Optional[AgentCommand]:
     return self.commands.get(name)
 
   def HelpText(self) -> str:
-    return '\n'.join(f"{COMMAND_PREFIX}{name}: {cmd.GetDescription()}"
-                     for name, cmd in self.commands.items())
+    return '\n'.join(cmd.GetDescription() for cmd in self.commands.values())
 
 
 def CreateCommandRegistry(
     file_access_policy: FileAccessPolicy,
     validation_manager: Optional[ValidationManager]) -> CommandRegistry:
   registry = CommandRegistry()
-  registry.Register("read_file", ReadFileCommand(file_access_policy))
-  registry.Register("list_files", ListFilesCommand(file_access_policy))
+  registry.Register(ReadFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(file_access_policy))
 
   if validation_manager:
-    registry.Register("validate", ValidateCommand(validation_manager))
+    registry.Register(ValidateCommand(validation_manager))
 
   selection_manager = SelectionManager()
   registry.Register(
-      "write_file",
       WriteFileCommand(file_access_policy, validation_manager,
                        selection_manager))
-  registry.Register("search", SearchFileCommand(file_access_policy))
+  registry.Register(SearchFileCommand(file_access_policy))
 
-  registry.Register("select",
-                    SelectTextCommand(file_access_policy, selection_manager))
+  registry.Register(SelectTextCommand(file_access_policy, selection_manager))
   registry.Register(
-      "select_overwrite",
       SelectOverwriteCommand(selection_manager, validation_manager))
 
-  registry.Register("select_python",
-                    SelectPythonCommand(file_access_policy, selection_manager))
+  registry.Register(SelectPythonCommand(file_access_policy, selection_manager))
 
   return registry

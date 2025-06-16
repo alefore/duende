@@ -18,6 +18,11 @@ class CommandInput(NamedTuple):
 class AgentCommand(ABC):
 
   @abstractmethod
+  def Name(self) -> str:
+    """Returns the name of the command."""
+    pass
+
+  @abstractmethod
   def GetDescription(self) -> str:
     """
         Returns a string describing what the command does and how to use it.

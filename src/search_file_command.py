@@ -11,8 +11,11 @@ class SearchFileCommand(AgentCommand):
   def __init__(self, file_access_policy: FileAccessPolicy):
     self.file_access_policy = file_access_policy
 
+  def Name(self) -> str:
+    return "search"
+
   def GetDescription(self) -> str:
-    return "#search <content> [file1 file2 …]: Searches for the specific <content> in specified files (if provided) or in all files in the current directory and subdirectories."
+    return f"#{self.Name()} <content> [file1 file2 …]: Searches for the specific <content> in specified files (or in all files)."
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) < 1:
@@ -42,7 +45,7 @@ class SearchFileCommand(AgentCommand):
 
     files_data: List[str] = []
 
-    match_limit = 200  # Define a limit for the number of matches
+    match_limit = 200
     for file_path in files_to_search:
       try:
         global_file_count += 1
@@ -68,7 +71,6 @@ class SearchFileCommand(AgentCommand):
 
     header = f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"
     if global_match_count > match_limit:
-      # Construct CSV data as a string
       csv_content = "path,lines_match,file_line_count\n"
       csv_content += "\n".join(files_data)
 

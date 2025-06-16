@@ -14,9 +14,12 @@ class SelectTextCommand(AgentCommand):
     self.file_access_policy = file_access_policy
     self.selection_manager = selection_manager
 
+  def Name(self) -> str:
+    return "select"
+
   def GetDescription(self) -> str:
     return (
-        "#select <path> <start line content> <end line content>: "
+        f"#{self.Name()} <path> <start line content> <end line content>: "
         "Creates a new selection for the content in the path specified starting at the first line containing "
         "<start line content> and ending at the first following line containing <end line content>. "
         "The contents selected will be returned. "
@@ -64,8 +67,11 @@ class SelectOverwriteCommand(AgentCommand):
     self.selection_manager = selection_manager
     self.validation_manager = validation_manager
 
+  def Name(self) -> str:
+    return "select_overwrite"
+
   def GetDescription(self) -> str:
-    return "select_overwrite <<\\n … new contents …\\n #end: Replaces the contents of the selection with new contents."
+    return f"{self.Name()} <<\\n … new contents …\\n #end: Replaces the contents of the selection with new contents."
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if not command_input.multiline_content:

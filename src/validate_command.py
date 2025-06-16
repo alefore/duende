@@ -8,10 +8,13 @@ class ValidateCommand(AgentCommand):
   def __init__(self, validation_manager: ValidationManager) -> None:
     self.validation_manager = validation_manager
 
+  def Name(self) -> str:
+    return "validate"
+
   def GetDescription(self) -> str:
-    return ("Executes validation script to verify code integrity. "
-            "Recommended to run this command after making changes. "
-            "Usage: #validate")
+    return ("f{self.Name()}: "
+            "Executes validation script to verify code integrity. "
+            "Recommended to run this command after making changes.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     result = self.validation_manager.Validate()

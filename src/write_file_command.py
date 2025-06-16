@@ -16,17 +16,21 @@ class WriteFileCommand(AgentCommand):
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
 
+  def Name(self) -> str:
+    return "write_file"
+
   def GetDescription(self) -> str:
-    return "#write path << … multi-line-content … #end: Writes the given content to a specified file. Creates the file if it does not exist."
+    return (f"#{self.Name()} path << \\n … multi-line-content … \\n #end: "
+            "Writes the given content to a specified file.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) != 1 or not command_input.multiline_content:
       return CommandOutput(
           output=[],
           errors=[
-              f"{command_input.command_name} expects exactly one argument: the file path and requires content."
+              f"{self.Name()} expects exactly one argument: the file path and requires content."
           ],
-          summary="Write command failed due to incorrect arguments.")
+          summary=f"{self.Name()} command failed due to incorrect arguments.")
 
     path = command_input.arguments[0]
     content: List[str] = command_input.multiline_content
@@ -38,7 +42,7 @@ class WriteFileCommand(AgentCommand):
           errors=[
               f"Access to '{path}' is not allowed. Only files in the current directory (and subdirectories) can be written to and must satisfy the access policy."
           ],
-          summary="Write command access denied.")
+          summary=f"{self.Name()} command access denied.")
 
     selection_invalidated = False
     current_selection = self.selection_manager.get_selection()
@@ -53,14 +57,16 @@ class WriteFileCommand(AgentCommand):
         self.validation_manager.RegisterChange()
 
       line_count = len(content)
-      output_msg = f"#{command_input.command_name} {path}: Success with {line_count} lines written."
+      output_msg = f"#{self.Name()} {path}: Success with {line_count} lines written."
       if selection_invalidated:
         output_msg += " Selection invalidated due to write operation on the same file."
 
       return CommandOutput(
-          output=[output_msg], errors=[], summary=f"Wrote to file {path} with {line_count} lines.")
+          output=[output_msg],
+          errors=[],
+          summary=f"Wrote to file {path} with {line_count} lines.")
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"Error writing to {path}: {str(e)}"],
-          summary="Write command encountered an error.")
+          summary=f"{self.Name()} command encountered an error.")

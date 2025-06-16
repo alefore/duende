@@ -10,17 +10,20 @@ class ListFilesCommand(AgentCommand):
   def __init__(self, file_access_policy: FileAccessPolicy):
     self.file_access_policy = file_access_policy
 
+  def Name(self) -> str:
+    return "list_files"
+
   def GetDescription(self) -> str:
-    return "#list_files [directory]: Lists all files in the given directory or the current directory if none is specified."
+    return f"#{self.Name()} [directory]: Lists all files in the given directory (or the top-level if none is specified)."
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) > 1:
       return CommandOutput(
           output=[],
           errors=[
-              f"{command_input.command_name} expects at most one argument: the directory path."
+              f"{self.Name()} expects at most one argument: the directory path."
           ],
-          summary="Failed to execute list_files command due to incorrect argument count."
+          summary=f"Failed to execute {self.Name()} command due to incorrect argument count."
       )
 
     directory = command_input.arguments[0] if command_input.arguments else "."
@@ -39,9 +42,10 @@ class ListFilesCommand(AgentCommand):
       return CommandOutput(
           output=[],
           errors=[f"Directory not found or is not accessible: {directory}"],
-          summary="List files command failed due to inaccessible directory.")
+          summary=f"{self.Name()} command failed due to inaccessible directory."
+      )
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"Listing files in {directory}: {e}"],
-          summary="List files command encountered an error.")
+          summary=f"{self.Name()} command encountered an error.")

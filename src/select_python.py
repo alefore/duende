@@ -13,9 +13,12 @@ class SelectPythonCommand(AgentCommand):
     self.file_access_policy = file_access_policy
     self.selection_manager = selection_manager
 
+  def Name(self) -> str:
+    return "select_python"
+
   def GetDescription(self) -> str:
     return (
-        "#select_python <path> <identifier>: "
+        f"#{self.Name()} <path> <identifier>: "
         "Selects the definition of the identifier in the python file (path). "
         "The identifier can be the name of a (top-level) function, the name "
         "of a class, or the name of a method. The entire definition (body) "
