@@ -11,12 +11,14 @@ def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
   commands: List[CommandInput] = []
   non_command_lines: List[str] = []
   current_input: Optional[CommandInput] = None
+  end_marker: Optional[str] = None
 
   for line in lines:
     if current_input is not None:
-      if line.strip() == "#end":
+      if line.strip() == end_marker:
         commands.append(current_input)
         current_input = None
+        end_marker = None
       else:
         assert current_input.multiline_content is not None
         current_input.multiline_content.append(line)
@@ -31,9 +33,10 @@ def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
         # Single-line command with arguments
         try:
           args = shlex.split(parts[1])
-          if args[-1] == "<<":
+          if args[-1].startswith("<<"):
             current_input = CommandInput(
                 command_name=cmd, arguments=args[:-1], multiline_content=[])
+            end_marker = args[-1][2:] or "#end"
           else:
             commands.append(CommandInput(command_name=cmd, arguments=args))
         except ValueError:
