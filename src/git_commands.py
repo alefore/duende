@@ -1,8 +1,12 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput
 import subprocess
+from file_access_policy import FileAccessPolicy
 
 
 class ResetFileCommand(AgentCommand):
+
+  def __init__(self, file_access_policy: FileAccessPolicy) -> None:
+    self.file_access_policy = file_access_policy
 
   def Name(self) -> str:
     return "reset_file"
@@ -19,7 +23,17 @@ class ResetFileCommand(AgentCommand):
           errors=[f"No paths provided to {self.Name()}."],
           summary="Failed to reset files (no arguments)")
 
-    errors = []
+    errors = [
+        f"Access to '{path}' is not allowed by the policy." for path in paths
+        if not self.file_access_policy.allow_access(path)
+    ]
+
+    if errors:
+      return CommandOutput(
+          output=[],
+          errors=errors,
+          summary="Error while resetting files due to access policy")
+
     for path in paths:
       try:
         subprocess.run(["git", "checkout", path], check=True)
