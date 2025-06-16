@@ -21,7 +21,7 @@ run_command "~/bin/mypy src/agent_cli.py"
 run_command "~/bin/mypy src/agent_server.py"
 
 for file in src/test_*.py; do
-  run_command "python3 $file"
+  run_command "${VALIDATE_PYTHON:-python3} $file"
 done
 
 exit $exit_status
