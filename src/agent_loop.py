@@ -9,7 +9,7 @@ from openai.types.chat import (
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 )
-from typing import List, Dict, Optional, Tuple, Union, Pattern
+from typing import List, Dict, Optional, Tuple, Union, Pattern, NamedTuple
 from abc import ABC, abstractmethod
 from confirmation import ConfirmationManager, CLIConfirmationManager
 
@@ -41,6 +41,15 @@ Message = Union[
     ChatCompletionUserMessageParam,
     ChatCompletionAssistantMessageParam,
 ]
+
+
+class AgentLoopOptions(NamedTuple):
+  model: str
+  messages: List[Message]
+  commands_registry: CommandRegistry
+  confirm_regex: Optional[Pattern] = None
+  confirm_done: bool = False
+  confirmation_manager: Optional[ConfirmationManager] = None
 
 
 class CommandRegistry:
@@ -143,46 +152,35 @@ def LoadOrCreateConversation(
 
 class AgentLoop:
 
-  def __init__(self,
-               model: str,
-               messages: List[Message],
-               registry: CommandRegistry,
-               confirm_regex: Optional[Pattern] = None,
-               confirm_done: bool = False,
-               confirmation_manager: Optional[ConfirmationManager] = None):
-    self.model = model
-    self.messages = messages
-    self.registry = registry
-    self.confirm_regex = confirm_regex
-    self.confirm_done = confirm_done
-    self.confirmation_manager = confirmation_manager or CLIConfirmationManager()
+  def __init__(self, options: AgentLoopOptions):
+    self.options = options
 
   def run(self):
     while True:
       logging.info("Querying ChatGPT...")
-      response = CallChatgpt(self.model, self.messages)
+      response = CallChatgpt(self.options.model, self.options.messages)
       if not response:
         logging.warning("No response from chatgpt.")
         break
 
-      self.messages.append({'role': 'assistant', 'content': response})
+      self.options.messages.append({'role': 'assistant', 'content': response})
       commands, non_command_lines = ExtractCommands(response)
 
       if non_command_lines:
         print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
 
-      if self.confirm_regex and (any(
-          self.confirm_regex.match(ci.command_name) for ci in commands) or
-                                 non_command_lines):
+      if self.options.confirm_regex and (any(
+          self.options.confirm_regex.match(ci.command_name)
+          for ci in commands) or non_command_lines):
         print("\nAssistant:\n" + response + "\n")
 
-        guidance = self.confirmation_manager.RequireConfirmation(
+        guidance = self.options.confirmation_manager.RequireConfirmation(
             "Confirm operations? Enter a message to provide guidance to the AI: "
         )
 
         if guidance:
           print("Your guidance will be sent to the AI.")
-          self.messages.append({
+          self.options.messages.append({
               'role': 'user',
               'content': f"Message from the human operator: {guidance}"
           })
@@ -190,7 +188,7 @@ class AgentLoop:
       all_output = self._execute_commands(commands, non_command_lines)
 
       user_feedback = '\n\n'.join(all_output)
-      self.messages.append({'role': 'user', 'content': user_feedback})
+      self.options.messages.append({'role': 'user', 'content': user_feedback})
 
   def _execute_commands(self, commands, non_command_lines):
     all_output: List[str] = []
@@ -205,20 +203,20 @@ class AgentLoop:
     else:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
-          if self.confirm_done:
-            guidance = self.confirmation_manager.RequireConfirmation(
+          if self.options.confirm_done:
+            guidance = self.options.confirmation_manager.RequireConfirmation(
                 "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue. "
             )
             if guidance:
               print("Your guidance will be sent to the AI.")
-              self.messages.append({
+              self.options.messages.append({
                   'role': 'user',
                   'content': f"Message from the human operator: {guidance}"
               })
               continue
           return all_output
 
-        command = self.registry.Get(cmd_input.command_name)
+        command = self.options.commands_registry.Get(cmd_input.command_name)
         if not command:
           output = f"Unknown command: {cmd_input.command_name}"
           logging.error(output)

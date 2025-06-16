@@ -1,19 +1,17 @@
 import os
 import argparse
-import re
 from flask import Flask, request, render_template_string, redirect, url_for
-import logging
 from threading import Thread
+import logging
 
-from args_common import create_common_parser
-from agent_loop import AgentLoop, CreateCommandRegistry, CreateFileAccessPolicy, LoadOrCreateConversation, LoadOpenAIAPIKey, CreateValidationManager
+from args_common import CreateCommonParser, CreateAgentLoopOptions
+from agent_loop import LoadOpenAIAPIKey, AgentLoop
 from confirmation import AsyncConfirmationManager
 
 app = Flask(__name__)
 agent_loop_instance = None
 confirmation_manager = AsyncConfirmationManager()
 
-# Basic HTML template for displaying the conversation, a confirmation message, and a prompt input field
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="en">
@@ -43,7 +41,7 @@ HTML_TEMPLATE = """
 
 
 def parse_arguments() -> argparse.Namespace:
-  parser = create_common_parser()
+  parser = CreateCommonParser()
   parser.add_argument(
       '--port', type=int, default=5000, help="Port to run the web server on.")
   return parser.parse_args()
@@ -55,11 +53,14 @@ def interact():
   if request.method == "POST":
     prompt = request.form.get("prompt")
     if agent_loop_instance:
-      agent_loop_instance.messages.append({'role': 'user', 'content': prompt})
+      agent_loop_instance.options.messages.append({
+          'role': 'user',
+          'content': prompt
+      })
       return redirect(url_for('interact'))
 
   conversation = "\n".join(f"{message['role']}: {message['content']}"
-                           for message in agent_loop_instance.messages
+                           for message in agent_loop_instance.options.messages
                           ) if agent_loop_instance else "No conversation yet."
 
   confirmation_message = confirmation_manager.get_pending_message()
@@ -82,28 +83,13 @@ def start_agent_loop(args: argparse.Namespace) -> None:
   global agent_loop_instance, confirmation_manager
   LoadOpenAIAPIKey(args.api_key)
 
-  file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
-  validation_manager = CreateValidationManager()
+  try:
+    options = CreateAgentLoopOptions(args)
+  except RuntimeError as e:
+    logging.error(e)
+    return
 
-  if validation_manager:
-    initial_validation_result = validation_manager.Validate()
-    if initial_validation_result and initial_validation_result.returncode != 0:
-      logging.error("Initial validation failed, aborting further operations.")
-      return
-
-  registry = CreateCommandRegistry(file_access_policy, validation_manager)
-  messages, conversation_path = LoadOrCreateConversation(args.task, registry)
-
-  confirm_regex = re.compile(
-      args.confirm_regexp) if args.confirm_regexp else None
-
-  agent_loop_instance = AgentLoop(
-      args.model,
-      messages,
-      registry,
-      confirm_regex,  # Use the confirm_regex from args
-      False,  # Default for confirm_done
-      confirmation_manager)
+  agent_loop_instance = AgentLoop(options)
   Thread(target=agent_loop_instance.run).start()
 
 
