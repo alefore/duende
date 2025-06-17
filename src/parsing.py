@@ -1,6 +1,15 @@
 from typing import List, Optional, Tuple
 import shlex
 from agent_command import CommandInput
+import re
+
+
+def _GetArgs(args_str: str) -> List[str]:
+  try:
+    return shlex.split(args_str)
+  except ValueError:
+    # If shlex throws, treat the whole line as a single argument
+    return [args_str.strip()]
 
 
 def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
@@ -10,46 +19,65 @@ def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
   lines = response.splitlines()
   commands: List[CommandInput] = []
   non_command_lines: List[str] = []
-  current_input: Optional[CommandInput] = None
+  multiline_command: Optional[CommandInput] = None
   end_marker: Optional[str] = None
 
+  multi_line_folded_pattern = re.compile(r".* <<\\n(.*\\n)*#end *$")
+
   for line in lines:
-    if current_input is not None:
+    if multiline_command is not None:
+      # We are receiving multiline-content.
       if line.strip() == end_marker:
-        commands.append(current_input)
-        current_input = None
+        # We reached the end. Flush the command and reset the state.
+        commands.append(multiline_command)
+        multiline_command = None
         end_marker = None
       else:
-        assert current_input.multiline_content is not None
-        current_input.multiline_content.append(line)
+        assert multiline_command.multiline_content is not None
+        multiline_command.multiline_content.append(line)
       continue
 
     line = line.strip()
-    if line.startswith("#"):
-      parts = line[1:].split(maxsplit=1)
-      cmd = parts[0].rstrip(':')
-
-      if len(parts) > 1:
-        # Single-line command with arguments
-        try:
-          args = shlex.split(parts[1])
-          if args[-1].startswith("<<"):
-            current_input = CommandInput(
-                command_name=cmd, arguments=args[:-1], multiline_content=[])
-            end_marker = args[-1][2:] or "#end"
-          else:
-            commands.append(CommandInput(command_name=cmd, arguments=args))
-        except ValueError:
-          # If shlex throws, treat the whole line as a single argument
-          commands.append(CommandInput(command_name=cmd, arguments=[parts[1]]))
-      else:
-        # Single-line command with no arguments
-        commands.append(CommandInput(command_name=cmd, arguments=[]))
-    else:
+    if not line.startswith("#"):
       non_command_lines.append(line)
+      continue
 
-  if current_input:
-    assert current_input.multiline_content is not None
-    commands.append(current_input)
+    parts = line[1:].split(maxsplit=1)
+    cmd = parts[0].rstrip(':')
+
+    if len(parts) <= 1:
+      # No arguments, handle it directly.
+      commands.append(CommandInput(command_name=cmd, arguments=[]))
+      continue
+
+    args_str: str = parts[1]
+    if multi_line_folded_pattern.fullmatch(args_str):
+      # The AI sometimes stupidly thinks it should use "backslash n" (i.e.,
+      # '\\n') rather than newline characters (i.e., '\n') and will send a
+      # whole block in a single line. Rather than try to get the AI to
+      # understand that this is wrong… let's just accept it.
+      start_marker_pos: int = args_str.index(' <<\\n')
+      end_marker_pos: int = args_str.rindex('\\n#end')
+      content = args_str[start_marker_pos + 5:end_marker_pos].split('\\n')
+      commands.append(
+          CommandInput(
+              command_name=cmd,
+              arguments=_GetArgs(args_str[:start_marker_pos]),
+              multiline_content=content))
+      continue
+
+    args = _GetArgs(args_str)
+    if not args[-1].startswith("<<") or args[-1].startswith("<<\\n"):
+      commands.append(CommandInput(command_name=cmd, arguments=args))
+      continue
+
+    # Activate multiline mode.
+    multiline_command = CommandInput(
+        command_name=cmd, arguments=args[:-1], multiline_content=[])
+    end_marker = args[-1][2:] or "#end"
+
+  if multiline_command:
+    assert multiline_command.multiline_content is not None
+    commands.append(multiline_command)
 
   return commands, non_command_lines

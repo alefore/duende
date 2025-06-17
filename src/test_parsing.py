@@ -157,6 +157,42 @@ class TestExtractCommands(unittest.TestCase):
     self.assertEqual(
         ExtractCommands(response), (expected_commands, expected_non_commands))
 
+  def test_single_line_with_backslash_n(self):
+    response = "#command arg1 arg2 <<\\nline1\\nline2\\n#end"
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["arg1", "arg2"],
+            multiline_content=["line1", "line2"])
+    ]
+    expected_non_commands = []
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
+  def test_no_multiline_interpretation(self):
+    response = '#command arg1 "some <<\\nblah\\nblah\\n#end"'
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["arg1", "some <<\\nblah\\nblah\\n#end"],
+        )
+    ]
+    expected_non_commands = []
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
+  def test_non_activation_of_mode(self):
+    response = "#command <<\\nline0\\napostrophe:'\\n#end some garbage"
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["<<\\nline0\\napostrophe:'\\n#end some garbage"],
+        )
+    ]
+    expected_non_commands = []
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
 
 if __name__ == '__main__':
   unittest.main()
