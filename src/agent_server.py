@@ -18,6 +18,16 @@ HTML_TEMPLATE = """
   <head>
     <meta charset="utf-8">
     <title>Agent Server</title>
+    <style>
+      body {
+        overflow-y: scroll; /* Always show vertical scrollbar */
+      }
+    </style>
+    <script>
+      window.onload = function() {
+        window.scrollTo(0, document.body.scrollHeight); // Scroll to the bottom on load
+      }
+    </script>
   </head>
   <body>
     <h1>Agent Server Interface</h1>
@@ -25,6 +35,8 @@ HTML_TEMPLATE = """
       <textarea name="prompt" rows="4" cols="50" placeholder="Enter prompt..."></textarea><br>
       <input type="submit" value="Submit Prompt">
     </form>
+    <h2>Conversation</h2>
+    <div style="white-space: pre-wrap;">{{ conversation }}</div>
     <h2>Confirmation</h2>
     <div>{{ confirmation_message or "No confirmation needed." }}</div>
     {% if confirmation_message %}
@@ -33,8 +45,6 @@ HTML_TEMPLATE = """
       <input type="submit" value="Submit Confirmation">
     </form>
     {% endif %}
-    <h2>Conversation</h2>
-    <div style="white-space: pre-wrap;">{{ conversation }}</div>
   </body>
 </html>
 """
