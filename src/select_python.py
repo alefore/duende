@@ -19,30 +19,32 @@ class SelectPythonCommand(AgentCommand):
 
   def GetDescription(self) -> str:
     return (
-        f"#{self.Name()} <path> <identifier>: "
-        "Selects the definition of the identifier in the python file (path). "
-        "The identifier can be the name of a (top-level) function, the name "
-        "of a class, or the name of a method. The entire definition (body) "
-        "will be selected.")
+        f"#{self.Name()} <identifier> [path]: "
+        "Selects the definition of the identifier in the specified Python file, "
+        "or searches all Python files if no path is provided. The identifier can "
+        "be the name of a (top-level) function, the name of a class, or the name "
+        "of a method. The entire definition (body) will be selected.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    if len(command_input.arguments) != 2:
+    if not (1 <= len(command_input.arguments) <= 2):
       return CommandOutput(
           output=[],
           errors=[
-              f"#{self.Name()} requires exactly two arguments: "
-              "<path> <identifier>."
+              f"#{self.Name()} requires one or two arguments: "
+              "<identifier> [path]."
           ],
           summary="Select python command failed due to incorrect arguments.")
 
-    path: str = command_input.arguments[0]
-    identifier: str = command_input.arguments[1]
+    identifier: str = command_input.arguments[0]
+    path: Optional[str] = command_input.arguments[1] if len(
+        command_input.arguments) > 1 else None
 
     try:
       selections = FindPythonDefinition(self.file_access_policy, path,
                                         identifier)
+
       if len(selections) == 0:
         return CommandOutput(
             output=[],
@@ -56,7 +58,6 @@ class SelectPythonCommand(AgentCommand):
             summary="Multiple matches found, unable to select.")
 
       self.selection_manager.set_selection(selections[0])
-      selected_lines = selections[0].Read()
       return CommandOutput(
           output=[f"select <<"] + selections[0].Read() +
           [f"#end (selection in {selections[0].path})"],
