@@ -61,7 +61,7 @@ class SelectPythonCommand(AgentCommand):
             return CommandOutput(
                 output=[f"select <<\n{''.join(selected_lines)}\n#end ({path})"],
                 errors=[],
-                summary=f"Selected content from file {path}.")
+                summary=selection.ProvideSummary())
 
       raise ValueError(f"Could not find a definition for '{identifier}'.")
 

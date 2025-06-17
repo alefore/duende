@@ -72,6 +72,10 @@ class Selection:
 
     return cls(path, start_index, end_index)
 
+  def ProvideSummary(self) -> str:
+    """Provides a summary of the selection made."""
+    line_count = self.end_index - self.start_index + 1
+    return f"Selected from {self.path}: {line_count} lines."
 
 class SelectionManager:
 

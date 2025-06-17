@@ -16,7 +16,8 @@ class TestSelectCommands(unittest.TestCase):
     self.validation_manager = MagicMock(ValidationManager)
     self.select_text_cmd = SelectTextCommand(self.file_access_policy,
                                              self.selection_manager)
-    self.select_overwrite_cmd = SelectOverwriteCommand(self.selection_manager, self.validation_manager)
+    self.select_overwrite_cmd = SelectOverwriteCommand(self.selection_manager,
+                                                       self.validation_manager)
     self.file_access_policy.allow_access.return_value = True
 
   def test_select_valid_selection(self):

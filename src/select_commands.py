@@ -54,7 +54,7 @@ class SelectTextCommand(AgentCommand):
       return CommandOutput(
           output=[f"select <<\n{''.join(selected_lines)}#end ({path})"],
           errors=[],
-          summary=f"Selected from {path}: {len(selected_lines)} lines.")
+          summary=selection.ProvideSummary())
     except Exception as e:
       return CommandOutput(
           output=[],
