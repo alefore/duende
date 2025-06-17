@@ -30,7 +30,7 @@ class TestSelectPythonCommand(unittest.TestCase):
     command_input = CommandInput(
         command_name="select_python", arguments=["dummy/path", "identifier"])
     output = self.command.Execute(command_input)
-    self.assertIn("Access to 'dummy/path' is not allowed.", output.errors)
+    self.assertIn("Access to 'dummy/path' is not allowed.", output.errors[0])
 
   def test_execute_identifier_not_found(self):
     self.file_access_policy.allow_access = Mock(return_value=True)

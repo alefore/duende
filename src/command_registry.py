@@ -14,6 +14,7 @@ from select_commands import (
     SelectionManager,
 )
 from select_python import SelectPythonCommand
+from replace_python_command import ReplacePythonCommand  # Import new command
 from git_commands import ResetFileCommand, EnsureGitRepoIsClean
 
 
@@ -56,5 +57,6 @@ def CreateCommandRegistry(
       SelectOverwriteCommand(selection_manager, validation_manager))
 
   registry.Register(SelectPythonCommand(file_access_policy, selection_manager))
+  registry.Register(ReplacePythonCommand(file_access_policy))
 
   return registry
