@@ -105,7 +105,7 @@ class AgentLoop:
 
       self.options.confirmation_state.RegisterInteraction()
 
-      all_output = self._execute_commands(commands, non_command_lines)
+      all_output = self._execute_commands(commands)
 
       if self.options.always_validate:
         assert self.options.validation_manager
@@ -120,16 +120,13 @@ class AgentLoop:
       user_feedback = '\n\n'.join(all_output)
       self.options.messages.append({'role': 'user', 'content': user_feedback})
 
-  def _execute_commands(self, commands, non_command_lines) -> List[str]:
+  def _execute_commands(self, commands) -> List[str]:
     all_output: List[str] = []
     if not commands:
-      if non_command_lines:
-        all_output = non_command_lines
-      else:
-        all_output = [
-            "Error: No commands or non-command lines found in response! "
-            "Use #done if you are done with your task."
-        ]
+      all_output = [
+          "Error: No commands found in response! "
+          "Use #done if you are done with your task."
+      ]
     else:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
