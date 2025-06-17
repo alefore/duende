@@ -78,13 +78,15 @@ def CreateAgentLoopOptions(
 
   registry = CreateCommandRegistry(file_access_policy, validation_manager)
 
-  messages, _ = LoadOrCreateConversation(args.task, registry)
+  conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
+  messages = LoadOrCreateConversation(args.task, conversation_path, registry)
 
   confirmation_state = ConfirmationState(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
   return AgentLoopOptions(
+      conversation_path=conversation_path,
       model=args.model,
       messages=messages,
       confirmation_state=confirmation_state,
@@ -94,9 +96,9 @@ def CreateAgentLoopOptions(
       validation_manager=validation_manager)
 
 
-def LoadOrCreateConversation(
-    prompt_path: str, registry: CommandRegistry) -> Tuple[List[Message], str]:
-  conversation_path = re.sub(r'\.txt$', '.conversation.json', prompt_path)
+def LoadOrCreateConversation(prompt_path: str, conversation_path: str,
+                             registry: CommandRegistry) -> List[Message]:
+
   messages = LoadConversation(conversation_path)
   if not messages:
     prompt = (
@@ -121,7 +123,7 @@ def LoadOrCreateConversation(
     prompt += "Available commands:\n" + registry.HelpText()
     messages.append({'role': 'system', 'content': prompt})
 
-  return messages, conversation_path
+  return messages
 
 
 def CreateFileAccessPolicy(

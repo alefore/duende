@@ -32,6 +32,7 @@ Message = Union[
 
 
 class AgentLoopOptions(NamedTuple):
+  conversation_path: str
   model: str
   messages: List[Message]
   commands_registry: CommandRegistry
@@ -71,7 +72,7 @@ class AgentLoop:
   def __init__(self, options: AgentLoopOptions):
     self.options = options
 
-  def run(self):
+  def run(self) -> None:
     while True:
       logging.info("Querying ChatGPT...")
       response = CallChatgpt(self.options.model, self.options.messages)
@@ -79,46 +80,37 @@ class AgentLoop:
         logging.warning("No response from chatgpt.")
         break
 
+      SaveConversation(self.options.conversation_path, self.options.messages)
       self.options.messages.append({'role': 'assistant', 'content': response})
       commands, non_command_lines = ExtractCommands(response)
 
-      if non_command_lines:
-        print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
+      messages_for_ai: List[str] = []
 
-      should_confirm = (
-          self.options.confirm_regex and (any(
-              self.options.confirm_regex.match(ci.command_name)
-              for ci in commands) or non_command_lines))
-
-      if should_confirm:
-        print("\nAssistant:\n" + response + "\n")
-        guidance = self.options.confirmation_state.RequireConfirmation(
-            "Confirm operations? Enter a message to provide guidance to the AI: "
-        )
-
+      if (self.options.confirm_regex and any(
+          self.options.confirm_regex.match(ci.command_name)
+          for ci in commands)) or non_command_lines:
+        guidance = self.options.confirmation_state.RequireConfirmation(response)
         if guidance:
           print("Your guidance will be sent to the AI.")
-          self.options.messages.append({
-              'role': 'user',
-              'content': f"Message from the human operator: {guidance}"
-          })
+          messages_for_ai.append(f"Message from human: {guidance}")
 
       self.options.confirmation_state.RegisterInteraction()
-
-      all_output = self._execute_commands(commands)
+      messages_for_ai.extend(self._execute_commands(commands))
 
       if self.options.always_validate:
         assert self.options.validation_manager
         validation_result = self.options.validation_manager.Validate()
         if validation_result.returncode != 0:
           logging.info(f"Validation failed: {validation_result.returncode}")
-          all_output.append(
+          messages_for_ai.append(
               "The validation command is currently reporting failures "
               "(normal if you are in the middle applying changes). "
               "To see the failures, use: #validate")
 
-      user_feedback = '\n\n'.join(all_output)
-      self.options.messages.append({'role': 'user', 'content': user_feedback})
+      self.options.messages.append({
+          'role': 'user',
+          'content': '\n\n'.join(messages_for_ai)
+      })
 
   def _execute_commands(self, commands) -> List[str]:
     all_output: List[str] = []
