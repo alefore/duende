@@ -3,11 +3,12 @@ import os
 import re
 import sys
 from typing import Optional, Pattern, List, Tuple
-from agent_loop import AgentLoopOptions, CreateCommandRegistry, CreateValidationManager, Message, LoadConversation
+from agent_loop import AgentLoopOptions, CreateCommandRegistry, Message, LoadConversation
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry
+from validation import CreateValidationManager
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -43,6 +44,12 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       '--confirm_every',
       type=int,
       help="Require confirmation after every N interactions.")
+  parser.add_argument(
+      '--always_validate',
+      action='store_true',
+      default=True,
+      help="Always validate after each command execution. Crashes if validation script is not available."
+  )
   return parser
 
 
@@ -58,6 +65,10 @@ def CreateAgentLoopOptions(
       args.confirm) if args.confirm else None
 
   validation_manager = CreateValidationManager()
+
+  if args.always_validate and not validation_manager:
+    raise RuntimeError(
+        "Validation script is not available, but --always_validate is set.")
 
   if validation_manager:
     initial_validation_result = validation_manager.Validate()
@@ -78,7 +89,9 @@ def CreateAgentLoopOptions(
       messages=messages,
       confirmation_state=confirmation_state,
       commands_registry=registry,
-      confirm_regex=confirm_regex)
+      confirm_regex=confirm_regex,
+      always_validate=args.always_validate,
+      validation_manager=validation_manager)
 
 
 def LoadOrCreateConversation(

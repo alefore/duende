@@ -7,13 +7,11 @@ from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
 )
 from typing import List, Optional, Tuple, Union, Pattern, NamedTuple
+from validation import ValidationManager
 
 from confirmation import ConfirmationState
-
 from command_registry import CommandRegistry, CreateCommandRegistry
 from agent_command import CommandInput
-from validation import CreateValidationManager
-
 from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CurrentDirectoryFileAccessPolicy,
                                 CompositeFileAccessPolicy)
@@ -40,6 +38,8 @@ class AgentLoopOptions(NamedTuple):
   confirmation_state: ConfirmationState
   confirm_regex: Optional[Pattern] = None
   confirm_done: bool = False
+  always_validate: bool = True
+  validation_manager: Optional[ValidationManager] = None
 
 
 def LoadConversation(path: str) -> List[Message]:
@@ -106,6 +106,16 @@ class AgentLoop:
       self.options.confirmation_state.RegisterInteraction()
 
       all_output = self._execute_commands(commands, non_command_lines)
+
+      if self.options.always_validate:
+        assert self.options.validation_manager
+        validation_result = self.options.validation_manager.Validate()
+        if validation_result.returncode != 0:
+          logging.info(f"Validation failed: {validation_result.returncode}")
+          all_output.append(
+              "The validation command is currently reporting failures "
+              "(normal if you are in the middle applying changes). "
+              "To see the failures, use: #validate")
 
       user_feedback = '\n\n'.join(all_output)
       self.options.messages.append({'role': 'user', 'content': user_feedback})
