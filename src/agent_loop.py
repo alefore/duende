@@ -109,7 +109,7 @@ class AgentLoop:
 
       self.options.messages.append({
           'role': 'user',
-          'content': '\n\n'.join(messages_for_ai)
+          'content': '\n'.join(messages_for_ai)
       })
 
   def _execute_commands(self, commands) -> List[str]:
