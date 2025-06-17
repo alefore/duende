@@ -57,6 +57,12 @@ def CreateAgentLoopOptions(
     args: argparse.Namespace,
     confirmation_manager: ConfirmationManager) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
+
+  # List files and check if any match the access policy
+  if not list(list_all_files('.', file_access_policy)):
+    print("No files match the given file access policy. Aborting execution.")
+    sys.exit(1)  # Exit with a non-zero status to indicate failure
+
   if args.test_file_access:
     TestFileAccess(file_access_policy)
     sys.exit(0)  # Graceful exit after testing
