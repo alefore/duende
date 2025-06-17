@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Optional
 from agent_command import AgentCommand, CommandInput, CommandOutput
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 from select_python import FindPythonDefinition
+from selection_manager import Selection
 
 
 class ReplacePythonCommand(AgentCommand):
@@ -25,65 +26,47 @@ class ReplacePythonCommand(AgentCommand):
           "replace_python requires one or two arguments: <identifier> [path]."
       ], "Invalid arguments for replace_python command.")
 
-    identifier = command_input.arguments[0]
-    path = command_input.arguments[1] if len(
-        command_input.arguments) == 2 else None
-    file_list: List[str] = []
+    if command_input.multiline_content is None:
+      return CommandOutput([], [
+          "replace_python requires multiline-content. For example:",
+          "#{self.name} ReadPassword <<", "new definition line 0", "line 1",
+          "line 2", "...", "#end"
+      ], "Replacement content missing.")
 
-    # Determine the relevant files
+    identifier: str = command_input.arguments[0]
+    path: Optional[str] = command_input.arguments[1] if len(
+        command_input.arguments) == 2 else None
+    if path and not self.file_access_policy.allow_access(path):
+      return CommandOutput([], [f"Access to '{path}' is not allowed."],
+                           "File access denied.")
+
+    file_list: List[str]
     if path:
-      if not self.file_access_policy.allow_access(path):
-        return CommandOutput([], [f"Access to '{path}' is not allowed."],
-                             "File access denied.")
       file_list = [path]
     else:
-      # List all .py files
       file_list = [
           file for file in list_all_files(".", self.file_access_policy)
           if file.endswith(".py")
       ]
 
-    matches = []
+    matches: List[Selection] = []
 
-    # Search for identifier in each file
     for file_path in file_list:
-      selections = FindPythonDefinition(self.file_access_policy, file_path,
-                                        identifier)
-      if len(selections) > 1:
-        return CommandOutput([], [
-            f"Multiple matches found for identifier '{identifier}' in '{file_path}'."
-        ], "Multiple matches found.")
-      elif len(selections) == 1:
-        matches.append((file_path, selections[0]))
+      matches.extend(
+          FindPythonDefinition(self.file_access_policy, file_path, identifier))
 
     if len(matches) == 0:
       return CommandOutput([],
                            [f"No matches found for identifier '{identifier}'."],
                            "No matches found.")
-    elif len(matches) > 1:
+    if len(matches) > 1:
       locations = [
-          f"{match[0]}: lines {match[1].start_index + 1}-{match[1].end_index + 1}"
-          for match in matches
+          f"{s.path}:{s.start_index + 1} to {s.end_index + 1}" for s in matches
       ]
-      return CommandOutput([], [
-          f"Multiple matches found for identifier '{identifier}': {', '.join(locations)}"
-      ], "Multiple matches found.")
+      return CommandOutput(
+          [], [f"Multiple matches found for identifier '{identifier}':"] +
+          locations + ["#end (matches)"], "Multiple matches found.")
 
-    # Exactly one match found, proceed with replacement
-    if command_input.multiline_content:
-      file_path, selection = matches[0]
-      with open(file_path, "r") as file:
-        lines = file.readlines()
-
-      # Replace the lines in the file
-      lines[selection.start_index:selection.end_index + 1] = command_input.multiline_content
-
-      with open(file_path, "w") as file:
-        file.writelines(lines)
-
-      return CommandOutput(["The definition was successfully replaced."], [],
-                           "Replacement successful.")
-
-    return CommandOutput(
-        [], ["No replacement content provided for the identifier."],
-        "Replacement content missing.")
+    matches[0].Overwrite(command_input.multiline_content)
+    return CommandOutput(["The definition was successfully replaced."], [],
+                         "Replacement successful.")

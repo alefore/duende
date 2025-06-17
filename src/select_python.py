@@ -31,7 +31,8 @@ class SelectPythonCommand(AgentCommand):
       return CommandOutput(
           output=[],
           errors=[
-              "select_python requires exactly two arguments: <path> <identifier>."
+              f"#{self.Name()} requires exactly two arguments: "
+              "<path> <identifier>."
           ],
           summary="Select python command failed due to incorrect arguments.")
 
@@ -41,13 +42,11 @@ class SelectPythonCommand(AgentCommand):
     try:
       selections = FindPythonDefinition(self.file_access_policy, path,
                                         identifier)
-      if len(selections) == 1:
-        self.selection_manager.set_selection(selections[0])
-        selected_lines = selections[0].Read()
+      if len(selections) == 0:
         return CommandOutput(
-            output=[f"select <<\n{''.join(selected_lines)}\n#end ({path})"],
-            errors=[],
-            summary=selections[0].ProvideSummary())
+            output=[],
+            errors=[f"Could not find a definition for '{identifier}'."],
+            summary=f"Definition for '{identifier}' not found.")
 
       if len(selections) > 1:
         return CommandOutput(
@@ -55,10 +54,13 @@ class SelectPythonCommand(AgentCommand):
             errors=[f"Multiple definitions found for '{identifier}'."],
             summary="Multiple matches found, unable to select.")
 
+      self.selection_manager.set_selection(selections[0])
+      selected_lines = selections[0].Read()
       return CommandOutput(
-          output=[],
-          errors=[f"Could not find a definition for '{identifier}'."],
-          summary=f"Definition for '{identifier}' not found.")
+          output=[f"select <<"] + selections[0].Read() +
+          [f"#end (selection in {selections[0].path})"],
+          errors=[],
+          summary=selections[0].ProvideSummary())
 
     except Exception as e:
       return CommandOutput(

@@ -52,7 +52,7 @@ class SelectTextCommand(AgentCommand):
       selected_lines = selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(
-          output=[f"select <<\n{''.join(selected_lines)}#end ({path})"],
+          output=["select <<"] + selected_lines + [f"#end ({path})"],
           errors=[],
           summary=selection.ProvideSummary())
     except Exception as e:

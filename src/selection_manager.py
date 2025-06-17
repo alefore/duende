@@ -16,7 +16,7 @@ class Selection:
       raise FileNotFoundError(f"File not found: {self.path}")
 
     with open(self.path, "r") as file:
-      lines: List[str] = file.readlines()
+      lines: List[str] = [l.rstrip('\n') for l in file.readlines()]
 
     if self.start_index < 0 or self.end_index >= len(lines):
       raise ValueError("Start or end index out of range.")
@@ -76,6 +76,7 @@ class Selection:
     """Provides a summary of the selection made."""
     line_count = self.end_index - self.start_index + 1
     return f"Selected from {self.path}: {line_count} lines."
+
 
 class SelectionManager:
 

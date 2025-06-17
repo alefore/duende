@@ -22,7 +22,7 @@ class TestSelectPythonCommand(unittest.TestCase):
         command_name="select_python", arguments=["only_one_argument"])
     output = self.command.Execute(command_input)
     self.assertIn(
-        "select_python requires exactly two arguments: <path> <identifier>.",
+        "#select_python requires exactly two arguments: <path> <identifier>.",
         output.errors)
 
   def test_execute_access_denied(self):
@@ -51,7 +51,7 @@ class TestSelectPythonCommand(unittest.TestCase):
     output = self.command.Execute(command_input)
     selected_output = "\n".join(output.output).strip()
     selected_output = selected_output.removeprefix('select <<\n').removesuffix(
-        '\n#end (src/tests/sample.py)').strip()
+        '\n#end (selection in src/tests/sample.py)').strip()
     expected_output = ("class ComplexClass:\n"
                        "    def __init__(self):\n"
                        "        self.value = 0\n\n"

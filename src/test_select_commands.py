@@ -32,8 +32,9 @@ class TestSelectCommands(unittest.TestCase):
 
     command_output = self.select_text_cmd.Execute(command_input)
     self.assertEqual(len(command_output.errors), 0)
-    self.assertIn("select <<\nSTART\nsome content\nEND\n#end (test_file.txt)",
-                  command_output.output)
+    self.assertEqual(
+        ["select <<", "START", "some content", "END", "#end (test_file.txt)"],
+        command_output.output)
 
   def test_select_no_match(self):
     command_input = CommandInput(
@@ -85,8 +86,8 @@ class TestSelectCommands(unittest.TestCase):
 
     command_output = self.select_text_cmd.Execute(command_input)
     self.assertEqual(len(command_output.errors), 0)
-    self.assertIn("select <<\nSTART\nEND\n#end (test_file.txt)",
-                  command_output.output)
+    self.assertEqual(["select <<", "START", "END", "#end (test_file.txt)"],
+                     command_output.output)
 
   def tearDown(self):
     if os.path.exists("test_file.txt"):
