@@ -2,7 +2,7 @@ from typing import List
 from agent_command import AgentCommand, CommandInput, CommandOutput
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
-from select_python import find_python_definition
+from select_python import FindPythonDefinition
 
 
 class ReplacePythonCommand(AgentCommand):
@@ -47,10 +47,14 @@ class ReplacePythonCommand(AgentCommand):
 
     # Search for identifier in each file
     for file_path in file_list:
-      selection, _ = find_python_definition(self.file_access_policy, file_path,
-                                            identifier)
-      if selection:
-        matches.append((file_path, selection))
+      selections = FindPythonDefinition(self.file_access_policy, file_path,
+                                        identifier)
+      if len(selections) > 1:
+        return CommandOutput([], [
+            f"Multiple matches found for identifier '{identifier}' in '{file_path}'."
+        ], "Multiple matches found.")
+      elif len(selections) == 1:
+        matches.append((file_path, selections[0]))
 
     if len(matches) == 0:
       return CommandOutput([],
@@ -72,8 +76,7 @@ class ReplacePythonCommand(AgentCommand):
         lines = file.readlines()
 
       # Replace the lines in the file
-      lines[selection.start_index:selection.end_index +
-            1] = command_input.multiline_content
+      lines[selection.start_index:selection.end_index + 1] = command_input.multiline_content
 
       with open(file_path, "w") as file:
         file.writelines(lines)
