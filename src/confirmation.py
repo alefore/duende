@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict
+from typing import Optional
 import threading
 import queue
 
@@ -39,3 +39,28 @@ class AsyncConfirmationManager(ConfirmationManager):
   def get_pending_message(self) -> Optional[str]:
     with self.message_lock:
       return self.current_message
+
+
+class ConfirmationState:
+  """Manages confirmations and interaction limits using the confirmation manager."""
+
+  def __init__(self,
+               confirmation_manager: ConfirmationManager,
+               confirm_every: Optional[int] = None) -> None:
+    self.confirmation_manager: ConfirmationManager = confirmation_manager
+    self.confirm_every: Optional[int] = confirm_every
+    self.interaction_count: int = 0
+
+  def RegisterInteraction(self) -> None:
+    """Registers an interaction and potentially requires a confirmation."""
+    if self.confirm_every is not None:
+      self.interaction_count += 1
+      if self.interaction_count >= self.confirm_every:
+        self.RequireConfirmation(
+            "Confirm operations after N interactions? Enter guidance or an empty string to continue: "
+        )
+        self.interaction_count = 0
+
+  def RequireConfirmation(self, message: str) -> Optional[str]:
+    """Requires explicit confirmation through the confirmation manager."""
+    return self.confirmation_manager.RequireConfirmation(message)

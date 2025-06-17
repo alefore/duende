@@ -1,7 +1,6 @@
 import json
 import openai
 import logging
-import re
 from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
@@ -9,7 +8,7 @@ from openai.types.chat import (
 )
 from typing import List, Optional, Tuple, Union, Pattern, NamedTuple
 
-from confirmation import ConfirmationManager
+from confirmation import ConfirmationState
 
 from command_registry import CommandRegistry, CreateCommandRegistry
 from agent_command import CommandInput
@@ -38,7 +37,7 @@ class AgentLoopOptions(NamedTuple):
   model: str
   messages: List[Message]
   commands_registry: CommandRegistry
-  confirmation_manager: ConfirmationManager
+  confirmation_state: ConfirmationState
   confirm_regex: Optional[Pattern] = None
   confirm_done: bool = False
 
@@ -86,12 +85,14 @@ class AgentLoop:
       if non_command_lines:
         print("\nNon-command Output:\n" + "\n".join(non_command_lines) + "\n")
 
-      if self.options.confirm_regex and (any(
-          self.options.confirm_regex.match(ci.command_name)
-          for ci in commands) or non_command_lines):
-        print("\nAssistant:\n" + response + "\n")
+      should_confirm = (
+          self.options.confirm_regex and (any(
+              self.options.confirm_regex.match(ci.command_name)
+              for ci in commands) or non_command_lines))
 
-        guidance = self.options.confirmation_manager.RequireConfirmation(
+      if should_confirm:
+        print("\nAssistant:\n" + response + "\n")
+        guidance = self.options.confirmation_state.RequireConfirmation(
             "Confirm operations? Enter a message to provide guidance to the AI: "
         )
 
@@ -101,6 +102,8 @@ class AgentLoop:
               'role': 'user',
               'content': f"Message from the human operator: {guidance}"
           })
+
+      self.options.confirmation_state.RegisterInteraction()
 
       all_output = self._execute_commands(commands, non_command_lines)
 
@@ -121,7 +124,7 @@ class AgentLoop:
       for cmd_input in commands:
         if cmd_input.command_name == "done":
           if self.options.confirm_done:
-            guidance = self.options.confirmation_manager.RequireConfirmation(
+            guidance = self.options.confirmation_state.RequireConfirmation(
                 "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue. "
             )
             if guidance:

@@ -4,7 +4,7 @@ import re
 import sys
 from typing import Optional, Pattern, List, Tuple
 from agent_loop import AgentLoopOptions, CreateCommandRegistry, CreateValidationManager, Message, LoadConversation
-from confirmation import ConfirmationManager
+from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry
@@ -39,6 +39,10 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       type=str,
       default='',
       help="Regex to match commands requiring confirmation before execution.")
+  parser.add_argument(
+      '--confirm_every',
+      type=int,
+      help="Require confirmation after every N interactions.")
   return parser
 
 
@@ -65,10 +69,14 @@ def CreateAgentLoopOptions(
 
   messages, _ = LoadOrCreateConversation(args.task, registry)
 
+  confirmation_state = ConfirmationState(
+      confirmation_manager=confirmation_manager,
+      confirm_every=args.confirm_every)
+
   return AgentLoopOptions(
       model=args.model,
       messages=messages,
-      confirmation_manager=confirmation_manager,
+      confirmation_state=confirmation_state,
       commands_registry=registry,
       confirm_regex=confirm_regex)
 
