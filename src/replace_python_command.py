@@ -36,24 +36,7 @@ class ReplacePythonCommand(AgentCommand):
     identifier: str = command_input.arguments[0]
     path: Optional[str] = command_input.arguments[1] if len(
         command_input.arguments) == 2 else None
-    if path and not self.file_access_policy.allow_access(path):
-      return CommandOutput([], [f"Access to '{path}' is not allowed."],
-                           "File access denied.")
-
-    file_list: List[str]
-    if path:
-      file_list = [path]
-    else:
-      file_list = [
-          file for file in list_all_files(".", self.file_access_policy)
-          if file.endswith(".py")
-      ]
-
-    matches: List[Selection] = []
-
-    for file_path in file_list:
-      matches.extend(
-          FindPythonDefinition(self.file_access_policy, file_path, identifier))
+    matches: List[Selection] = FindPythonDefinition(self.file_access_policy, path, identifier)
 
     if len(matches) == 0:
       return CommandOutput([],

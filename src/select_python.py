@@ -1,5 +1,6 @@
 import ast
 from typing import List, Optional, Tuple
+from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
@@ -69,22 +70,33 @@ class SelectPythonCommand(AgentCommand):
           summary=f"Select python command encountered an error: {str(e)}")
 
 
-def FindPythonDefinition(file_access_policy: FileAccessPolicy, path: str,
+def FindPythonDefinition(file_access_policy: FileAccessPolicy,
+                         path: Optional[str],
                          identifier: str) -> List[Selection]:
   """Finds all Python code elements by identifier and returns the selections."""
-  if not file_access_policy.allow_access(path):
-    raise PermissionError(f"Access to '{path}' is not allowed.")
+  file_list: List[str]
 
-  with open(path, "r") as file:
-    lines: List[str] = file.readlines()
-    file.seek(0)
-    tree: ast.Module = ast.parse(file.read(), filename=path)
+  if path:
+    if not file_access_policy.allow_access(path):
+      raise PermissionError(f"Access to '{path}' is not allowed.")
+    file_list = [path]
+  else:
+    file_list = [
+        file for file in list_all_files(".", file_access_policy)
+        if file.endswith(".py")
+    ]
 
   selections = []
-  for node in ast.walk(tree):
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-      if node.name == identifier and node.lineno is not None and node.end_lineno is not None:
-        selection = Selection(path, node.lineno - 1, node.end_lineno - 1)
-        selections.append(selection)
+
+  for file_path in file_list:
+    with open(file_path, "r") as file:
+      tree: ast.Module = ast.parse(file.read(), filename=file_path)
+
+    for node in ast.walk(tree):
+      if isinstance(node,
+                    (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        if node.name == identifier and node.lineno is not None and node.end_lineno is not None:
+          selections.append(
+              Selection(file_path, node.lineno - 1, node.end_lineno - 1))
 
   return selections
