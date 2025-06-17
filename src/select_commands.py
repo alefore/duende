@@ -73,7 +73,10 @@ class SelectOverwriteCommand(AgentCommand):
     return "select_overwrite"
 
   def GetDescription(self) -> str:
-    return f"{self.Name()} <<\\n … new contents …\\n #end: Replaces the contents of the selection with new contents."
+    return (
+        f"#{self.Name()} <<\n… new contents …\n(multiple lines) …\n#end\n"
+        "  Replaces the contents of the selection (the very last call to #select or similar command) with new contents."
+    )
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if not command_input.multiline_content:
