@@ -17,7 +17,14 @@ class ReplacePythonCommand(AgentCommand):
 
   def GetDescription(self) -> str:
     return (
-        f"#{self.Name()} <identifier> [path]: Replaces the definition of the identifier in the specified Python file. Searches in all Python files if no path is provided."
+        f"#{self.Name()} <identifier> [path] <<\n"
+        "new definition line 0\n"
+        "line 1\n"
+        "...\n"
+        "#end\n"
+        "  Replaces the definition of the identifier in the specified Python file.\n"
+        "  Searches in all Python files if no path is provided.\n"
+        "  The identifier can be the name of a (top-level) function, class, or method."
     )
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
@@ -36,7 +43,8 @@ class ReplacePythonCommand(AgentCommand):
     identifier: str = command_input.arguments[0]
     path: Optional[str] = command_input.arguments[1] if len(
         command_input.arguments) == 2 else None
-    matches: List[Selection] = FindPythonDefinition(self.file_access_policy, path, identifier)
+    matches: List[Selection] = FindPythonDefinition(self.file_access_policy,
+                                                    path, identifier)
 
     if len(matches) == 0:
       return CommandOutput([],
