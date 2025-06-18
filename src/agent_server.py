@@ -21,6 +21,27 @@ def on_confirmation_requested(message: str) -> None:
 
 confirmation_manager = AsyncConfirmationManager(on_confirmation_requested)
 
+CSS_STYLES = """
+body {
+  overflow-y: scroll; /* Always show vertical scrollbar */
+}
+
+.message {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.message .role {
+  font-weight: bold;
+}
+
+pre {
+  white-space: pre-wrap;
+  margin: 0; /* Remove default margin */
+}
+"""
+
 HTML_TEMPLATE = """
 <!doctype html>
 <html lang="en">
@@ -28,16 +49,14 @@ HTML_TEMPLATE = """
     <meta charset="utf-8">
     <title>Agent Server</title>
     <style>
-      body {
-        overflow-y: scroll; /* Always show vertical scrollbar */
-      }
+      {{ styles }}
     </style>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function() {
         var socket = io();
         socket.on("update_conversation", function(data) {
-          document.getElementById('conversation').innerText = data.conversation;
+          document.getElementById('conversation').innerHTML = data.conversation;
           scrollToBottom();
         });
         socket.on("update_confirmation", function(data) {
@@ -64,8 +83,18 @@ HTML_TEMPLATE = """
       <input type="submit" value="Submit Prompt">
     </form>
     <h2>Conversation</h2>
-    <div id="conversation" style="white-space: pre-wrap;">{{ conversation }}</div>
-    <h2>Confirmation</h2>
+    <div id="conversation">{% if conversation %}
+      {% for message in conversation %}
+        <div class="message">
+          <p class="role">{{ message.role }}:</p>
+          <div class="content">
+            <pre>{{ message.content|escape }}</pre>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      No conversation yet.
+    {% endif %}</div>
     <div id="confirmation">{{ confirmation_message or "No confirmation needed." }}</div>
     <form id="confirmation_form" action="/confirm" method="post" style="display: {{ 'block' if confirmation_message else 'none' }};">
       <input type="text" name="confirmation" placeholder="Enter confirmation..."><br>
@@ -93,22 +122,17 @@ def interact():
           'role': 'user',
           'content': prompt
       })
-      socketio.emit(
-          'update_conversation', {
-              'conversation':
-                  "\n".join(f"{message['role']}: {message['content']}"
-                            for message in agent_loop_instance.options.messages)
-          })
+      socketio.emit('update_conversation',
+                    {'conversation': agent_loop_instance.options.messages})
 
-  conversation = "\n".join(f"{message['role']}: {message['content']}"
-                           for message in agent_loop_instance.options.messages
-                          ) if agent_loop_instance else "No conversation yet."
+  conversation = agent_loop_instance.options.messages if agent_loop_instance else []
 
   confirmation_message = confirmation_manager.get_pending_message()
   socketio.emit('update_confirmation',
                 {'confirmation_message': confirmation_message})
   return render_template_string(
       HTML_TEMPLATE,
+      styles=CSS_STYLES,
       conversation=conversation,
       confirmation_message=confirmation_message)
 
