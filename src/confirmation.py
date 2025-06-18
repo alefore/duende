@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Callable
 import threading
 import queue
 
@@ -20,14 +20,20 @@ class CLIConfirmationManager(ConfirmationManager):
 
 class AsyncConfirmationManager(ConfirmationManager):
 
-  def __init__(self) -> None:
-    self.confirm_queue: queue.Queue = queue.Queue()
+  def __init__(
+      self,
+      on_confirmation_requested: Optional[Callable[[str],
+                                                   None]] = None) -> None:
+    self.confirm_queue: queue.Queue[str] = queue.Queue()
     self.message_lock = threading.Lock()
     self.current_message: Optional[str] = None
+    self.on_confirmation_requested = on_confirmation_requested
 
   def RequireConfirmation(self, message: str) -> Optional[str]:
     with self.message_lock:
       self.current_message = message
+      if self.on_confirmation_requested is not None:
+        self.on_confirmation_requested(message)
     confirmation = self.confirm_queue.get()  # Blocks until item is present
     with self.message_lock:
       self.current_message = None

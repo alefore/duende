@@ -13,7 +13,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 agent_loop_instance = None
-confirmation_manager = AsyncConfirmationManager()
+
+
+def on_confirmation_requested(message: str) -> None:
+  socketio.emit('update_confirmation', {'confirmation_message': message})
+
+
+confirmation_manager = AsyncConfirmationManager(on_confirmation_requested)
 
 HTML_TEMPLATE = """
 <!doctype html>
