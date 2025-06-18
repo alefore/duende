@@ -45,10 +45,10 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       type=int,
       help="Require confirmation after every N interactions.")
   parser.add_argument(
-      '--always_validate',
+      '--skip_implicit_validation',
       action='store_true',
-      default=True,
-      help="Always validate after each command execution. Crashes if validation script is not available."
+      default=False,
+      help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI)."
   )
   return parser
 
@@ -72,9 +72,10 @@ def CreateAgentLoopOptions(
 
   validation_manager = CreateValidationManager()
 
-  if args.always_validate and not validation_manager:
+  if not args.skip_implicit_validation and not validation_manager:
     raise RuntimeError(
-        "Validation script is not available, but --always_validate is set.")
+        "Validation script is not available; consider using --skip_implicit_validation."
+    )
 
   if validation_manager:
     initial_validation_result = validation_manager.Validate()
@@ -98,7 +99,7 @@ def CreateAgentLoopOptions(
       confirmation_state=confirmation_state,
       commands_registry=registry,
       confirm_regex=confirm_regex,
-      always_validate=args.always_validate,
+      always_validate=not args.skip_implicit_validation,
       validation_manager=validation_manager)
 
 
