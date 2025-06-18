@@ -1,6 +1,7 @@
 import os
 import argparse
 from flask import Flask, request, render_template_string, redirect, url_for
+from flask_socketio import SocketIO, emit
 from threading import Thread
 import logging
 
@@ -9,6 +10,8 @@ from agent_loop import LoadOpenAIAPIKey, AgentLoop
 from confirmation import AsyncConfirmationManager
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 agent_loop_instance = None
 confirmation_manager = AsyncConfirmationManager()
 
@@ -23,10 +26,23 @@ HTML_TEMPLATE = """
         overflow-y: scroll; /* Always show vertical scrollbar */
       }
     </style>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
-      window.onload = function() {
-        window.scrollTo(0, document.body.scrollHeight); // Scroll to the bottom on load
-      }
+      document.addEventListener("DOMContentLoaded", function() {
+        var socket = io();
+        socket.on("update_conversation", function(data) {
+          document.getElementById('conversation').innerText = data.conversation;
+        });
+        socket.on("update_confirmation", function(data) {
+          document.getElementById('confirmation').innerText = data.confirmation_message || "No confirmation needed.";
+          var confirmationForm = document.getElementById('confirmation_form');
+          if (data.confirmation_message) {
+            confirmationForm.style.display = 'block';
+          } else {
+            confirmationForm.style.display = 'none';
+          }
+        });
+      });
     </script>
   </head>
   <body>
@@ -36,15 +52,13 @@ HTML_TEMPLATE = """
       <input type="submit" value="Submit Prompt">
     </form>
     <h2>Conversation</h2>
-    <div style="white-space: pre-wrap;">{{ conversation }}</div>
+    <div id="conversation" style="white-space: pre-wrap;">{{ conversation }}</div>
     <h2>Confirmation</h2>
-    <div>{{ confirmation_message or "No confirmation needed." }}</div>
-    {% if confirmation_message %}
-    <form action="/confirm" method="post">
+    <div id="confirmation">{{ confirmation_message or "No confirmation needed." }}</div>
+    <form id="confirmation_form" action="/confirm" method="post" style="display: {{ 'block' if confirmation_message else 'none' }};">
       <input type="text" name="confirmation" placeholder="Enter confirmation..."><br>
       <input type="submit" value="Submit Confirmation">
     </form>
-    {% endif %}
   </body>
 </html>
 """
@@ -67,6 +81,12 @@ def interact():
           'role': 'user',
           'content': prompt
       })
+      socketio.emit(
+          'update_conversation', {
+              'conversation':
+                  "\n".join(f"{message['role']}: {message['content']}"
+                            for message in agent_loop_instance.options.messages)
+          })
       return redirect(url_for('interact'))
 
   conversation = "\n".join(f"{message['role']}: {message['content']}"
@@ -74,6 +94,8 @@ def interact():
                           ) if agent_loop_instance else "No conversation yet."
 
   confirmation_message = confirmation_manager.get_pending_message()
+  socketio.emit('update_confirmation',
+                {'confirmation_message': confirmation_message})
   return render_template_string(
       HTML_TEMPLATE,
       conversation=conversation,
@@ -85,6 +107,9 @@ def confirm():
   global confirmation_manager
   confirmation = request.form.get("confirmation")
   confirmation_manager.provide_confirmation(confirmation)
+  socketio.emit(
+      'update_confirmation',
+      {'confirmation_message': confirmation_manager.get_pending_message()})
   return redirect(url_for('interact'))
 
 
@@ -105,7 +130,7 @@ def start_agent_loop(args: argparse.Namespace) -> None:
 def run_server():
   args = parse_arguments()
   start_agent_loop(args)
-  app.run(port=args.port)
+  socketio.run(app, port=args.port)
 
 
 if __name__ == "__main__":
