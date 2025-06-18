@@ -46,8 +46,11 @@ class ValidationManager:
 
 def CreateValidationManager() -> Optional[ValidationManager]:
   script_path = "agent/validate.sh"
-  if os.path.isfile(script_path) and os.access(script_path, os.X_OK):
-    return ValidationManager()
-  else:
-    logging.info("Validation script is unavailable or not executable.")
+  if not os.path.isfile(script_path):
+    logging.info(f"{script_path}: Validation script does not exist.")
     return None
+  if not os.access(script_path, os.X_OK):
+    logging.info(f"{script_path}: Validation script is not executable.")
+    return None
+
+  return ValidationManager()
