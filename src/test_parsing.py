@@ -193,6 +193,56 @@ class TestExtractCommands(unittest.TestCase):
     self.assertEqual(
         ExtractCommands(response), (expected_commands, expected_non_commands))
 
+  def test_default_end_marker_extra_tokens(self):
+    response = "#command arg.py <<\nline0\nline1\n#end (arg.py)"
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["arg.py"],
+            multiline_content=["line0", "line1"])
+    ]
+    expected_non_commands = []
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
+  def test_end_marker_with_valid_argument(self):
+    response = "#command arg.py <<EOL\nline0\nline1\nEOL (arg.py)"
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["arg.py"],
+            multiline_content=["line0", "line1"])
+    ]
+    expected_non_commands = []
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
+  def test_end_marker_with_warning(self):
+    response = "#command arg <<EOL\nline0\nline1\nEOL some random text"
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["arg"],
+            multiline_content=["line0", "line1"])
+    ]
+    expected_non_commands = [
+        "Warning: extra tokens after EOL directive ignored: some random text"
+    ]
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
+  def test_end_marker_only_with_space(self):
+    response = "#command arg <<\nline0\n#endnot\n#end"
+    expected_commands = [
+        CommandInput(
+            command_name="command",
+            arguments=["arg"],
+            multiline_content=["line0", "#endnot"])
+    ]
+    expected_non_commands = []
+    self.assertEqual(
+        ExtractCommands(response), (expected_commands, expected_non_commands))
+
 
 if __name__ == '__main__':
   unittest.main()

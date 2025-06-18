@@ -26,15 +26,24 @@ def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
 
   for line in lines:
     if multiline_command is not None:
-      # We are receiving multiline-content.
-      if line.strip() == end_marker:
-        # We reached the end. Flush the command and reset the state.
-        commands.append(multiline_command)
-        multiline_command = None
-        end_marker = None
-      else:
-        assert multiline_command.multiline_content is not None
+      assert end_marker is not None
+      assert multiline_command.multiline_content is not None
+
+      if line != end_marker and not line.startswith(end_marker + " "):
         multiline_command.multiline_content.append(line)
+        continue
+
+      extra_tokens = line[len(end_marker):].strip()
+      if extra_tokens:
+        valid_tokens = any(extra_tokens == arg or extra_tokens == f"({arg})"
+                           for arg in multiline_command.arguments)
+        if not valid_tokens:
+          non_command_lines.append(
+              f"Warning: extra tokens after {end_marker} directive ignored: {extra_tokens}"
+          )
+      commands.append(multiline_command)
+      multiline_command = None
+      end_marker = None
       continue
 
     line = line.strip()
@@ -74,7 +83,7 @@ def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
     # Activate multiline mode.
     multiline_command = CommandInput(
         command_name=cmd, arguments=args[:-1], multiline_content=[])
-    end_marker = args[-1][2:] or "#end"
+    end_marker = args[-1][2:] if len(args[-1]) > 2 else "#end"
 
   if multiline_command:
     assert multiline_command.multiline_content is not None
