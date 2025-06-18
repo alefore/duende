@@ -99,7 +99,7 @@ def CreateAgentLoopOptions(
       confirmation_state=confirmation_state,
       commands_registry=registry,
       confirm_regex=confirm_regex,
-      always_validate=not args.skip_implicit_validation,
+      skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager)
 
 

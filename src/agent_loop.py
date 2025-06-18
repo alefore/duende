@@ -39,7 +39,7 @@ class AgentLoopOptions(NamedTuple):
   confirmation_state: ConfirmationState
   confirm_regex: Optional[Pattern] = None
   confirm_done: bool = False
-  always_validate: bool = True
+  skip_implicit_validation: bool = False
   validation_manager: Optional[ValidationManager] = None
 
 
@@ -97,7 +97,7 @@ class AgentLoop:
       self.options.confirmation_state.RegisterInteraction()
       messages_for_ai.extend(self._execute_commands(commands))
 
-      if self.options.always_validate:
+      if not self.options.skip_implicit_validation:
         assert self.options.validation_manager
         validation_result = self.options.validation_manager.Validate()
         if validation_result.returncode != 0:
