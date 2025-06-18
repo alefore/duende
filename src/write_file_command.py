@@ -20,8 +20,12 @@ class WriteFileCommand(AgentCommand):
     return "write_file"
 
   def GetDescription(self) -> str:
-    return (f"#{self.Name()} path << \\n … multi-line-content … \\n #end: "
-            "Writes the given content to a specified file.")
+    return (f"#{self.Name()} <path> <<\n"
+            "line0\n"
+            "line1\n"
+            "…\n"
+            "#end\n"
+            "  Writes the given content to a specified file.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) != 1 or not command_input.multiline_content:
