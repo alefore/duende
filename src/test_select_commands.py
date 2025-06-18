@@ -23,7 +23,6 @@ class TestSelectCommands(unittest.TestCase):
   def test_select_valid_selection(self):
     command_input = CommandInput(
         'select', arguments=['test_file.txt', 'START', 'END'])
-    self.file_access_policy.allow_access.return_value = True
 
     with open("test_file.txt", "w") as f:
       f.write("START\n")
@@ -59,6 +58,22 @@ class TestSelectCommands(unittest.TestCase):
     command_output = self.select_text_cmd.Execute(command_input)
     self.assertGreater(len(command_output.errors), 0)
 
+  def test_select_regex(self):
+    command_input = CommandInput(
+        'select', arguments=['test_file_regex.txt', '^Start.*', '^End.*'])
+
+    with open("test_file_regex.txt", "w") as f:
+      f.write("Start of the content\n")
+      f.write("some content here\n")
+      f.write("End of the content\n")
+
+    command_output = self.select_text_cmd.Execute(command_input)
+    self.assertEqual(len(command_output.errors), 0)
+    self.assertEqual([
+        "select <<", "Start of the content", "some content here",
+        "End of the content", "#end (test_file_regex.txt)"
+    ], command_output.output)
+
   def test_select_access_denied(self):
     command_input = CommandInput(
         'select', arguments=['test_file.txt', 'START', 'END'])
@@ -92,6 +107,8 @@ class TestSelectCommands(unittest.TestCase):
   def tearDown(self):
     if os.path.exists("test_file.txt"):
       os.remove("test_file.txt")
+    if os.path.exists("test_file_regex.txt"):
+      os.remove("test_file_regex.txt")
 
 
 if __name__ == '__main__':

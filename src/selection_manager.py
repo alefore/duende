@@ -1,5 +1,6 @@
 from typing import List, Optional
 import os
+import re
 
 
 class Selection:
@@ -69,6 +70,31 @@ class Selection:
       raise ValueError("Could not find the specified start line content.")
     if end_index is None:
       raise ValueError("Could not find the specified end line content.")
+
+    return cls(path, start_index, end_index)
+
+  @classmethod
+  def FromLinePattern(cls, path: str, start_line_pattern: str,
+                      end_line_pattern: str) -> 'Selection':
+    """Creates a Selection object based on line patterns using regex."""
+    if not os.path.exists(path):
+      raise FileNotFoundError(f"File not found: {path}")
+
+    with open(path, "r") as file:
+      lines: List[str] = file.readlines()
+
+    start_index = end_index = None
+    for index, line in enumerate(lines):
+      if start_index is None and re.search(start_line_pattern, line):
+        start_index = index
+      elif start_index is not None and re.search(end_line_pattern, line):
+        end_index = index
+        break
+
+    if start_index is None:
+      raise ValueError("Could not find the specified start line pattern.")
+    if end_index is None:
+      raise ValueError("Could not find the specified end line pattern.")
 
     return cls(path, start_index, end_index)
 

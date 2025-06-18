@@ -1,5 +1,6 @@
 from typing import List, Optional
 import os
+import re  # Import the regex module
 
 from agent_command import AgentCommand, CommandInput, CommandOutput
 from validation import ValidationManager
@@ -19,9 +20,10 @@ class SelectTextCommand(AgentCommand):
 
   def GetDescription(self) -> str:
     return (
-        f"#{self.Name()} <path> <start line content> <end line content>: "
-        "Creates a new selection for the content in the path specified starting at the first line containing "
-        "<start line content> and ending at the first following line containing <end line content>. "
+        f"#{self.Name()} <path> <start line pattern> <end line pattern>: "
+        "Creates a new selection for the content in the path specified starting at the first line matching "
+        "<start line pattern> (a regex) and ending at the first following line matching <end line pattern> (a regex). "
+        "The patterns are regular expressions, evaluated using Python's re module. "
         "The contents selected will be returned. "
         "Use select_overwrite to overwrite the selection with new contents. "
         "If your patterns contain spaces, you probably want to put quotes around them (e.g., #select my_foo.py 'def Foo' 'def Blah(')."
@@ -38,7 +40,7 @@ class SelectTextCommand(AgentCommand):
           ],
           summary="Select command failed due to incorrect arguments.")
 
-    path, start_line_content, end_line_content = command_input.arguments
+    path, start_line_pattern, end_line_pattern = command_input.arguments
 
     if not self.file_access_policy.allow_access(path):
       return CommandOutput(
@@ -47,8 +49,8 @@ class SelectTextCommand(AgentCommand):
           summary="Select command access denied.")
 
     try:
-      selection = Selection.FromLineContent(path, start_line_content,
-                                            end_line_content)
+      selection = Selection.FromLinePattern(path, start_line_pattern,
+                                            end_line_pattern)
       selected_lines = selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(
