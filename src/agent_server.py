@@ -32,6 +32,7 @@ HTML_TEMPLATE = """
         var socket = io();
         socket.on("update_conversation", function(data) {
           document.getElementById('conversation').innerText = data.conversation;
+          scrollToBottom();
         });
         socket.on("update_confirmation", function(data) {
           document.getElementById('confirmation').innerText = data.confirmation_message || "No confirmation needed.";
@@ -41,7 +42,12 @@ HTML_TEMPLATE = """
           } else {
             confirmationForm.style.display = 'none';
           }
+          scrollToBottom();
         });
+
+        function scrollToBottom() {
+          window.scrollTo(0, document.body.scrollHeight);
+        }
       });
     </script>
   </head>
