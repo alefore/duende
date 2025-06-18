@@ -8,30 +8,22 @@ class ValidationManager:
 
   def __init__(self) -> None:
     self.validation_script: str = "agent/validate.sh"
-    self.last_validation_successful: bool = False
-    self.contents_changed: bool = False
+    self.validation_output: Optional[subprocess.CompletedProcess] = None
 
   def RegisterChange(self) -> None:
-    self.contents_changed = True
+    self.validation_output = None
 
   def Validate(self) -> subprocess.CompletedProcess:
-    if not self.contents_changed and self.last_validation_successful:
-      logging.info(
-          "No changes detected and last validation was successful. Skipping re-validation."
-      )
-      return subprocess.CompletedProcess(
-          args=[self.validation_script], returncode=0)
+    if self.validation_output is None:
+      self.validation_output = self._execute_validation_script()
 
-    result = self._execute_validation_script()
-    self.contents_changed = False
-    self.last_validation_successful = (result.returncode == 0)
+      if self.validation_output.returncode != 0:
+        logging.error(
+            f"Validation failed: {self.validation_output.stderr.strip()}")
+      else:
+        logging.info("Validation succeeded.")
 
-    if result.returncode != 0:
-      logging.error(f"Validation failed: {result.stderr.strip()}")
-    else:
-      logging.info("Validation succeeded.")
-
-    return result
+    return self.validation_output
 
   def _execute_validation_script(self) -> subprocess.CompletedProcess:
     try:
