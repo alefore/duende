@@ -87,7 +87,6 @@ def interact():
                   "\n".join(f"{message['role']}: {message['content']}"
                             for message in agent_loop_instance.options.messages)
           })
-      return redirect(url_for('interact'))
 
   conversation = "\n".join(f"{message['role']}: {message['content']}"
                            for message in agent_loop_instance.options.messages
