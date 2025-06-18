@@ -12,7 +12,7 @@ class ValidateCommand(AgentCommand):
     return "validate"
 
   def GetDescription(self) -> str:
-    return ("f{self.Name()}: "
+    return (f"f{self.Name()}: "
             "Executes validation script to verify code integrity. "
             "Recommended to run this command after making changes.")
 
