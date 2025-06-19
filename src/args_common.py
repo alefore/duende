@@ -112,8 +112,15 @@ def LoadOrCreateConversation(prompt_path: str, conversation_path: str,
         "You are a coding assistant operating in a command loop environment. "
         "Use commands prefixed with `#`. "
         "Anything that is not a command will be relayed to the human.\n\n")
+
+    agent_prompt_path = 'agent/prompt.txt'
+    if os.path.exists(agent_prompt_path):
+      with open(agent_prompt_path, 'r') as f:
+        prompt += f.read() + "\n\n"
+
     with open(prompt_path, 'r') as f:
       prompt += f.read() + "\n\n"
+
     prompt += (
         "Some commands accept multi-line information, like this:\n\n"
         "#write_file foo.py <<\n"
