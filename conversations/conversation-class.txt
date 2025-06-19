@@ -1,0 +1,25 @@
+To get context about this task, start with commands:
+
+  #read_file src/agent_loop.py
+
+Introduce a module src/conversation.py with classes Conversation and Message to
+represent a conversation with the ai. That class should help us ensure that
+messages are only added to the conversation (never removed or modified).
+
+DO NOT MODIFY ANY FILES OTHER THAN src/conversation.py. Just add the new
+src/conversation.py file. In a previous attempt to adjust callers, you failed
+horribly and started randomly deleting code. I will figure out how to hook it in
+a follow up step.
+
+Requirements:
+
+* The Message class should contain two string fields: who sent it, and the
+contents.
+
+* The conversation class should have methods: Load Save AddMessage
+GetMessagesList.
+
+* Add static type annotations to all methods.
+
+* There should not be any OpenAI or ChatGPT-specific logic in
+src/conversation.py. This should be fully decoupled.
