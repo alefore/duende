@@ -86,11 +86,6 @@ HTML_TEMPLATE = """
   </head>
   <body>
     <h1>Agent Server Interface</h1>
-    <form action="/" method="post">
-      <textarea name="prompt" rows="4" cols="50" placeholder="Enter prompt..."></textarea><br>
-      <input type="submit" value="Submit Prompt">
-    </form>
-    <h2>Conversation</h2>
     <div id="conversation">{% if conversation %}
       {% for message in conversation %}
         <div class="message">
