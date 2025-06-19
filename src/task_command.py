@@ -1,9 +1,18 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput
-from typing import Optional
+from typing import NamedTuple, Callable, Optional, List
 import logging
 
 
+class TaskInformation(NamedTuple):
+  task_name: Optional[str]
+  task_spec: List[str]
+
+
 class TaskCommand(AgentCommand):
+
+  def __init__(self, start_new_task: Callable[[TaskInformation],
+                                              CommandOutput]):
+    self.start_new_task = start_new_task
 
   def Name(self) -> str:
     return "task"
@@ -34,24 +43,17 @@ class TaskCommand(AgentCommand):
           ],
           summary=f"Error: #{self.Name()}: Task specification is missing.")
 
-    task_name: str = command_input.arguments[0] if len(
-        command_input.arguments) == 1 else "<anonymous task>"
-    task_details = "\n".join(command_input.multiline_content).strip()
+    task_info = TaskInformation(
+        task_name=command_input.arguments[0]
+        if len(command_input.arguments) == 1 else None,
+        task_spec=command_input.multiline_content)
+    logging.info(
+        f"Forking sub-task: {task_info.task_name}: {task_info.task_spec}")
 
-    logging.info(f"Forking sub-task: {task_name} with details: {task_details}")
-
-    # Logic to initialize and handle a sub-task goes here
     try:
-      # Simulate task forking with task details (to be replaced with actual sub-task logic)
-      sub_task_result = f"Sub-task '{task_name}' forked successfully with details: {task_details}"
-      return CommandOutput(
-          output=[sub_task_result],
-          errors=[],
-          summary=f"Successfully forked sub-task '{task_name}'.")
+      return self.start_new_task(task_info)
     except Exception as e:
       return CommandOutput(
           output=[],
-          errors=[
-              f"Error forking sub-task '{task_name}' with details '{task_details}': {e}"
-          ],
+          errors=[f"Error forking sub-task '{task_info.task_name}': {e}"],
           summary=f"Error executing {self.Name()} command: {e}")
