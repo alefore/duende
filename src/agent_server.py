@@ -1,26 +1,14 @@
-import os
 import argparse
 from flask import Flask, request
-from flask_socketio import SocketIO, emit
-from threading import Thread
+from flask_socketio import SocketIO
 import logging
 
-from args_common import CreateCommonParser, CreateAgentLoopOptions
-from agent_loop import LoadOpenAIAPIKey, AgentLoop
-from confirmation import AsyncConfirmationManager
+from args_common import CreateCommonParser
+from agent_loop import LoadOpenAIAPIKey
+from web_server_state import WebServerState
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
-socketio = SocketIO(app)
-agent_loop_instance = None
-
-
-def on_confirmation_requested(message: str) -> None:
-  if agent_loop_instance:
-    UpdatePage(agent_loop_instance, True)
-
-
-confirmation_manager = AsyncConfirmationManager(on_confirmation_requested)
 
 HTML_TEMPLATE = """
 <!doctype html>
@@ -53,55 +41,26 @@ def parse_arguments() -> argparse.Namespace:
   return parser.parse_args()
 
 
-def UpdatePage(agent_loop: AgentLoop, confirmation_required: bool) -> None:
-  logging.info(f"Computing data.")
-  data = {
-      'confirmation_required': confirmation_required,
-      'conversation': agent_loop.options.messages
-  }
-  socketio.emit('update', data)
-
-
 @app.route("/", methods=["GET"])
 def interact():
   return HTML_TEMPLATE
 
 
-def start_agent_loop(args: argparse.Namespace) -> None:
-  global agent_loop_instance, confirmation_manager
-  LoadOpenAIAPIKey(args.api_key)
-
-  try:
-    options = CreateAgentLoopOptions(args, confirmation_manager)
-  except RuntimeError as e:
-    logging.error(e)
-    return
-
-  agent_loop_instance = AgentLoop(options)
-  Thread(target=agent_loop_instance.run).start()
-
-
 def run_server() -> None:
   args = parse_arguments()
-  start_agent_loop(args)
+  LoadOpenAIAPIKey(args.api_key)
+  socketio = SocketIO(app)
+  server_state = WebServerState(args, socketio)
 
   @socketio.on('confirm')
   def handle_confirmation(data) -> None:
-    logging.info("Received confirmation.")
-    global agent_loop_instance, confirmation_manager
-    if agent_loop_instance:
-      UpdatePage(agent_loop_instance, False)
-    confirmation_manager.provide_confirmation(data.get('confirmation'))
+    logging.info("Received: confirm.")
+    server_state.ReceiveConfirmation(data.get('confirmation'))
 
   @socketio.on('request_update')
   def start_update(data) -> None:
     logging.info("Received: request_update.")
-    global agent_loop_instance, confirmation_manager
-    if agent_loop_instance:
-      UpdatePage(agent_loop_instance,
-                 confirmation_manager.get_pending_message() is not None)
-    else:
-      logging.info("No agent loop instance!")
+    server_state.SendUpdate(None)
 
   socketio.run(app, port=args.port)
 
