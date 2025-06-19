@@ -66,7 +66,8 @@ def CreateCommandRegistry(
       SelectOverwriteCommand(selection_manager, validation_manager))
 
   registry.Register(SelectPythonCommand(file_access_policy, selection_manager))
-  registry.Register(ReplacePythonCommand(file_access_policy))
+  registry.Register(
+      ReplacePythonCommand(file_access_policy, validation_manager))
 
   registry.Register(TaskCommand(start_new_task))
 

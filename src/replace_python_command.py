@@ -1,7 +1,7 @@
 from typing import List, Optional
 from agent_command import AgentCommand, CommandInput, CommandOutput
+from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
-from list_files import list_all_files
 from select_python import FindPythonDefinition
 from selection_manager import Selection
 
@@ -9,8 +9,10 @@ from selection_manager import Selection
 class ReplacePythonCommand(AgentCommand):
   """Command to replace a Python code element based on an identifier."""
 
-  def __init__(self, file_access_policy: FileAccessPolicy) -> None:
+  def __init__(self, file_access_policy: FileAccessPolicy,
+               validation_manager: Optional[ValidationManager]) -> None:
     self.file_access_policy = file_access_policy
+    self.validation_manager = validation_manager
 
   def Name(self) -> str:
     return "replace_python"
@@ -59,5 +61,9 @@ class ReplacePythonCommand(AgentCommand):
           locations + ["#end (matches)"], "Multiple matches found.")
 
     matches[0].Overwrite(command_input.multiline_content)
+
+    if self.validation_manager:
+      self.validation_manager.RegisterChange()
+
     return CommandOutput(["The definition was successfully replaced."], [],
                          "Replacement successful.")

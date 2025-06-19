@@ -1,0 +1,8 @@
+Look at src/write_file_command.py to see an example of how the validation
+manager is updated when there's a change (`RegisterChange`).
+
+Can you check src/replace_python_command.py to confirm that when a file is
+updated, ReplacePythonCommand correctly calls into
+validation_manager.RegisterChange? If it doesn't (which I suspect), can you fix
+it? You may need to adjust customers to pass the validation manager (in case it
+isn't already passed).

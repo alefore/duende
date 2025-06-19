@@ -4,13 +4,16 @@ from replace_python_command import ReplacePythonCommand
 from agent_command import CommandInput, CommandOutput
 from selection_manager import Selection
 from file_access_policy import FileAccessPolicy
+from validation import ValidationManager
 
 
 class TestReplacePythonCommand(unittest.TestCase):
 
   def setUp(self):
     self.file_access_policy = Mock(spec=FileAccessPolicy)
-    self.command = ReplacePythonCommand(self.file_access_policy)
+    self.validation_manager = Mock(spec=ValidationManager)
+    self.command = ReplacePythonCommand(self.file_access_policy,
+                                        self.validation_manager)
 
   @patch('replace_python_command.FindPythonDefinition')
   def test_multiple_matches_in_single_file(self, mock_find):
