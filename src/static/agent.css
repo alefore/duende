@@ -16,3 +16,12 @@ pre {
   white-space: pre-wrap;
   margin: 0; /* Remove default margin */
 }
+
+.toggle-link {
+  font-size: 0.9em;
+  cursor: pointer;
+  color: blue;
+  text-decoration: underline;
+  float: right;
+  margin-left: 10px;
+}

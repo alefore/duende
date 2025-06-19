@@ -11,10 +11,32 @@ function handleUpdate(data) {
   data.conversation.forEach(message => {
     const $messageDiv = $('<div>').addClass('message');
     const $role = $('<p>').addClass('role').text(`${message.role}:`);
+
+    // Create collapse/expand links
+    const $collapseLink =
+        $('<span>').addClass('toggle-link collapse').text('[collapse]');
+    const $expandLink =
+        $('<span>').addClass('toggle-link expand').text('[expand]').hide();
+
+    // Create the content and manage its initial state
     const $content = $('<div>').addClass('content').append(
         $('<pre>').text(message.content)  // `.text()` auto-escapes
     );
 
+    // Add click events for toggling
+    $collapseLink.on('click', () => {
+      $content.hide();
+      $collapseLink.hide();
+      $expandLink.show();
+    });
+
+    $expandLink.on('click', () => {
+      $content.show();
+      $collapseLink.show();
+      $expandLink.hide();
+    });
+
+    $role.append($collapseLink, $expandLink);
     $messageDiv.append($role, $content);
     $conversation.append($messageDiv);
   });
