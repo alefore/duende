@@ -48,6 +48,10 @@ function handleUpdate(data) {
   scrollToBottom();
 }
 
+function countMessages() {
+  return $('#conversation .message').length;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const socket = io();
   socket.on('update', handleUpdate);
@@ -56,12 +60,13 @@ document.addEventListener('DOMContentLoaded', function() {
   confirmationForm.addEventListener('submit', function(event) {
     event.preventDefault();
     const textElement = confirmationForm.elements['confirmation'];
-    socket.emit('confirm', {confirmation: textElement.value});
+    socket.emit(
+        'confirm',
+        {confirmation: textElement.value, message_count: countMessages()});
     $('#confirmButton').prop('disabled', true);
     textElement.value = '';
   });
 
   console.log('Requesting update.');
-  const messageCount = $('#conversation .message').length;
-  socket.emit('request_update', {message_count: messageCount});
+  socket.emit('request_update', {message_count: countMessages()});
 });

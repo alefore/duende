@@ -47,6 +47,12 @@ def interact():
   return HTML_TEMPLATE
 
 
+def SendUpdate(server_state, data):
+  message_count = data.get('message_count', 0)
+  logging.info(f"Received: request_update, message_count: {message_count}")
+  server_state.SendUpdate(message_count, confirmation_required=None)
+
+
 def run_server() -> None:
   args = parse_arguments()
   LoadOpenAIAPIKey(args.api_key)
@@ -57,12 +63,11 @@ def run_server() -> None:
   def handle_confirmation(data) -> None:
     logging.info("Received: confirm.")
     server_state.ReceiveConfirmation(data.get('confirmation'))
+    SendUpdate(server_state, data)
 
   @socketio.on('request_update')
   def start_update(data) -> None:
-    logging.info("Received: request_update.")
-    message_count = data.get('message_count', 0)
-    server_state.SendUpdate(message_count, confirmation_required=None)
+    SendUpdate(server_state, data)
 
   socketio.run(app, port=args.port)
 
