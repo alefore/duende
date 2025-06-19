@@ -61,7 +61,8 @@ def run_server() -> None:
   @socketio.on('request_update')
   def start_update(data) -> None:
     logging.info("Received: request_update.")
-    server_state.SendUpdate(None)
+    message_count = data.get('message_count', 0)
+    server_state.SendUpdate(message_count, confirmation_required=None)
 
   socketio.run(app, port=args.port)
 

@@ -1,0 +1,16 @@
+See src/web_server_state.py, src/agent_server.py and src/static/agent.js for
+context.
+
+We are foolishly assuming that the server can remember how many messages have
+been sent to the web view. This doesn't work for a few reasons:
+
+1. The web view may be reloaded. So the server's count is now incorrect.
+
+2. There may be more than one server view, so we will likely clash.
+
+Can you change the communication between client and server so that the client
+communicates how many messages it has?
+
+So the SendUpdate method should receive the count. That means that the JS client
+needs to send this data (count of messages) as part of the `request_update`
+socket message.
