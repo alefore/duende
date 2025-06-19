@@ -1,6 +1,6 @@
 import os
 import argparse
-from flask import Flask, request, render_template_string
+from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from threading import Thread
 import logging
@@ -16,31 +16,11 @@ agent_loop_instance = None
 
 
 def on_confirmation_requested(message: str) -> None:
-  socketio.emit('update_confirmation', {'confirmation_message': message})
+  if agent_loop_instance:
+    UpdatePage(agent_loop_instance, True)
 
 
 confirmation_manager = AsyncConfirmationManager(on_confirmation_requested)
-
-CSS_STYLES = """
-body {
-  overflow-y: scroll; /* Always show vertical scrollbar */
-}
-
-.message {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-
-.message .role {
-  font-weight: bold;
-}
-
-pre {
-  white-space: pre-wrap;
-  margin: 0; /* Remove default margin */
-}
-"""
 
 HTML_TEMPLATE = """
 <!doctype html>
@@ -48,60 +28,18 @@ HTML_TEMPLATE = """
   <head>
     <meta charset="utf-8">
     <title>Agent Server</title>
-    <style>
-      {{ styles }}
-    </style>
+    <link rel=stylesheet href="/static/agent.css">
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function() {
-        var socket = io();
-        socket.on("update_conversation", function(data) {
-          document.getElementById('conversation').innerHTML = data.conversation;
-          scrollToBottom();
-        });
-        socket.on("update_confirmation", function(data) {
-          document.getElementById('confirmation').innerText = data.confirmation_message || "No confirmation needed.";
-          var confirmationForm = document.getElementById('confirmation_form');
-          if (data.confirmation_message) {
-            confirmationForm.style.display = 'block';
-          } else {
-            confirmationForm.style.display = 'none';
-          }
-          scrollToBottom();
-        });
-
-        const confirmationForm = document.getElementById('confirmation_form');
-        confirmationForm.addEventListener('submit', function(event) {
-          event.preventDefault();  // Prevent the form from submitting traditionally
-          const confirmation = confirmationForm.elements['confirmation'].value;
-          socket.emit('confirm', { confirmation: confirmation });
-          confirmationForm.elements['confirmation'].value = '';  // Clear the input
-        });
-
-        function scrollToBottom() {
-          window.scrollTo(0, document.body.scrollHeight);
-        }
-      });
-    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/static/agent.js"></script>
   </head>
   <body>
     <h1>Agent Server Interface</h1>
-    <div id="conversation">{% if conversation %}
-      {% for message in conversation %}
-        <div class="message">
-          <p class="role">{{ message.role }}:</p>
-          <div class="content">
-            <pre>{{ message.content|escape }}</pre>
-          </div>
-        </div>
-      {% endfor %}
-    {% else %}
-      No conversation yet.
-    {% endif %}</div>
-    <div id="confirmation">{{ confirmation_message or "No confirmation needed." }}</div>
-    <form id="confirmation_form" style="display: {{ 'block' if confirmation_message else 'none' }};">
-      <input type="text" name="confirmation" placeholder="Enter confirmation..."><br>
-      <input type="submit" value="Submit Confirmation">
+    <div id="conversation"></div>
+    <div id="confirmation"></div>
+    <form id="confirmation_form" style="display: block;">
+      <input type="text" name="confirmation" placeholder="Confirmation…"><br>
+      <input id="confirmButton" type="submit" value="Confirm">
     </form>
   </body>
 </html>
@@ -115,29 +53,18 @@ def parse_arguments() -> argparse.Namespace:
   return parser.parse_args()
 
 
-@app.route("/", methods=["GET", "POST"])
+def UpdatePage(agent_loop: AgentLoop, confirmation_required: bool) -> None:
+  logging.info(f"Computing data.")
+  data = {
+      'confirmation_required': confirmation_required,
+      'conversation': agent_loop.options.messages
+  }
+  socketio.emit('update', data)
+
+
+@app.route("/", methods=["GET"])
 def interact():
-  global agent_loop_instance, confirmation_manager
-  if request.method == "POST":
-    prompt = request.form.get("prompt")
-    if agent_loop_instance:
-      agent_loop_instance.options.messages.append({
-          'role': 'user',
-          'content': prompt
-      })
-      socketio.emit('update_conversation',
-                    {'conversation': agent_loop_instance.options.messages})
-
-  conversation = agent_loop_instance.options.messages if agent_loop_instance else []
-
-  confirmation_message = confirmation_manager.get_pending_message()
-  socketio.emit('update_confirmation',
-                {'confirmation_message': confirmation_message})
-  return render_template_string(
-      HTML_TEMPLATE,
-      styles=CSS_STYLES,
-      conversation=conversation,
-      confirmation_message=confirmation_message)
+  return HTML_TEMPLATE
 
 
 def start_agent_loop(args: argparse.Namespace) -> None:
@@ -154,18 +81,27 @@ def start_agent_loop(args: argparse.Namespace) -> None:
   Thread(target=agent_loop_instance.run).start()
 
 
-def run_server():
+def run_server() -> None:
   args = parse_arguments()
   start_agent_loop(args)
 
   @socketio.on('confirm')
-  def handle_confirmation(data):
-    global confirmation_manager
-    confirmation = data.get('confirmation')
-    confirmation_manager.provide_confirmation(confirmation)
-    socketio.emit(
-        'update_confirmation',
-        {'confirmation_message': confirmation_manager.get_pending_message()})
+  def handle_confirmation(data) -> None:
+    logging.info("Received confirmation.")
+    global agent_loop_instance, confirmation_manager
+    if agent_loop_instance:
+      UpdatePage(agent_loop_instance, False)
+    confirmation_manager.provide_confirmation(data.get('confirmation'))
+
+  @socketio.on('request_update')
+  def start_update(data) -> None:
+    logging.info("Received: request_update.")
+    global agent_loop_instance, confirmation_manager
+    if agent_loop_instance:
+      UpdatePage(agent_loop_instance,
+                 confirmation_manager.get_pending_message() is not None)
+    else:
+      logging.info("No agent loop instance!")
 
   socketio.run(app, port=args.port)
 

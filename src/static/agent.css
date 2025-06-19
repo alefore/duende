@@ -1,0 +1,18 @@
+body {
+  overflow-y: scroll; /* Always show vertical scrollbar */
+}
+
+.message {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.message .role {
+  font-weight: bold;
+}
+
+pre {
+  white-space: pre-wrap;
+  margin: 0; /* Remove default margin */
+}

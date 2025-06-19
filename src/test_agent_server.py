@@ -26,19 +26,8 @@ class TestAgentServer(unittest.TestCase):
   def test_interact_get(self):
     response = self.app.get('/')
     self.assertEqual(response.status_code, 200)
-    self.assertIn(b"No conversation yet.", response.data)
-
-  @patch('agent_server.agent_loop_instance')
-  def test_interact_post(self, mock_agent_loop_instance):
-    mock_agent_loop_instance.options.messages = []
-
-    response = self.app.post(
-        '/', data={'prompt': 'Test prompt'}, follow_redirects=True)
-    self.assertEqual(response.status_code, 200)
-    self.assertIn({
-        'role': 'user',
-        'content': 'Test prompt'
-    }, mock_agent_loop_instance.options.messages)
+    self.assertIn(b"<div id=\"conversation\"></div>", response.data)
+    self.assertIn(b"<div id=\"confirmation\"></div>", response.data)
 
 
 if __name__ == '__main__':
