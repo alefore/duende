@@ -1,0 +1,12 @@
+For context, start with:
+#read_file src/args_common.py
+#read_file src/command_registry.py
+#read_file src/git_commands.py
+
+When this program starts, if it is running in a git repository with uncommitted
+changes, it crashes (to warn the user).
+
+Your task is to define a boolean command-line argument that, when given, allows
+the program to ignore this condition. In that case, it should conditionally log
+an info statement like: Git repository is dirty; ignoring due to command-line
+flag --git-dirty-accept.

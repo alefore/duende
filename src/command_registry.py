@@ -35,11 +35,11 @@ class CommandRegistry:
     return '\n'.join(cmd.GetDescription() for cmd in self.commands.values())
 
 
-def CreateCommandRegistry(
-    file_access_policy: FileAccessPolicy,
-    validation_manager: Optional[ValidationManager],
-    start_new_task: Callable[[TaskInformation],
-                             CommandOutput]) -> CommandRegistry:
+def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
+                          validation_manager: Optional[ValidationManager],
+                          start_new_task: Callable[[TaskInformation],
+                                                   CommandOutput],
+                          git_dirty_accept: bool = False) -> CommandRegistry:
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
@@ -49,8 +49,13 @@ def CreateCommandRegistry(
   if git_state == GitRepositoryState.CLEAN:
     registry.Register(ResetFileCommand(file_access_policy))
   elif git_state == GitRepositoryState.NOT_CLEAN:
-    print("Error: The repository has uncommitted changes.", file=sys.stderr)
-    sys.exit(1)
+    if git_dirty_accept:
+      print(
+          "Info: The repository has uncommitted changes; ignoring due to command-line flag --git-dirty-accept.",
+          file=sys.stderr)
+    else:
+      print("Error: The repository has uncommitted changes.", file=sys.stderr)
+      sys.exit(1)
 
   if validation_manager:
     registry.Register(ValidateCommand(validation_manager))

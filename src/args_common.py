@@ -51,6 +51,11 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default=False,
       help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI)."
   )
+  parser.add_argument(
+      '--git-dirty-accept',
+      action='store_true',
+      default=False,
+      help="Allow the program to proceed even if the Git repository has uncommitted changes.")
   return parser
 
 
@@ -90,7 +95,8 @@ def CreateAgentLoopOptions(
       start_new_task=lambda task_info: CommandOutput(
           output=[],
           errors=["TaskCommand execution not implemented"],
-          summary="Not implemented"))
+          summary="Not implemented"),
+      git_dirty_accept=args.git_dirty_accept)
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   messages = LoadOrCreateConversation(args.task, conversation_path, registry)
