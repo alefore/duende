@@ -2,6 +2,13 @@ from agent_command import AgentCommand, CommandInput, CommandOutput
 import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
+from enum import Enum, auto
+
+
+class GitRepositoryState(Enum):
+    NOT_A_GIT_REPO = auto()
+    CLEAN = auto()
+    NOT_CLEAN = auto()
 
 
 class ResetFileCommand(AgentCommand):
@@ -50,7 +57,7 @@ class ResetFileCommand(AgentCommand):
         output=[success_message], errors=[], summary=success_message)
 
 
-def EnsureGitRepoIsClean() -> bool:
+def CheckGitRepositoryState() -> GitRepositoryState:
   try:
     # Check if we are inside a git repository
     subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
@@ -64,10 +71,9 @@ def EnsureGitRepoIsClean() -> bool:
           cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
       if result.returncode != 0:
-        print("Error: The repository has uncommitted changes.", file=sys.stderr)
-        sys.exit(1)
+        return GitRepositoryState.NOT_CLEAN
 
-    return True
+    return GitRepositoryState.CLEAN
 
   except subprocess.CalledProcessError:
-    return False
+    return GitRepositoryState.NOT_A_GIT_REPO

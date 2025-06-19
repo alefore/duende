@@ -15,8 +15,9 @@ from select_commands import (
 )
 from select_python import SelectPythonCommand
 from replace_python_command import ReplacePythonCommand
-from git_commands import ResetFileCommand, EnsureGitRepoIsClean
+from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskCommand, CommandOutput, TaskInformation
+import sys
 
 
 class CommandRegistry:
@@ -43,8 +44,13 @@ def CreateCommandRegistry(
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
 
-  if EnsureGitRepoIsClean():
+  git_state = CheckGitRepositoryState()
+
+  if git_state == GitRepositoryState.CLEAN:
     registry.Register(ResetFileCommand(file_access_policy))
+  elif git_state == GitRepositoryState.NOT_CLEAN:
+    print("Error: The repository has uncommitted changes.", file=sys.stderr)
+    sys.exit(1)
 
   if validation_manager:
     registry.Register(ValidateCommand(validation_manager))

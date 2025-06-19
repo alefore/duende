@@ -1,0 +1,16 @@
+The function EnsureGitRepoIsClean has a very ugly interface, it does two things:
+
+- Check if we are inside a git repos.
+- If we are, and the repo is not clean, crash.
+
+Can you improve the interface? Ideally, this function just checks the state and returns a value from an enum, identifying which is the current situation:
+
+1. We are NOT inside a git repository.
+2. We are inside a git repository, and it is clean.
+3. We are inside a git repository, but it is not clean.
+
+Can you change the interface? Maybe rename the function to something more
+meaningful, like CheckGitRepositoryState.
+
+This implies changing the callers (I think there's only one) to handle the
+crashing (if the repository is not clean) at the call site.
