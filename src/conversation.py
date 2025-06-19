@@ -1,31 +1,45 @@
 from typing import List, Dict, Any
 import json
+import logging
+
 
 class Message:
-    def __init__(self, role: str, content: str):
-        self.role = role
-        self.content = content
 
-    def Serialize(self) -> Dict[str, str]:
-        return {'role': self.role, 'content': self.content}
+  def __init__(self, role: str, content: str):
+    self.role = role
+    self.content = content
 
-    @staticmethod
-    def Deserialize(data: Dict[str, Any]) -> 'Message':
-        return Message(role=data['role'], content=data['content'])
+  def Serialize(self) -> Dict[str, str]:
+    return {'role': self.role, 'content': self.content}
+
+  @staticmethod
+  def Deserialize(data: Dict[str, Any]) -> 'Message':
+    return Message(role=data['role'], content=data['content'])
+
 
 class Conversation:
-    def __init__(self):
-        self.messages: List[Message] = []
 
-    def Load(self, data: str) -> None:
-        messages = json.loads(data)
-        self.messages.extend(Message.Deserialize(message) for message in messages)
+  def __init__(self):
+    self.messages: List[Message] = []
 
-    def Save(self) -> str:
-        return json.dumps([message.Serialize() for message in self.messages])
+  @staticmethod
+  def Load(path: str) -> 'Conversation':
+    conversation = Conversation()
+    try:
+      with open(path, 'r') as f:
+        messages = json.load(f)
+        conversation.messages.extend(
+            Message.Deserialize(message) for message in messages)
+    except (FileNotFoundError, json.JSONDecodeError):
+      logging.info("Invalid or missing data. Starting new conversation.")
+    return conversation
 
-    def AddMessage(self, message: Message) -> None:
-        self.messages.append(message)
+  def Save(self, path: str) -> None:
+    with open(path, 'w') as f:
+      json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
-    def GetMessagesList(self) -> List[Message]:
-        return self.messages
+  def AddMessage(self, message: Message) -> None:
+    self.messages.append(message)
+
+  def GetMessagesList(self) -> List[Message]:
+    return self.messages
