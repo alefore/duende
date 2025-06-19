@@ -26,8 +26,9 @@ class WebServerState:
     Thread(target=self.agent_loop.run).start()
 
   def SendUpdate(self, confirmation_required: Optional[bool]) -> None:
-    logging.info(f"Computing data.")
     new_messages = self.agent_loop.options.messages[self.messages_sent:]
+    logging.info(
+        f"Sending: From {self.messages_sent}, count: {len(new_messages)}.")
     if confirmation_required is None:
       confirmation_required = (
           self.confirmation_manager.get_pending_message() is not None)
