@@ -1,4 +1,6 @@
 import argparse
+import random
+import string
 from flask import Flask, request
 from flask_socketio import SocketIO
 import logging
@@ -7,8 +9,14 @@ from args_common import CreateCommonParser
 from agent_loop import LoadOpenAIAPIKey
 from web_server_state import WebServerState
 
+
+def GenerateSecretKey(length=24):
+  # Generate a random secret key
+  return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret!'
+app.config['SECRET_KEY'] = GenerateSecretKey()
 
 HTML_TEMPLATE = """
 <!doctype html>
