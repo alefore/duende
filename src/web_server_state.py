@@ -6,6 +6,7 @@ from threading import Thread
 from args_common import CreateAgentLoopOptions
 from agent_loop import AgentLoop
 from confirmation import AsyncConfirmationManager
+from random_key import GenerateRandomKey
 
 
 class WebServerState:
@@ -15,6 +16,7 @@ class WebServerState:
     self.messages_sent = 0
     self.confirmation_manager = AsyncConfirmationManager(
         self._confirmation_requested)
+    self.session_key = GenerateRandomKey()
 
     try:
       options = CreateAgentLoopOptions(args, self.confirmation_manager)
@@ -34,7 +36,8 @@ class WebServerState:
           self.confirmation_manager.get_pending_message() is not None)
     data = {
         'confirmation_required': confirmation_required,
-        'conversation': new_messages
+        'conversation': new_messages,
+        'session_key': self.session_key
     }
     self.messages_sent += len(new_messages)
     self.socketio.emit('update', data)

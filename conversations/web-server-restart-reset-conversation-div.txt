@@ -1,0 +1,10 @@
+Read src/agent_server.py, src/static/agent.js and src/web_server_state.py for context.
+
+Imagine that the user had the page loaded in a previous run of agent_server and
+the server is restarted with a new task (and thus a new conversation).
+
+When this happens, we should clear the messages already in the page!
+
+So I propose that WebServerState should generate a random string (maybe of
+length 20) at start and include that key in every message. The JavaScript code
+should remember the key and, if the key changes, should remove all elements from  the <div id=conversation>.

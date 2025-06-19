@@ -2,9 +2,17 @@ function scrollToBottom() {
   window.scrollTo(0, document.body.scrollHeight);
 }
 
+let currentSessionKey = null;
+
 function handleUpdate(data) {
   console.log('Starting update');
   console.log(data);
+
+  if (currentSessionKey !== data.session_key) {
+    console.log('Session key changed. Clearing conversation.');
+    $('#conversation').empty();
+    currentSessionKey = data.session_key;
+  }
 
   const $conversation = $('#conversation');
   data.conversation.forEach(message => {
