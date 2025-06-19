@@ -1,8 +1,26 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput
-from typing import List
+from typing import List, Tuple
 import logging
+import os
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
+
+
+def _ListFileDetails(directory,
+                     file_access_policy) -> Tuple[List[str], List[str]]:
+  details: List[str] = []
+  errors: List[str] = []
+  for file in list_all_files(directory, file_access_policy):
+    file_path = os.path.join(directory, file)
+    try:
+      with open(file_path, 'r') as f:
+        lines = f.readlines()
+        line_count = len(lines)
+        byte_count = os.path.getsize(file_path)
+        details.append(f"{file}: {line_count} lines, {byte_count} bytes")
+    except Exception as e:
+      errors.append(f"Error: {file}: Error reading: {str(e)}")
+  return details, errors
 
 
 class ListFilesCommand(AgentCommand):
@@ -29,15 +47,15 @@ class ListFilesCommand(AgentCommand):
     directory = command_input.arguments[0] if command_input.arguments else "."
 
     try:
-      files = list(list_all_files(directory, self.file_access_policy))
+      details, errors = _ListFileDetails(directory, self.file_access_policy)
       return CommandOutput(
           output=[
-              f"Files in '{directory} <<':\n" + "\n".join(files) +
+              f"Files in '{directory} <<':\n" + "\n".join(details) +
               f"\n#end ({directory})\n"
           ],
-          errors=[],
-          summary=f"Listed files in directory '{directory}', matches: {len(files)}"
-      )
+          errors=["\n".join(errors)],
+          summary=(f"Listed files: '{directory}'. Matches: {len(details)}" +
+                   (f", errors: {len(errors)}" if errors else "")))
     except NotADirectoryError:
       return CommandOutput(
           output=[],
