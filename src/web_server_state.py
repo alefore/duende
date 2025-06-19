@@ -43,6 +43,7 @@ class WebServerState:
     data = {
         'confirmation_required': confirmation_required,
         'conversation': new_messages,
+        'message_count': len(self.agent_loop.options.messages),
         'session_key': self.session_key
     }
     self.socketio.emit('update', data)

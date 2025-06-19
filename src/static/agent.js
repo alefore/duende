@@ -4,7 +4,15 @@ function scrollToBottom() {
 
 let currentSessionKey = null;
 
-function handleUpdate(data) {
+function countMessages() {
+  return $('#conversation .message').length;
+}
+
+function requestMessages(socket) {
+  socket.emit('request_update', {message_count: countMessages()});
+}
+
+function handleUpdate(socket, data) {
   console.log('Starting update');
   console.log(data);
 
@@ -45,16 +53,13 @@ function handleUpdate(data) {
   });
 
   $('#confirmButton').prop('disabled', !data.confirmation_required);
+  if (data.message_count > countMessages()) requestMessages(socket);
   scrollToBottom();
-}
-
-function countMessages() {
-  return $('#conversation .message').length;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
   const socket = io();
-  socket.on('update', handleUpdate);
+  socket.on('update', (data) => handleUpdate(socket, data));
 
   const confirmationForm = document.getElementById('confirmation_form');
   confirmationForm.addEventListener('submit', function(event) {
