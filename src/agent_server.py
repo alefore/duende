@@ -1,6 +1,6 @@
 import os
 import argparse
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string
 from flask_socketio import SocketIO, emit
 from threading import Thread
 import logging
@@ -70,6 +70,14 @@ HTML_TEMPLATE = """
           scrollToBottom();
         });
 
+        const confirmationForm = document.getElementById('confirmation_form');
+        confirmationForm.addEventListener('submit', function(event) {
+          event.preventDefault();  // Prevent the form from submitting traditionally
+          const confirmation = confirmationForm.elements['confirmation'].value;
+          socket.emit('confirm', { confirmation: confirmation });
+          confirmationForm.elements['confirmation'].value = '';  // Clear the input
+        });
+
         function scrollToBottom() {
           window.scrollTo(0, document.body.scrollHeight);
         }
@@ -96,7 +104,7 @@ HTML_TEMPLATE = """
       No conversation yet.
     {% endif %}</div>
     <div id="confirmation">{{ confirmation_message or "No confirmation needed." }}</div>
-    <form id="confirmation_form" action="/confirm" method="post" style="display: {{ 'block' if confirmation_message else 'none' }};">
+    <form id="confirmation_form" style="display: {{ 'block' if confirmation_message else 'none' }};">
       <input type="text" name="confirmation" placeholder="Enter confirmation..."><br>
       <input type="submit" value="Submit Confirmation">
     </form>
@@ -137,17 +145,6 @@ def interact():
       confirmation_message=confirmation_message)
 
 
-@app.route("/confirm", methods=["POST"])
-def confirm():
-  global confirmation_manager
-  confirmation = request.form.get("confirmation")
-  confirmation_manager.provide_confirmation(confirmation)
-  socketio.emit(
-      'update_confirmation',
-      {'confirmation_message': confirmation_manager.get_pending_message()})
-  return redirect(url_for('interact'))
-
-
 def start_agent_loop(args: argparse.Namespace) -> None:
   global agent_loop_instance, confirmation_manager
   LoadOpenAIAPIKey(args.api_key)
@@ -165,6 +162,16 @@ def start_agent_loop(args: argparse.Namespace) -> None:
 def run_server():
   args = parse_arguments()
   start_agent_loop(args)
+
+  @socketio.on('confirm')
+  def handle_confirmation(data):
+    global confirmation_manager
+    confirmation = data.get('confirmation')
+    confirmation_manager.provide_confirmation(confirmation)
+    socketio.emit(
+        'update_confirmation',
+        {'confirmation_message': confirmation_manager.get_pending_message()})
+
   socketio.run(app, port=args.port)
 
 
