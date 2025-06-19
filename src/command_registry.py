@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 from agent_command import AgentCommand
 
 from file_access_policy import FileAccessPolicy
@@ -14,8 +14,9 @@ from select_commands import (
     SelectionManager,
 )
 from select_python import SelectPythonCommand
-from replace_python_command import ReplacePythonCommand  # Import new command
+from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, EnsureGitRepoIsClean
+from task_command import TaskCommand, CommandOutput, TaskInformation
 
 
 class CommandRegistry:
@@ -35,7 +36,9 @@ class CommandRegistry:
 
 def CreateCommandRegistry(
     file_access_policy: FileAccessPolicy,
-    validation_manager: Optional[ValidationManager]) -> CommandRegistry:
+    validation_manager: Optional[ValidationManager],
+    start_new_task: Callable[[TaskInformation],
+                             CommandOutput]) -> CommandRegistry:
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
@@ -58,5 +61,7 @@ def CreateCommandRegistry(
 
   registry.Register(SelectPythonCommand(file_access_policy, selection_manager))
   registry.Register(ReplacePythonCommand(file_access_policy))
+
+  registry.Register(TaskCommand(start_new_task))
 
   return registry

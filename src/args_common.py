@@ -3,12 +3,13 @@ import os
 import re
 import sys
 from typing import Optional, Pattern, List, Tuple
-from agent_loop import AgentLoopOptions, CreateCommandRegistry, Message, LoadConversation
+from agent_loop import AgentLoopOptions, Message, LoadConversation
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
-from command_registry import CommandRegistry
+from command_registry import CommandRegistry, CreateCommandRegistry
 from validation import CreateValidationManager
+from task_command import CommandOutput, TaskInformation
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -83,7 +84,13 @@ def CreateAgentLoopOptions(
       raise RuntimeError(
           "Initial validation failed, aborting further operations.")
 
-  registry = CreateCommandRegistry(file_access_policy, validation_manager)
+  registry = CreateCommandRegistry(
+      file_access_policy,
+      validation_manager,
+      start_new_task=lambda task_info: CommandOutput(
+          output=[],
+          errors=["TaskCommand execution not implemented"],
+          summary="Not implemented"))
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   messages = LoadOrCreateConversation(args.task, conversation_path, registry)
