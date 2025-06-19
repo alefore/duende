@@ -1,0 +1,25 @@
+Can you look at src/select_commands.py and improve the messages in the Execute
+method of SelectTextCommand? The AI is very frequently using it wrong. When it
+does, I want to give it very explicit messages.
+
+For example, when access to a file is not allowed, just say that the file was
+not found (don't complicate things for the AI mentioning a "policy"). This would
+also make it easier for the AI to detect that it gave a pattern where it should
+have given a path.
+
+Handle explicitly the case where *fewer* than 3 arguments are given. Say something like: Arguments are missing, expected exactly 3: <path> <start line pattern> <end line pattern>
+
+When more than 3 arguments are given, maybe list them, one per line, like this:
+
+  #select: Too many arguments were given. Expected exactly 3: <path> <start line pattern> <end line pattern>. Found:
+    arg 1 (path): "......"
+    arg 2 (start line pattern): "......"
+    arg 3 (end line pattern): "...."
+    arg 4 (unexpected!): "..."
+    arg 5 (unexpected!) "......"
+
+Also don't hard-code "select" in any string; instead, use self.Name().
+
+The summary string is meant for the human operator, so that one can remain
+relatively concise (you don't need to change it). Only the `output` and `error`
+are meant to be returned to the AI.

@@ -32,21 +32,35 @@ class SelectTextCommand(AgentCommand):
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    if len(command_input.arguments) != 3:
+    if len(command_input.arguments) < 3:
       return CommandOutput(
           output=[],
           errors=[
-              "select requires exactly three arguments: <path> <start_line_content> <end_line_content>."
+              f"Arguments are missing, expected exactly 3: <path> <start line pattern> <end line pattern>."
           ],
-          summary="Select command failed due to incorrect arguments.")
+          summary="Select command failed due to insufficient arguments.")
+
+    if len(command_input.arguments) > 3:
+      error_message = (
+          f"Too many arguments were given. Expected exactly 3: <path> <start line pattern> <end line pattern>. Found:\n"
+      )
+      for i, arg in enumerate(command_input.arguments, start=1):
+        if i <= 3:
+          error_message += f"  arg {i} ({'path' if i == 1 else 'start line pattern' if i == 2 else 'end line pattern'}): \"{arg}\"\n"
+        else:
+          error_message += f"  arg {i} (unexpected!): \"{arg}\"\n"
+      return CommandOutput(
+          output=[],
+          errors=[error_message],
+          summary="Select command failed due to too many arguments.")
 
     path, start_line_pattern, end_line_pattern = command_input.arguments
 
     if not self.file_access_policy.allow_access(path):
       return CommandOutput(
           output=[],
-          errors=[f"Access to '{path}' is not allowed."],
-          summary="Select command access denied.")
+          errors=[f"The file '{path}' was not found."],
+          summary="Select command failed because the file was not found.")
 
     try:
       selection = Selection.FromLinePattern(path, start_line_pattern,
@@ -60,7 +74,7 @@ class SelectTextCommand(AgentCommand):
     except Exception as e:
       return CommandOutput(
           output=[],
-          errors=[f"select: {str(e)}"],
+          errors=[f"{self.Name()}: {str(e)}"],
           summary=f"Select command error: {str(e)}")
 
 
