@@ -145,7 +145,9 @@ def LoadOrCreateConversation(
   else:
     prompt = (
         "You are a coding assistant operating in a command loop environment. "
-        "Use commands prefixed with `#`. "
+        "Send in your response commands prefixed with `#`. "
+        "I will execute those commands and tell you the results. "
+        "Do not hallucinate results on your own. "
         "Anything that is not a command will be relayed to the human.\n\n")
 
     agent_prompt_path = 'agent/prompt.txt'
