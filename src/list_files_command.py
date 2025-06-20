@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from typing import List, Tuple
 import logging
 import os
@@ -67,3 +67,12 @@ class ListFilesCommand(AgentCommand):
           output=[],
           errors=[f"Listing files in {directory}: {e}"],
           summary=f"{self.Name()} command encountered an error.")
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(optional=[
+        Argument(
+            name="directory",
+            arg_type=ArgumentContentType.PATH,
+            description="The directory path to list files from.")
+    ])
