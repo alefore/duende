@@ -1,5 +1,5 @@
 from typing import List, Optional
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from select_python import FindPythonDefinition
@@ -28,6 +28,25 @@ class ReplacePythonCommand(AgentCommand):
         "  Searches in all Python files if no path is provided.\n"
         "  The identifier can be the name of a (top-level) function, class, or method."
     )
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        required=[
+            Argument(
+                name="identifier",
+                arg_type=ArgumentContentType.IDENTIFIER,
+                description="The identifier of the Python element to replace."),
+        ],
+        optional=[
+            Argument(
+                name="path",
+                arg_type=ArgumentContentType.PATH,
+                description="Path to a Python file."),
+        ],
+        multiline=ArgumentMultiline(
+            required=True,
+            description="The new definition of the Python element."))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) < 1 or len(command_input.arguments) > 2:
