@@ -65,8 +65,14 @@ class ReplacePythonCommand(AgentCommand):
     identifier: str = command_input.arguments[0]
     path: Optional[str] = command_input.arguments[1] if len(
         command_input.arguments) == 2 else None
-    matches: List[Selection] = FindPythonDefinition(self.file_access_policy,
-                                                    path, identifier)
+    try:
+      matches: List[Selection] = FindPythonDefinition(self.file_access_policy,
+                                                      path, identifier)
+    except Exception as e:
+      return CommandOutput(
+          output=[],
+          errors=[f"{self.Name()} error: {str(e)}"],
+          summary=f"{self.Name()} error: {str(e)}")
 
     if len(matches) == 0:
       return CommandOutput([],
