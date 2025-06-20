@@ -1,7 +1,7 @@
 from typing import List, Optional
 import logging
 
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from selection_manager import SelectionManager
@@ -26,6 +26,20 @@ class WriteFileCommand(AgentCommand):
             "…\n"
             "#end\n"
             "  Writes the given content to a specified file.")
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        description="Writes the given content to a specified file.",
+        required=[
+            Argument(
+                name="path",
+                arg_type=ArgumentContentType.PATH,
+                description="The file path to write the content to.")
+        ],
+        multiline=ArgumentMultiline(
+            required=True,
+            description="The content to write into the specified file."))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) != 1 or not command_input.multiline_content:

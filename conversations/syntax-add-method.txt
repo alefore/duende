@@ -1,0 +1,26 @@
+Start with: #read_file src/agent_command.py
+
+Look for all subclasses of `AgentCommand` in src/write_file_command.py. For each, add a method that looks like this:
+
+It should look like this:
+
+  @classmethod
+  def Syntax(self) -> CommandSyntax:
+    ... implementation ...
+
+Make sure you:
+
+* Add `Syntax` *above* (before) `Execute`.
+
+* Use `CommandSyntax` as defined in src/agent_command.py. Don't just hallucinate
+it.
+
+* Be careful with the values you use for ArgumentContentType (use the most
+specific possible value (i.e., don't just use STRING for things that are
+paths!)).
+
+* Also make sure to use `repeatable_final` if the last argument
+can be repeated.
+
+To avoid problems, just write the output in one pass with #write_file.
+Immediately after writing, you can issue a #validate command.
