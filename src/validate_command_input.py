@@ -57,7 +57,8 @@ def ValidateCommandInput(syntax: CommandSyntax, input: CommandInput,
     max_args: int = required_count + optional_count
     warnings.append(
         f"Too many arguments provided. "
-        f"Expected a maximum of {max_args}, got {len(input.arguments)}.")
+        f"Expected a maximum of {max_args}, got {len(input.arguments)}. "
+        f"Arguments rejected: {', '.join(input.arguments[max_args:])}")
   else:
     for index, value in enumerate(input.arguments):
       arg: Argument
