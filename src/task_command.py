@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentMultiline, ArgumentContentType
 from typing import NamedTuple, Callable, Optional, List
 import logging
 
@@ -57,3 +57,18 @@ class TaskCommand(AgentCommand):
           output=[],
           errors=[f"Error forking sub-task '{task_info.task_name}': {e}"],
           summary=f"Error executing {self.Name()} command: {e}")
+
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        description="Starts a new conversation with the AI to implement a sub-task. "
+        "Use this for complex commands, where you would like an agent to "
+        "implement a specific smaller change. Include all the information "
+        "you think the AI may need.",
+        optional=[
+            Argument(
+                name="task_name",
+                arg_type=ArgumentContentType.STRING,
+                description="The name of the task")
+        ],
+        multiline=ArgumentMultiline(
+            required=True, description="The specification for the task."))

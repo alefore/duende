@@ -1,0 +1,8 @@
+See src/agent_command.py for context.
+
+I expect all classes of AgentCommand now implement a Syntax method. Look in
+src/read_file_command.py for an example.
+
+Your task is to add the corresponding Syntax method to the AgentCommand class.
+
+Afterwards, run #validate to confirm.

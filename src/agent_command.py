@@ -67,12 +67,20 @@ class AgentCommand(ABC):
   @abstractmethod
   def GetDescription(self) -> str:
     """
-        Returns a string describing what the command does and how to use it.
-        This will be included in a prompt to the AI.
-        """
+    Returns a string describing what the command does and how to use it.
+    This will be included in a prompt to the AI.
+    """
     pass
 
   @abstractmethod
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     """Executes the command with the given CommandInput."""
+    pass
+
+  @abstractmethod
+  def Syntax(self) -> CommandSyntax:
+    """
+    Returns a CommandSyntax object describing the syntax of the command. 
+    This provides an overview of how the command should be structured for proper usage.
+    """
     pass
