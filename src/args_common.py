@@ -12,6 +12,8 @@ from validation import CreateValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
 from conversation import Conversation, Message
+from conversational_ai import ConversationalAI
+from gemini import Gemini
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -60,6 +62,14 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       help="Allow the program to proceed even if the Git repository has uncommitted changes."
   )
   return parser
+
+
+def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
+  if args.model.startswith('gpt'):
+    return ChatGPT(args.api_key, args.model)
+  if args.model.startswith('gemini'):
+    return Gemini(args.api_key, args.model)
+  raise Exception(f"Unknown AI: {args.model}")
 
 
 def CreateAgentLoopOptions(
@@ -117,7 +127,7 @@ def CreateAgentLoopOptions(
       commands_registry=registry,
       confirmation_state=confirmation_state,
       file_access_policy=file_access_policy,
-      conversational_ai=ChatGPT(args.api_key, args.model),
+      conversational_ai=GetConversationalAI(args),
       confirm_regex=confirm_regex,
       confirm_done=args.confirm,
       skip_implicit_validation=args.skip_implicit_validation,

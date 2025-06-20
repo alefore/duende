@@ -44,12 +44,7 @@ class AgentLoop:
         self.conversation)
 
   def run(self) -> None:
-    if not self.conversation.messages:
-      logging.warning("No user message to send; giving up.")
-      return
-
     next_message: Message = self.options.start_message
-
     while True:
       logging.info("Querying ChatGPT...")
       response_message: Message = self.ai_conversation.SendMessage(next_message)
