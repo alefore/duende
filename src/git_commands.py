@@ -61,7 +61,7 @@ class ResetFileCommand(AgentCommand):
     return CommandSyntax(
         repeatable_final=Argument(
             name="path",
-            arg_type=ArgumentContentType.PATH,
+            arg_type=ArgumentContentType.PATH_OUTPUT,
             description="Path to reset to original state."))
 
 

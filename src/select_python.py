@@ -40,7 +40,7 @@ class SelectPythonCommand(AgentCommand):
         optional=[
             Argument(
                 name="path",
-                arg_type=ArgumentContentType.PATH,
+                arg_type=ArgumentContentType.PATH_INPUT,
                 description="Path to a specific Python file to search within.")
         ])
 

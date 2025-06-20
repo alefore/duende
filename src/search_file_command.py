@@ -28,7 +28,7 @@ class SearchFileCommand(AgentCommand):
         ],
         repeatable_final=Argument(
             name="file",
-            arg_type=ArgumentContentType.PATH,
+            arg_type=ArgumentContentType.PATH_INPUT,
             description="Files to search in. If none is given, searches the entire repository."
         ))
 
