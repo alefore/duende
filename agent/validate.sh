@@ -19,6 +19,7 @@ function run_command {
 
 run_command "~/bin/mypy src/agent_cli.py"
 run_command "~/bin/mypy src/agent_server.py"
+run_command "~/bin/mypy src/validate_command_input.py"
 
 for file in src/test_*.py; do
   run_command "${VALIDATE_PYTHON:-python3} $file"
