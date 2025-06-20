@@ -1,0 +1,23 @@
+For context, start with: #read_file src/agent_command.py
+
+Can you create a new file src/validate_command_input.py with a function like this:
+
+  def ValidateCommandInput(syntax : CommandSyntax, input: CommandInput) -> List[str]:
+    ...
+
+It should return a list of strings with warnings when it detects errors.
+
+This command should make sure that command_input fully matches the expectations
+of the syntax. Things to check:
+
+* Are all required arguments provided?
+
+* Does the multiline behavior match?
+
+* Are more arguments given than the command accepts?
+
+Possibly other checks that you can come up with.
+
+Make sure to print the errors with as much detail as possible, since they will
+be given to an AI model. So, for example, omit an error for every specific
+condition (rather than more general errors).
