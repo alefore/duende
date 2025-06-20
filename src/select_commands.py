@@ -32,6 +32,7 @@ class SelectTextCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
+        description="Creates a new selection for the content in the path specified starting at the first line matching a start line regex pattern and ending at the first following line matching an end line regex pattern. The patterns are regular expressions, evaluated using Python's re module. The contents selected will be returned. Use select_overwrite to overwrite the selection with new contents. If your patterns contain spaces, you probably want to put quotes around them.",
         required=[
             Argument("path", ArgumentContentType.PATH_INPUT, "Path to the file."),
             Argument("start line pattern", ArgumentContentType.REGEX,
@@ -108,6 +109,7 @@ class SelectOverwriteCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
+        description="Replaces the contents of the selection (the very last call to #select or similar command) with new contents.",
         multiline=ArgumentMultiline(
             required=True,
             description="New contents to overwrite the current selection."))

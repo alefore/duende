@@ -20,6 +20,7 @@ class SearchFileCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
+        description="Searches for the specific content in specified files (or in all files).",
         required=[
             Argument(
                 name="content",

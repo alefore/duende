@@ -60,10 +60,7 @@ class TaskCommand(AgentCommand):
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
-        description="Starts a new conversation with the AI to implement a sub-task. "
-        "Use this for complex commands, where you would like an agent to "
-        "implement a specific smaller change. Include all the information "
-        "you think the AI may need.",
+        description="Starts a new conversation with the AI asking it to implement a sub-task. Use this for complex commands, where you would like an agent to implement a specific smaller change. In the specification, include all information you think the AI may need. Some additional information (about the environment) will be included.",
         optional=[
             Argument(
                 name="task_name",

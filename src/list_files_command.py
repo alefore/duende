@@ -70,9 +70,11 @@ class ListFilesCommand(AgentCommand):
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
-    return CommandSyntax(optional=[
-        Argument(
-            name="directory",
-            arg_type=ArgumentContentType.PATH_INPUT,
-            description="The directory path to list files from.")
-    ])
+    return CommandSyntax(
+        description="Lists all files in the given directory (or the top-level if none is specified).",
+        optional=[
+            Argument(
+                name="directory",
+                arg_type=ArgumentContentType.PATH_INPUT,
+                description="The directory path to list files from.")
+        ])

@@ -17,12 +17,14 @@ class ReadFileCommand(AgentCommand):
 
   @classmethod
   def Syntax(self) -> CommandSyntax:
-    return CommandSyntax(required=[
-        Argument(
-            name="path",
-            arg_type=ArgumentContentType.PATH_INPUT,
-            description="The path of the file to be read.")
-    ])
+    return CommandSyntax(
+        description="Outputs the contents of a file.",
+        required=[
+            Argument(
+                name="path",
+                arg_type=ArgumentContentType.PATH_INPUT,
+                description="The path of the file to be read.")
+        ])
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) != 1:

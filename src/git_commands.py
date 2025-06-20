@@ -59,6 +59,7 @@ class ResetFileCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
+        description="Resets files to their original state. AI can use this to reset files it accidentally broke.",
         repeatable_final=Argument(
             name="path",
             arg_type=ArgumentContentType.PATH_OUTPUT,

@@ -32,6 +32,7 @@ class ReplacePythonCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
+        description="Replaces the definition of the identifier in the specified Python file. Searches in all Python files if no path is provided. The identifier can be the name of a (top-level) function, class, or method.",
         required=[
             Argument(
                 name="identifier",

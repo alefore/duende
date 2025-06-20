@@ -1,0 +1,15 @@
+BEFORE ANYTHING ELSE, do this: #read_file src/agent_command.py
+
+Your task: Find any subclasses of AgentCommand in src/git_commands.py. Rewrite
+the `Syntax` method of any such classes such that the English text information
+from the `GetHelp` method is included in the `description` field of the returned
+`CommandSyntax`.
+
+Do NOT include the information about the arguments syntax; that is already made
+explicit in the structure returned by the `Syntax` method. Your task only
+concerns the simple English-text description of what the command does.
+
+Feel free to rewrite the description somewhat if you want to make sure it
+references the appropriate names of arguments.
+
+Good luck!

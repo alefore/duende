@@ -19,7 +19,7 @@ class ValidateCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
-        description="Executes validation script to verify code integrity.")
+        description="Executes validation script to verify code integrity. Recommended to run this command after making changes.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     result = self.validation_manager.Validate()
