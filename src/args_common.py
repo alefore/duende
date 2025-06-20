@@ -55,7 +55,8 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       '--git-dirty-accept',
       action='store_true',
       default=False,
-      help="Allow the program to proceed even if the Git repository has uncommitted changes.")
+      help="Allow the program to proceed even if the Git repository has uncommitted changes."
+  )
   return parser
 
 
@@ -109,9 +110,11 @@ def CreateAgentLoopOptions(
       conversation_path=conversation_path,
       model=args.model,
       messages=messages,
-      confirmation_state=confirmation_state,
       commands_registry=registry,
+      confirmation_state=confirmation_state,
+      file_access_policy=file_access_policy,
       confirm_regex=confirm_regex,
+      confirm_done=args.confirm,
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager)
 

@@ -1,0 +1,21 @@
+Before doing anything else, do this:
+
+#read_file src/validate_command_input.py
+#select_python _execute_commands
+
+We've implemented ValidateCommandInput that receives a command's expected syntax
+and an actual invocation to the command. It returns warnings if the arguments
+don't match the expectations.
+
+Can you modify _execute_commands to validate the commands?
+
+To get the syntax of a command (as returned from the command_registry), you can
+do:
+
+  command.Syntax()
+
+If ValidateCommandInput returns any warnings, add them to the output (and don't
+run the command).
+
+While at it, if you can simplify _execute_commands, that may be worth it. It's
+not particularly elegant.

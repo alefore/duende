@@ -17,6 +17,7 @@ from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
                                 CompositeFileAccessPolicy)
 from list_files import list_all_files
 from parsing import ExtractCommands
+from validate_command_input import ValidateCommandInput
 
 logging.basicConfig(level=logging.INFO)
 
@@ -37,6 +38,7 @@ class AgentLoopOptions(NamedTuple):
   messages: List[Message]
   commands_registry: CommandRegistry
   confirmation_state: ConfirmationState
+  file_access_policy: FileAccessPolicy
   confirm_regex: Optional[Pattern] = None
   confirm_done: bool = False
   skip_implicit_validation: bool = False
@@ -124,7 +126,7 @@ class AgentLoop:
         if cmd_input.command_name == "done":
           if self.options.confirm_done:
             guidance = self.options.confirmation_state.RequireConfirmation(
-                "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue. "
+                "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue."
             )
             if guidance:
               print("Your guidance will be sent to the AI.")
@@ -140,6 +142,12 @@ class AgentLoop:
           output = f"Unknown command: {cmd_input.command_name}"
           logging.error(output)
           all_output.append(output)
+          continue
+
+        warnings = ValidateCommandInput(command.Syntax(), cmd_input,
+                                        self.options.file_access_policy)
+        if warnings:
+          all_output.extend(f"Warning: {warning}" for warning in warnings)
           continue
 
         command_output = command.Execute(cmd_input)
