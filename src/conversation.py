@@ -19,7 +19,7 @@ class Message:
 
 class Conversation:
 
-  def __init__(self):
+  def __init__(self) -> None:
     self.messages: List[Message] = []
 
   @staticmethod
