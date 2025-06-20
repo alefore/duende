@@ -31,8 +31,6 @@ class ListFilesCommand(AgentCommand):
   def Name(self) -> str:
     return "list_files"
 
-  def GetDescription(self) -> str:
-    return f"#{self.Name()} [directory]: Lists all files in the given directory (or the top-level if none is specified)."
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) > 1:

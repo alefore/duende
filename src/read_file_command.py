@@ -12,8 +12,6 @@ class ReadFileCommand(AgentCommand):
   def Name(self) -> str:
     return "read_file"
 
-  def GetDescription(self) -> str:
-    return f"#{self.Name()} <path>: Outputs the contents of a file."
 
   @classmethod
   def Syntax(self) -> CommandSyntax:

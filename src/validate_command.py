@@ -11,10 +11,6 @@ class ValidateCommand(AgentCommand):
   def Name(self) -> str:
     return "validate"
 
-  def GetDescription(self) -> str:
-    return (f"#{self.Name()}: "
-            "Executes validation script to verify code integrity. "
-            "Recommended to run this command after making changes.")
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
