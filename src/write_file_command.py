@@ -34,7 +34,7 @@ class WriteFileCommand(AgentCommand):
         required=[
             Argument(
                 name="path",
-                arg_type=ArgumentContentType.PATH,
+                arg_type=ArgumentContentType.PATH_OUTPUT,
                 description="The file path to write the content to.")
         ],
         multiline=ArgumentMultiline(
