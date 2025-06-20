@@ -19,13 +19,6 @@ class WriteFileCommand(AgentCommand):
   def Name(self) -> str:
     return "write_file"
 
-  def GetDescription(self) -> str:
-    return (f"#{self.Name()} <path> <<\n"
-            "line0\n"
-            "line1\n"
-            "…\n"
-            "#end\n"
-            "  Writes the given content to a specified file.")
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
