@@ -41,7 +41,8 @@ def _ValidatePathArg(
 def ValidateCommandInput(syntax: CommandSyntax, input: CommandInput,
                          file_access_policy: FileAccessPolicy) -> List[str]:
   warnings: List[str] = list(
-      _ValidateMultilineInfo(syntax.multiline, bool(input.multiline_content)))
+      _ValidateMultilineInfo(syntax.multiline, input.multiline_content
+                             is not None))
 
   required_count: int = len(syntax.required)
   optional_count: int = len(syntax.optional)
