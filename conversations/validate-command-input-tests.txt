@@ -1,0 +1,8 @@
+Please read src/validate_command_input.py and give me a list of unit tests to
+add for ValidateCommandInput that cover the majority of situations.
+
+You'll probably also want to read files src/agent_command.py and
+src/file_access_policy.py.
+
+In your tests, prefer using real instances of FileAccessPolicy (rather than
+mocks).
