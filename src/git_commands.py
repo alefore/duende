@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
@@ -6,9 +6,9 @@ from enum import Enum, auto
 
 
 class GitRepositoryState(Enum):
-    NOT_A_GIT_REPO = auto()
-    CLEAN = auto()
-    NOT_CLEAN = auto()
+  NOT_A_GIT_REPO = auto()
+  CLEAN = auto()
+  NOT_CLEAN = auto()
 
 
 class ResetFileCommand(AgentCommand):
@@ -55,6 +55,14 @@ class ResetFileCommand(AgentCommand):
     success_message = f"Reset files: {', '.join(paths)}"
     return CommandOutput(
         output=[success_message], errors=[], summary=success_message)
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        repeatable_final=Argument(
+            name="path",
+            arg_type=ArgumentContentType.PATH,
+            description="Path to reset to original state."))
 
 
 def CheckGitRepositoryState() -> GitRepositoryState:
