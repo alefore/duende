@@ -41,6 +41,9 @@ class ArgumentMultiline(NamedTuple):
 class CommandSyntax(NamedTuple):
   """Defines the syntax structure for an AgentCommand."""
 
+  # A brief (one to three sentences) general description of the command.
+  description: str = ''
+
   # A list of required arguments for the command.
   required: List[Argument] = []
 
