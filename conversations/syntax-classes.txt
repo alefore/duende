@@ -1,0 +1,14 @@
+Start with #read_file src/agent_command.py for context.
+
+Can you define a structure (namedtuples + series of enums) that can be used by implementations of AgentCommand to return their syntax? I think it should express:
+
+• Whether the command accepts or requires (or neither) multiline-content (and a brief text description of the semantics)
+• A list of required arguments. For each required argument, it's semantics: whether it is a path, a regular expression, a Python identifier or something else. Also a name and a brief text description of the semantics.
+• A list of positional optional arguments. They all come after the required arguments.
+• An optional final (i.e. at the end) argument which can be repeated (for example, for commands that can accept many files).
+
+I intend to use this structure to force commands to declare their syntax. This will allow me to improve parsing and centralize syntax error detection.
+
+Make sure to leave good comments on this class, so that in the future another AI execution inspecting it can quickly understand the purpose of each field.
+
+For now, I want you only to declare this structure, maybe directly in src/agent_command.py (before class AgentCommand). Don't hook it to anything yet. We'll add a `Syntax` method returning this to each command in the future.

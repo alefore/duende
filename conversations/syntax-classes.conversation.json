@@ -1,0 +1,88 @@
+{
+  "conversation": [
+    {
+      "role": "system",
+      "content": "You are a coding assistant operating in a command loop environment. Use commands prefixed with `#`. Anything that is not a command will be relayed to the human.\n\nMethod and top-level function names should be written in CamelCase (e.g., ReadFile).\nPreserving existing functionality is more important than adding new features. Don't delete existing tests unless explicitly told to (or if they directly clash with the new feature).\n\n\nStart with #read_file src/agent_command.py for context.\n\nCan you define a structure (namedtuples + series of enums) that can be used by implementations of AgentCommand to return their syntax? I think it should express:\n\n\u2022 Whether the command accepts or requires (or neither) multiline-content (and a brief text description of the semantics)\n\u2022 A list of required arguments. For each required argument, it's semantics: whether it is a path, a regular expression, a Python identifier or something else. Also a name and a brief text description of the semantics.\n\u2022 A list of positional optional arguments. They all come after the required arguments.\n\u2022 An optional final (i.e. at the end) argument which can be repeated (for example, for commands that can accept many files).\n\nI intend to use this structure to force commands to declare their syntax. This will allow me to improve parsing and centralize syntax error detection.\n\nMake sure to leave good comments on this class, so that in the future another AI execution inspecting it can quickly understand the purpose of each field.\n\nFor now, I want you only to declare this structure, maybe directly in src/agent_command.py (before class AgentCommand). Don't hook it to anything yet. We'll add a `Syntax` method returning this to each command in the future.\n\n\nSome commands accept multi-line information, like this:\n\n#write_file foo.py <<\nline0\nline1\n\u2026\n#end\n\nWhen you're done (or if you get stuck), issue #done to notify the human and stop this conversation.\n\nAnything sent outside of commands will be treated as plain text.\n\nYou can send many commands per message. For example, if you want to read 5 files, you can issue 5 #read_file commands at once.\n\nAvailable commands:\n#read_file <path>: Outputs the contents of a file.\n#list_files [directory]: Lists all files in the given directory (or the top-level if none is specified).\n#reset_file file0 [file1 file2 \u2026]: Resets files to their original state. AI can use this to reset files it accidentally broke.\n#validate: Executes validation script to verify code integrity. Recommended to run this command after making changes.\n#write_file <path> <<\nline0\nline1\n\u2026\n#end\n  Writes the given content to a specified file.\n#search <content> [file1 file2 \u2026]: Searches for the specific <content> in specified files (or in all files).\n#select <path> <start line pattern> <end line pattern>: Creates a new selection for the content in the path specified starting at the first line matching <start line pattern> (a regex) and ending at the first following line matching <end line pattern> (a regex). The patterns are regular expressions, evaluated using Python's re module. The contents selected will be returned. Use select_overwrite to overwrite the selection with new contents. If your patterns contain spaces, you probably want to put quotes around them (e.g., #select my_foo.py 'def Foo' 'def Blah(').\n#select_overwrite <<\n\u2026 new contents \u2026\n(multiple lines) \u2026\n#end\n  Replaces the contents of the selection (the very last call to #select or similar command) with new contents.\n#select_python <identifier> [path]: Selects the definition of the identifier in the specified Python file, or searches all Python files if no path is provided. The identifier can be the name of a (top-level) function, the name of a class, or the name of a method. The entire definition (body) will be selected.\n#replace_python <identifier> [path] <<\nnew definition line 0\nline 1\n...\n#end\n  Replaces the definition of the identifier in the specified Python file.\n  Searches in all Python files if no path is provided.\n  The identifier can be the name of a (top-level) function, class, or method.\n#task [task_name] <<\ntask spec \u2026\nspec line 1\n\u2026\n#end\n  Starts a new conversation with the AI asking it to implement a sub-task. Use this for complex commands, where you would like an agent to implement a specific smaller change. In the specification, include all information you think the AI may need. Some additional information (about the environment) will be included."
+    },
+    {
+      "role": "assistant",
+      "content": "#read_file src/agent_command.py"
+    },
+    {
+      "role": "user",
+      "content": "#read_file src/agent_command.py <<\nfrom abc import ABC, abstractmethod\nfrom typing import List, NamedTuple, Optional\n\n\nclass CommandOutput(NamedTuple):\n  output: List[str]\n  errors: List[str]\n  summary: str\n\n\nclass CommandInput(NamedTuple):\n  command_name: str\n  arguments: List[str]\n  # multiline_content does not include newline characters.\n  multiline_content: Optional[List[str]] = None\n\n\nclass AgentCommand(ABC):\n\n  @abstractmethod\n  def Name(self) -> str:\n    \"\"\"Returns the name of the command.\"\"\"\n    pass\n\n  @abstractmethod\n  def GetDescription(self) -> str:\n    \"\"\"\n        Returns a string describing what the command does and how to use it.\n        This will be included in a prompt to the AI.\n        \"\"\"\n    pass\n\n  @abstractmethod\n  def Execute(self, command_input: CommandInput) -> CommandOutput:\n    \"\"\"Executes the command with the given CommandInput.\"\"\"\n    pass\n\n#end (src/agent_command.py)"
+    },
+    {
+      "role": "assistant",
+      "content": "#write_file src/agent_command.py <<\nfrom abc import ABC, abstractmethod\nfrom typing import List, NamedTuple, Optional\nfrom collections import namedtuple\nfrom enum import Enum, auto\n\n\nclass CommandOutput(NamedTuple):\n  output: List[str]\n  errors: List[str]\n  summary: str\n\n\nclass CommandInput(NamedTuple):\n  command_name: str\n  arguments: List[str]\n  # multiline_content does not include newline characters.\n  multiline_content: Optional[List[str]] = None\n\n\nclass MultilineContentBehavior(Enum):\n    NONE = auto()  # The command does not accept multiline content.\n    OPTIONAL = auto()  # The command accepts multiline content but does not require it.\n    REQUIRED = auto()  # The command requires multiline content.\n\n\nclass ArgumentType(Enum):\n    PATH = auto()\n    REGEX = auto()\n    IDENTIFIER = auto()\n    STRING = auto()\n    OTHER = auto()\n\n\nArgument = namedtuple('Argument', ['name', 'arg_type', 'description'])\n\n\nclass CommandSyntax(NamedTuple):\n    multiline_behavior: MultilineContentBehavior\n    multiline_description: Optional[str] = None\n    required_arguments: List[Argument] = []\n    optional_arguments: List[Argument] = []\n    repeatable_final_argument: Optional[Argument] = None\n\n\nclass AgentCommand(ABC):\n\n  @abstractmethod\n  def Name(self) -> str:\n    \"\"\"Returns the name of the command.\"\"\"\n    pass\n\n  @abstractmethod\n  def GetDescription(self) -> str:\n    \"\"\"\n        Returns a string describing what the command does and how to use it.\n        This will be included in a prompt to the AI.\n        \"\"\"\n    pass\n\n  @abstractmethod\n  def Execute(self, command_input: CommandInput) -> CommandOutput:\n    \"\"\"Executes the command with the given CommandInput.\"\"\"\n    pass\n\n#end\n#validate"
+    },
+    {
+      "role": "user",
+      "content": "#write_file src/agent_command.py: Success with 64 lines written.\n#validate: Success (all checks passed)."
+    },
+    {
+      "role": "assistant",
+      "content": "#done"
+    },
+    {
+      "role": "user",
+      "content": "Message from human: Can you rewrite Argument as a class that extends NamedTuple, adding static typing annotations?"
+    },
+    {
+      "role": "assistant",
+      "content": "#write_file src/agent_command.py <<\nfrom abc import ABC, abstractmethod\nfrom typing import List, NamedTuple, Optional\nfrom collections import namedtuple\nfrom enum import Enum, auto\n\n\nclass CommandOutput(NamedTuple):\n  output: List[str]\n  errors: List[str]\n  summary: str\n\n\nclass CommandInput(NamedTuple):\n  command_name: str\n  arguments: List[str]\n  # multiline_content does not include newline characters.\n  multiline_content: Optional[List[str]] = None\n\n\nclass MultilineContentBehavior(Enum):\n    NONE = auto()  # The command does not accept multiline content.\n    OPTIONAL = auto()  # The command accepts multiline content but does not require it.\n    REQUIRED = auto()  # The command requires multiline content.\n\n\nclass ArgumentType(Enum):\n    PATH = auto()\n    REGEX = auto()\n    IDENTIFIER = auto()\n    STRING = auto()\n    OTHER = auto()\n\n\nclass Argument(NamedTuple):\n    name: str\n    arg_type: ArgumentType\n    description: str\n\n\nclass CommandSyntax(NamedTuple):\n    multiline_behavior: MultilineContentBehavior\n    multiline_description: Optional[str] = None\n    required_arguments: List[Argument] = []\n    optional_arguments: List[Argument] = []\n    repeatable_final_argument: Optional[Argument] = None\n\n\nclass AgentCommand(ABC):\n\n  @abstractmethod\n  def Name(self) -> str:\n    \"\"\"Returns the name of the command.\"\"\"\n    pass\n\n  @abstractmethod\n  def GetDescription(self) -> str:\n    \"\"\"\n        Returns a string describing what the command does and how to use it.\n        This will be included in a prompt to the AI.\n        \"\"\"\n    pass\n\n  @abstractmethod\n  def Execute(self, command_input: CommandInput) -> CommandOutput:\n    \"\"\"Executes the command with the given CommandInput.\"\"\"\n    pass\n\n#end\n#validate"
+    },
+    {
+      "role": "user",
+      "content": "#write_file src/agent_command.py: Success with 67 lines written.\n#validate: Success (all checks passed)."
+    },
+    {
+      "role": "assistant",
+      "content": "#done"
+    },
+    {
+      "role": "user",
+      "content": "Message from human: Please add comments to each field in CommandSyntax. I'm afraid that an AI like gpt-4 can get confused about their meaning otherwise. Also, instead of MultilineContentBehavior let's define a MultilineArgument class (extending NamedTuple) with two fields: bool required (default to true) and description. Then simplify CommandSyntax accordingly."
+    },
+    {
+      "role": "assistant",
+      "content": "#write_file src/agent_command.py <<\nfrom abc import ABC, abstractmethod\nfrom typing import List, NamedTuple, Optional\nfrom collections import namedtuple\nfrom enum import Enum, auto\n\n\nclass CommandOutput(NamedTuple):\n  output: List[str]\n  errors: List[str]\n  summary: str\n\n\nclass CommandInput(NamedTuple):\n  command_name: str\n  arguments: List[str]\n  # multiline_content does not include newline characters.\n  multiline_content: Optional[List[str]] = None\n\n\nclass ArgumentType(Enum):\n    PATH = auto()\n    REGEX = auto()\n    IDENTIFIER = auto()\n    STRING = auto()\n    OTHER = auto()\n\n\nclass Argument(NamedTuple):\n    \"\"\"Defines an argument with a name, type, and description.\"\"\"\n    name: str\n    arg_type: ArgumentType\n    description: str\n\n\nclass MultilineArgument(NamedTuple):\n    \"\"\"Defines a multiline argument with an indicator if it's required and a description.\"\"\"\n    required: bool = True\n    description: str = \"\"\n\n\nclass CommandSyntax(NamedTuple):\n    \"\"\"Defines the syntax structure for an AgentCommand.\"\"\"\n    multiline_argument: Optional[MultilineArgument] = None\n    # An optional multiline argument for the command, if applicable.\n    \n    required_arguments: List[Argument] = []\n    # A list of required arguments for the command. Each argument is defined with its name, type, and description.\n    \n    optional_arguments: List[Argument] = []\n    # A list of optional positional arguments for the command. These come after the required arguments.\n    \n    repeatable_final_argument: Optional[Argument] = None\n    # An optional final argument that can be repeated multiple times (e.g., for commands accepting multiple files).\n\n\nclass AgentCommand(ABC):\n\n  @abstractmethod\n  def Name(self) -> str:\n    \"\"\"Returns the name of the command.\"\"\"\n    pass\n\n  @abstractmethod\n  def GetDescription(self) -> str:\n    \"\"\"\n        Returns a string describing what the command does and how to use it.\n        This will be included in a prompt to the AI.\n        \"\"\"\n    pass\n\n  @abstractmethod\n  def Execute(self, command_input: CommandInput) -> CommandOutput:\n    \"\"\"Executes the command with the given CommandInput.\"\"\"\n    pass\n\n#end\n#validate"
+    },
+    {
+      "role": "user",
+      "content": "#write_file src/agent_command.py: Success with 75 lines written.\n#validate: Success (all checks passed)."
+    },
+    {
+      "role": "assistant",
+      "content": "#done"
+    },
+    {
+      "role": "user",
+      "content": "Message from human: Why do you put the comments *below* the identifiers they describe? Is that standard in Python? It looks very strange to me; I'm used to the comments appearing above the code they describe. Hmm."
+    },
+    {
+      "role": "assistant",
+      "content": "In Python, and in programming in general, it's more common to place comments above the code they describe. This helps in making the code more readable and clear, as the comments can be easily recognized as descriptions for the following code block or section. Let me correct that for you by placing the comments above the respective fields in the `CommandSyntax` class. I'll make the necessary changes."
+    },
+    {
+      "role": "user",
+      "content": "Error: No commands found in response! Use #done if you are done with your task."
+    },
+    {
+      "role": "assistant",
+      "content": "#write_file src/agent_command.py <<\nfrom abc import ABC, abstractmethod\nfrom typing import List, NamedTuple, Optional\nfrom collections import namedtuple\nfrom enum import Enum, auto\n\n\nclass CommandOutput(NamedTuple):\n  output: List[str]\n  errors: List[str]\n  summary: str\n\n\nclass CommandInput(NamedTuple):\n  command_name: str\n  arguments: List[str]\n  # multiline_content does not include newline characters.\n  multiline_content: Optional[List[str]] = None\n\n\nclass ArgumentType(Enum):\n    PATH = auto()\n    REGEX = auto()\n    IDENTIFIER = auto()\n    STRING = auto()\n    OTHER = auto()\n\n\nclass Argument(NamedTuple):\n    \"\"\"Defines an argument with a name, type, and description.\"\"\"\n    name: str\n    arg_type: ArgumentType\n    description: str\n\n\nclass MultilineArgument(NamedTuple):\n    \"\"\"Defines a multiline argument with an indicator if it's required and a description.\"\"\"\n    required: bool = True\n    description: str = \"\"\n\n\nclass CommandSyntax(NamedTuple):\n    \"\"\"Defines the syntax structure for an AgentCommand.\"\"\"\n    \n    # An optional multiline argument for the command, if applicable.\n    multiline_argument: Optional[MultilineArgument] = None\n    \n    # A list of required arguments for the command. Each argument is defined with its name, type, and description.\n    required_arguments: List[Argument] = []\n    \n    # A list of optional positional arguments for the command. These come after the required arguments.\n    optional_arguments: List[Argument] = []\n    \n    # An optional final argument that can be repeated multiple times (e.g., for commands accepting multiple files).\n    repeatable_final_argument: Optional[Argument] = None\n\n\nclass AgentCommand(ABC):\n\n  @abstractmethod\n  def Name(self) -> str:\n    \"\"\"Returns the name of the command.\"\"\"\n    pass\n\n  @abstractmethod\n  def GetDescription(self) -> str:\n    \"\"\"\n        Returns a string describing what the command does and how to use it.\n        This will be included in a prompt to the AI.\n        \"\"\"\n    pass\n\n  @abstractmethod\n  def Execute(self, command_input: CommandInput) -> CommandOutput:\n    \"\"\"Executes the command with the given CommandInput.\"\"\"\n    pass\n\n#end\n#validate"
+    },
+    {
+      "role": "user",
+      "content": "#write_file src/agent_command.py: Success with 76 lines written.\n#validate: Success (all checks passed)."
+    },
+    {
+      "role": "assistant",
+      "content": "#done"
+    },
+    {
+      "role": "user",
+      "content": ""
+    }
+  ]
+}
