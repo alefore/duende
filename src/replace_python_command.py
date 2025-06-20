@@ -41,7 +41,7 @@ class ReplacePythonCommand(AgentCommand):
         optional=[
             Argument(
                 name="path",
-                arg_type=ArgumentContentType.PATH,
+                arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
                 description="Path to a Python file."),
         ],
         multiline=ArgumentMultiline(

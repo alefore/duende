@@ -73,6 +73,6 @@ class ListFilesCommand(AgentCommand):
     return CommandSyntax(optional=[
         Argument(
             name="directory",
-            arg_type=ArgumentContentType.PATH,
+            arg_type=ArgumentContentType.PATH_INPUT,
             description="The directory path to list files from.")
     ])

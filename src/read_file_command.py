@@ -20,7 +20,7 @@ class ReadFileCommand(AgentCommand):
     return CommandSyntax(required=[
         Argument(
             name="path",
-            arg_type=ArgumentContentType.PATH,
+            arg_type=ArgumentContentType.PATH_INPUT,
             description="The path of the file to be read.")
     ])
 

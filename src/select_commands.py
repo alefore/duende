@@ -33,7 +33,7 @@ class SelectTextCommand(AgentCommand):
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
         required=[
-            Argument("path", ArgumentContentType.PATH, "Path to the file."),
+            Argument("path", ArgumentContentType.PATH_INPUT, "Path to the file."),
             Argument("start line pattern", ArgumentContentType.REGEX,
                      "The start line pattern."),
             Argument("end line pattern", ArgumentContentType.REGEX,
