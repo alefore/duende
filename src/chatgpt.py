@@ -13,6 +13,8 @@ class ChatGPTConversation(ConversationalAIConversation):
     self.client = client
     self.model = model
     self.conversation = conversation or Conversation()
+    logging.info(f"Starting conversation, "
+                 f"messages: {len(self.conversation.GetMessagesList())}")
 
   def SendMessage(self, message: Message) -> Message:
     self.conversation.AddMessage(message)
@@ -24,12 +26,15 @@ class ChatGPTConversation(ConversationalAIConversation):
         }) for m in self.conversation.GetMessagesList()
     ]
 
+    logging.info("Sending message to ChatGPT.")
     try:
       response = self.client.chat.completions.create(
           model=self.model, messages=openai_messages)
     except Exception as e:
       logging.exception("Failed to communicate with OpenAI.")
       raise e
+
+    logging.info("Received response from ChatGPT.")
 
     reply_content = response.choices[0].message.content or ""
     reply_message = Message(role="assistant", content=reply_content)

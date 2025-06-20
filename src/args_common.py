@@ -3,7 +3,7 @@ import os
 import re
 import sys
 from typing import Optional, Pattern, List, Tuple
-from agent_loop import AgentLoopOptions, Message, LoadConversation
+from agent_loop import AgentLoopOptions
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
@@ -11,6 +11,7 @@ from command_registry import CommandRegistry, CreateCommandRegistry
 from validation import CreateValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
+from conversation import Conversation, Message
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -101,7 +102,8 @@ def CreateAgentLoopOptions(
       git_dirty_accept=args.git_dirty_accept)
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
-  messages = LoadOrCreateConversation(args.task, conversation_path, registry)
+  conversation, start_message = LoadOrCreateConversation(
+      args.task, conversation_path, registry)
 
   confirmation_state = ConfirmationState(
       confirmation_manager=confirmation_manager,
@@ -110,7 +112,8 @@ def CreateAgentLoopOptions(
   return AgentLoopOptions(
       conversation_path=conversation_path,
       model=args.model,
-      messages=messages,
+      conversation=conversation,
+      start_message=start_message,
       commands_registry=registry,
       confirmation_state=confirmation_state,
       file_access_policy=file_access_policy,
@@ -121,11 +124,15 @@ def CreateAgentLoopOptions(
       validation_manager=validation_manager)
 
 
-def LoadOrCreateConversation(prompt_path: str, conversation_path: str,
-                             registry: CommandRegistry) -> List[Message]:
+def LoadOrCreateConversation(
+    prompt_path: str, conversation_path: str,
+    registry: CommandRegistry) -> Tuple[Conversation, Message]:
 
-  messages = LoadConversation(conversation_path)
-  if not messages:
+  conversation = Conversation.Load(conversation_path)
+  if conversation.messages:
+    next_message = Message(
+        'system', 'The server running this interaction has been restarted.')
+  else:
     prompt = (
         "You are a coding assistant operating in a command loop environment. "
         "Use commands prefixed with `#`. "
@@ -153,9 +160,9 @@ def LoadOrCreateConversation(prompt_path: str, conversation_path: str,
         "For example, if you want to read 5 files, "
         "you can issue 5 #read_file commands at once.\n\n")
     prompt += "Available commands:\n" + registry.HelpText()
-    messages.append({'role': 'system', 'content': prompt})
+    next_message = Message('system', prompt)
 
-  return messages
+  return conversation, next_message
 
 
 def CreateFileAccessPolicy(

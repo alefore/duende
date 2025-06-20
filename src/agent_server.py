@@ -4,7 +4,6 @@ from flask_socketio import SocketIO
 import logging
 
 from args_common import CreateCommonParser
-from agent_loop import LoadOpenAIAPIKey
 from web_server_state import WebServerState
 from random_key import GenerateRandomKey
 
@@ -55,7 +54,6 @@ def SendUpdate(server_state, data):
 
 def run_server() -> None:
   args = parse_arguments()
-  LoadOpenAIAPIKey(args.api_key)
   socketio = SocketIO(app)
   server_state = WebServerState(args, socketio)
 

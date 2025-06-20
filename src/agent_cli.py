@@ -1,6 +1,6 @@
 import argparse
 import logging
-from agent_loop import LoadOpenAIAPIKey, AgentLoop
+from agent_loop import AgentLoop
 from args_common import CreateCommonParser, CreateAgentLoopOptions
 from confirmation import CLIConfirmationManager
 
@@ -16,8 +16,6 @@ def parse_arguments() -> argparse.Namespace:
 
 def main() -> None:
   args: argparse.Namespace = parse_arguments()
-
-  LoadOpenAIAPIKey(args.api_key)
 
   try:
     options = CreateAgentLoopOptions(args, CLIConfirmationManager())

@@ -39,6 +39,7 @@ class Conversation:
       json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
   def AddMessage(self, message: Message) -> None:
+    logging.info(f"Add message: {message}")
     self.messages.append(message)
 
   def GetMessagesList(self) -> List[Message]:
