@@ -1,0 +1,17 @@
+Can you extend ValidateCommandInput to receive a file_access_policy argument (of
+type FileAccessPolicy (see src/file_access_policy.py)), which it should use to
+validate all path arguments?
+
+If the policy doesn't allow an input path: return a file not found error.
+
+If the policy doesn't allow an output or an input_output path: return a
+permission denied error.
+
+Make the errors very descriptive, to increase the probability that the AI that
+receives them will understand what it's doing wrong. But don't mention the
+policy explicitly to the AI (that will likely just confuse it). Specifically,
+mention the name of the parameter that failed and the value that it had.
+
+While at it, also add code that confirms that input paths actually exist (they
+should be relative to the current working directory). If they don't, return the
+same "file not found" error (as if the policy hadn't allowed access).
