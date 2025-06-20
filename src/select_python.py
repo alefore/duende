@@ -1,7 +1,7 @@
 import ast
 from typing import List, Optional, Tuple
 from list_files import list_all_files
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
 
@@ -24,6 +24,25 @@ class SelectPythonCommand(AgentCommand):
         "or searches all Python files if no path is provided. The identifier can "
         "be the name of a (top-level) function, the name of a class, or the name "
         "of a method. The entire definition (body) will be selected.")
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        description=(
+            "Selects the definition of an identifier in a Python file. "
+            "Searches all Python files if no path is given."),
+        required=[
+            Argument(
+                name="identifier",
+                arg_type=ArgumentContentType.IDENTIFIER,
+                description="The name of the identifier to be selected.")
+        ],
+        optional=[
+            Argument(
+                name="path",
+                arg_type=ArgumentContentType.PATH,
+                description="Path to a specific Python file to search within.")
+        ])
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     self.selection_manager.clear_selection()
