@@ -2,7 +2,7 @@ from typing import List, Optional
 import os
 import re  # Import the regex module
 
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
@@ -28,6 +28,17 @@ class SelectTextCommand(AgentCommand):
         "Use select_overwrite to overwrite the selection with new contents. "
         "If your patterns contain spaces, you probably want to put quotes around them (e.g., #select my_foo.py 'def Foo' 'def Blah(')."
     )
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        required=[
+            Argument("path", ArgumentContentType.PATH, "Path to the file."),
+            Argument("start line pattern", ArgumentContentType.REGEX,
+                     "The start line pattern."),
+            Argument("end line pattern", ArgumentContentType.REGEX,
+                     "The end line pattern.")
+        ],)
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     self.selection_manager.clear_selection()
@@ -93,6 +104,13 @@ class SelectOverwriteCommand(AgentCommand):
         f"#{self.Name()} <<\n… new contents …\n(multiple lines) …\n#end\n"
         "  Replaces the contents of the selection (the very last call to #select or similar command) with new contents."
     )
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        multiline=ArgumentMultiline(
+            required=True,
+            description="New contents to overwrite the current selection."))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if not command_input.multiline_content:
