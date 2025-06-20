@@ -1,5 +1,5 @@
 import subprocess
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax
 from validation import ValidationManager
 
 
@@ -15,6 +15,11 @@ class ValidateCommand(AgentCommand):
     return (f"#{self.Name()}: "
             "Executes validation script to verify code integrity. "
             "Recommended to run this command after making changes.")
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        description="Executes validation script to verify code integrity.")
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     result = self.validation_manager.Validate()
