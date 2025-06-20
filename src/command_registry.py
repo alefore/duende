@@ -1,5 +1,6 @@
 from typing import Dict, Optional, Callable
 from agent_command import AgentCommand
+from agent_command_helpers import HelpText as RenderHelpText
 
 from file_access_policy import FileAccessPolicy
 from validation import ValidationManager
@@ -32,7 +33,10 @@ class CommandRegistry:
     return self.commands.get(name)
 
   def HelpText(self) -> str:
-    return '\n'.join(cmd.GetDescription() for cmd in self.commands.values())
+    all_descriptions = []
+    for command in self.commands.values():
+      all_descriptions.append(RenderHelpText(command.Name(), command.Syntax()))
+    return '\n\n'.join(all_descriptions)
 
 
 def CreateCommandRegistry(file_access_policy: FileAccessPolicy,

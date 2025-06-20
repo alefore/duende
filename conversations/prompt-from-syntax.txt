@@ -1,0 +1,32 @@
+Before you do anything else, do this:
+
+#read_file src/agent_command.py
+#select_python CommandRegistry
+
+Your task is to change the `HelpText` method of class `CommandRegistry` to avoid
+calling the `GetDescription` method of the individual command instances (which I
+want to remove). Instead, we should call the `Syntax` method, which includes the
+same information but in a much better format.
+
+Maybe let's create a function in a new file src/agent_command_helpers.txt with
+this interface:
+
+  def HelpText(syntax : CommandSyntax) -> str
+     """Renders a help string corresponding to the `syntax` object."""
+     ...
+
+Then CommandRegistry's `HelpText` simply uses that function to turn a
+`CommandSyntax` instance into something like:
+
+#some_command path [pattern] [flag...] <<
+multiline description (this info comes from the multiline.description)…
+…
+#end
+  Command some_command does blah blah blah (this info comes from CommandSyntax.description).
+
+
+---
+
+Note in the above how I handled required arguments ("path" in this example),
+optional parameters ("pattern" in this example) and the repeatable_final
+argument ("flag" in the example).

@@ -67,14 +67,6 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  def GetDescription(self) -> str:
-    """
-    Returns a string describing what the command does and how to use it.
-    This will be included in a prompt to the AI.
-    """
-    pass
-
-  @abstractmethod
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     """Executes the command with the given CommandInput."""
     pass
