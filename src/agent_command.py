@@ -18,7 +18,6 @@ class CommandInput(NamedTuple):
 
 
 class ArgumentContentType(Enum):
-  PATH = auto()
   PATH_INPUT = auto()
   PATH_OUTPUT = auto()
   PATH_INPUT_OUTPUT = auto()
