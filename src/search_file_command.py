@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from typing import List, Optional
 import logging
 from file_access_policy import FileAccessPolicy
@@ -16,6 +16,21 @@ class SearchFileCommand(AgentCommand):
 
   def GetDescription(self) -> str:
     return f"#{self.Name()} <content> [file1 file2 …]: Searches for the specific <content> in specified files (or in all files)."
+
+  @classmethod
+  def Syntax(cls) -> CommandSyntax:
+    return CommandSyntax(
+        required=[
+            Argument(
+                name="content",
+                arg_type=ArgumentContentType.STRING,
+                description="The content to search for")
+        ],
+        repeatable_final=Argument(
+            name="file",
+            arg_type=ArgumentContentType.PATH,
+            description="Files to search in. If none is given, searches the entire repository."
+        ))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) < 1:
