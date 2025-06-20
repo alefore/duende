@@ -37,9 +37,11 @@ class ChatGPTConversation(ConversationalAIConversation):
     return reply_message
 
 
-class ChatGPTAI(ConversationalAI):
+class ChatGPT(ConversationalAI):
 
-  def __init__(self, api_key: str, model: str = "gpt-4"):
+  def __init__(self, api_key_path: str, model: str = "gpt-4"):
+    with open(api_key_path, 'r') as f:
+      api_key = f.read().strip()
     self.client = OpenAI(api_key=api_key)
     self.model = model
 

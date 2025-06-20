@@ -18,6 +18,7 @@ from file_access_policy import (FileAccessPolicy, RegexFileAccessPolicy,
 from list_files import list_all_files
 from parsing import ExtractCommands
 from validate_command_input import ValidateCommandInput
+from conversational_ai import ConversationalAI
 
 logging.basicConfig(level=logging.INFO)
 
@@ -39,6 +40,7 @@ class AgentLoopOptions(NamedTuple):
   commands_registry: CommandRegistry
   confirmation_state: ConfirmationState
   file_access_policy: FileAccessPolicy
+  conversational_ai: ConversationalAI
   confirm_regex: Optional[Pattern] = None
   confirm_done: bool = False
   skip_implicit_validation: bool = False

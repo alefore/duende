@@ -10,6 +10,7 @@ from list_files import list_all_files
 from command_registry import CommandRegistry, CreateCommandRegistry
 from validation import CreateValidationManager
 from task_command import CommandOutput, TaskInformation
+from chatgpt import ChatGPT
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -113,6 +114,7 @@ def CreateAgentLoopOptions(
       commands_registry=registry,
       confirmation_state=confirmation_state,
       file_access_policy=file_access_policy,
+      conversational_ai=ChatGPT(args.api_key, args.model),
       confirm_regex=confirm_regex,
       confirm_done=args.confirm,
       skip_implicit_validation=args.skip_implicit_validation,
