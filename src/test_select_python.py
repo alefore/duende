@@ -14,10 +14,6 @@ class TestSelectPythonCommand(unittest.TestCase):
     self.command = SelectPythonCommand(self.file_access_policy,
                                        self.selection_manager)
 
-  def test_get_description(self):
-    description = self.command.GetDescription()
-    self.assertIn("#select_python <identifier> [path]:", description)
-
   def test_execute_with_invalid_arguments(self):
     command_input = CommandInput(command_name="select_python", arguments=[])
     output = self.command.Execute(command_input)

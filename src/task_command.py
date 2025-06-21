@@ -17,17 +17,6 @@ class TaskCommand(AgentCommand):
   def Name(self) -> str:
     return "task"
 
-  def GetDescription(self) -> str:
-    return (
-        f"#{self.Name()} [task_name] <<\ntask spec …\nspec line 1\n…\n#end\n"
-        "  Starts a new conversation with the AI "
-        "asking it to implement a sub-task. "
-        "Use this for complex commands, "
-        "where you would like an agent to implement a specific smaller change. "
-        "In the specification, include all information "
-        "you think the AI may need. "
-        "Some additional information (about the environment) will be included.")
-
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) > 1:
       return CommandOutput(

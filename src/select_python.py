@@ -17,14 +17,6 @@ class SelectPythonCommand(AgentCommand):
   def Name(self) -> str:
     return "select_python"
 
-  def GetDescription(self) -> str:
-    return (
-        f"#{self.Name()} <identifier> [path]: "
-        "Selects the definition of the identifier in the specified Python file, "
-        "or searches all Python files if no path is provided. The identifier can "
-        "be the name of a (top-level) function, the name of a class, or the name "
-        "of a method. The entire definition (body) will be selected.")
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(

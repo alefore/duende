@@ -19,9 +19,6 @@ class ResetFileCommand(AgentCommand):
   def Name(self) -> str:
     return "reset_file"
 
-  def GetDescription(self) -> str:
-    return f"#{self.Name()} file0 [file1 file2 …]: Resets files to their original state. AI can use this to reset files it accidentally broke."
-
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     paths = command_input.arguments
 

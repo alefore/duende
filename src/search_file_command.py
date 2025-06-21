@@ -14,9 +14,6 @@ class SearchFileCommand(AgentCommand):
   def Name(self) -> str:
     return "search"
 
-  def GetDescription(self) -> str:
-    return f"#{self.Name()} <content> [file1 file2 …]: Searches for the specific <content> in specified files (or in all files)."
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(

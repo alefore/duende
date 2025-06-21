@@ -1,0 +1,8 @@
+YOUR TASK: Can you find all the subclasses of AgentCommand and delete their
+`GetDescription` method? That method is now obsolete and should be removed.
+
+Please do not remove any other functionality.
+
+To find places use: #search GetDescription
+
+This will search in all existing files.

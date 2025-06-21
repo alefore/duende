@@ -17,18 +17,6 @@ class ReplacePythonCommand(AgentCommand):
   def Name(self) -> str:
     return "replace_python"
 
-  def GetDescription(self) -> str:
-    return (
-        f"#{self.Name()} <identifier> [path] <<\n"
-        "new definition line 0\n"
-        "line 1\n"
-        "...\n"
-        "#end\n"
-        "  Replaces the definition of the identifier in the specified Python file.\n"
-        "  Searches in all Python files if no path is provided.\n"
-        "  The identifier can be the name of a (top-level) function, class, or method."
-    )
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(

@@ -18,17 +18,6 @@ class SelectTextCommand(AgentCommand):
   def Name(self) -> str:
     return "select"
 
-  def GetDescription(self) -> str:
-    return (
-        f"#{self.Name()} <path> <start line pattern> <end line pattern>: "
-        "Creates a new selection for the content in the path specified starting at the first line matching "
-        "<start line pattern> (a regex) and ending at the first following line matching <end line pattern> (a regex). "
-        "The patterns are regular expressions, evaluated using Python's re module. "
-        "The contents selected will be returned. "
-        "Use select_overwrite to overwrite the selection with new contents. "
-        "If your patterns contain spaces, you probably want to put quotes around them (e.g., #select my_foo.py 'def Foo' 'def Blah(')."
-    )
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -101,12 +90,6 @@ class SelectOverwriteCommand(AgentCommand):
 
   def Name(self) -> str:
     return "select_overwrite"
-
-  def GetDescription(self) -> str:
-    return (
-        f"#{self.Name()} <<\n… new contents …\n(multiple lines) …\n#end\n"
-        "  Replaces the contents of the selection (the very last call to #select or similar command) with new contents."
-    )
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
