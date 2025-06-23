@@ -76,7 +76,7 @@ class TestListFilesCommand(unittest.TestCase):
         command_name="list_files", arguments=[self.temp_dir])
     output = self.command.Execute(command_input)
 
-    actual_output_content = output.output[1:-2]  # Strip header/footer
+    actual_output_content = output.output[1:-1]  # Strip header/footer.
     actual_output_content = [
         line for line in actual_output_content if line.strip()
     ]  # Remove potential empty lines
@@ -97,7 +97,7 @@ class TestListFilesCommand(unittest.TestCase):
 
     self.assertEqual(sorted(actual_output_content), sorted(expected_lines))
     self.assertIn("Matches: 5", output.summary)
-    self.assertEqual(output.errors, [''])
+    self.assertEqual(output.errors, [])
 
   def test_list_files_non_existent_directory(self):
     non_existent_dir = os.path.join(self.temp_dir, "definitely_not_here")
