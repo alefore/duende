@@ -1,0 +1,3 @@
+Improve WriteFileCommand so that it the AI attempts to create a file in a
+directory that doesn't exist, we create the directory (as long as the
+file_access_policy allows the file, of course).

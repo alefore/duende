@@ -1,5 +1,6 @@
 from typing import List, Optional
 import logging
+import os
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
@@ -18,7 +19,6 @@ class WriteFileCommand(AgentCommand):
 
   def Name(self) -> str:
     return "write_file"
-
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
@@ -62,6 +62,10 @@ class WriteFileCommand(AgentCommand):
       selection_invalidated = True
 
     try:
+      directory = os.path.dirname(path)
+      if directory:
+        os.makedirs(directory, exist_ok=True)
+
       with open(path, "w") as f:
         f.write("\n".join(content))
       if self.validation_manager:
