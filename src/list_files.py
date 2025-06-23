@@ -3,7 +3,7 @@ from file_access_policy import FileAccessPolicy
 
 
 def list_all_files(directory: str, file_access_policy: FileAccessPolicy):
-  """Generates all file paths in a directory and its subdirectories, sorted."""
+  """Generates all file paths in a directory and its subdirectories, filtered by the file access policy for output."""
 
   abs_directory = os.path.abspath(directory)
   if not os.path.isdir(abs_directory):

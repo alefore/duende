@@ -31,7 +31,6 @@ class ListFilesCommand(AgentCommand):
   def Name(self) -> str:
     return "list_files"
 
-
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     if len(command_input.arguments) > 1:
       return CommandOutput(
@@ -46,12 +45,15 @@ class ListFilesCommand(AgentCommand):
 
     try:
       details, errors = _ListFileDetails(directory, self.file_access_policy)
+
+      output_lines = [f"Files in '{directory}' <<"]
+      if details:
+        output_lines.extend(details)
+      output_lines.append(f"#end ({directory})")
+
       return CommandOutput(
-          output=[
-              f"Files in '{directory} <<':\n" + "\n".join(details) +
-              f"\n#end ({directory})\n"
-          ],
-          errors=["\n".join(errors)],
+          output=output_lines,
+          errors=errors,
           summary=(f"Listed files: '{directory}'. Matches: {len(details)}" +
                    (f", errors: {len(errors)}" if errors else "")))
     except NotADirectoryError:
@@ -73,6 +75,6 @@ class ListFilesCommand(AgentCommand):
         optional=[
             Argument(
                 name="directory",
-                arg_type=ArgumentContentType.PATH_INPUT,
+                arg_type=ArgumentContentType.PATH_UNVALIDATED,
                 description="The directory path to list files from.")
         ])

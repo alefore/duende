@@ -18,13 +18,14 @@ class CommandInput(NamedTuple):
 
 
 class ArgumentContentType(Enum):
-  PATH_INPUT = auto()
-  PATH_OUTPUT = auto()
-  PATH_INPUT_OUTPUT = auto()
-  REGEX = auto()
   IDENTIFIER = auto()
-  STRING = auto()
   OTHER = auto()
+  PATH_INPUT = auto()
+  PATH_INPUT_OUTPUT = auto()
+  PATH_OUTPUT = auto()
+  PATH_UNVALIDATED = auto()
+  REGEX = auto()
+  STRING = auto()
 
 
 class Argument(NamedTuple):
