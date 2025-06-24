@@ -2,7 +2,7 @@ import argparse
 import os
 import re
 import sys
-from typing import Optional, Pattern, List, Tuple
+from typing import Optional, Pattern, List, Tuple, Callable
 from agent_loop import AgentLoopOptions
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
@@ -74,7 +74,8 @@ def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
 
 def CreateAgentLoopOptions(
     args: argparse.Namespace,
-    confirmation_manager: ConfirmationManager) -> AgentLoopOptions:
+    confirmation_manager: ConfirmationManager,
+    on_message_added_callback: Optional[Callable[[], None]] = None) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
 
   # List files and check if any match the access policy
@@ -113,7 +114,7 @@ def CreateAgentLoopOptions(
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation, start_message = LoadOrCreateConversation(
-      args.task, conversation_path, registry)
+      args.task, conversation_path, registry, on_message_added_callback)
 
   confirmation_state = ConfirmationState(
       confirmation_manager=confirmation_manager,
@@ -136,9 +137,10 @@ def CreateAgentLoopOptions(
 
 def LoadOrCreateConversation(
     prompt_path: str, conversation_path: str,
-    registry: CommandRegistry) -> Tuple[Conversation, Message]:
+    registry: CommandRegistry,
+    on_message_added_callback: Optional[Callable[[], None]] = None) -> Tuple[Conversation, Message]:
 
-  conversation = Conversation.Load(conversation_path)
+  conversation = Conversation.Load(conversation_path, on_message_added_callback)
   if conversation.messages:
     next_message = Message(
         'system', 'The server running this interaction has been restarted.')

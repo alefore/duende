@@ -19,7 +19,11 @@ class WebServerState:
     self.session_key = GenerateRandomKey()
 
     try:
-      options = CreateAgentLoopOptions(args, self.confirmation_manager)
+      options = CreateAgentLoopOptions(
+          args,
+          self.confirmation_manager,
+          on_message_added_callback=lambda: self.SendUpdate(
+              None, confirmation_required=None))
     except RuntimeError as e:
       logging.error(e)
       raise e

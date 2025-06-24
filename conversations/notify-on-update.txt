@@ -1,0 +1,19 @@
+Read the following files:
+* src/agent_loop.py
+* src/args_common.py
+* src/conversation.py
+* src/agent_server.py
+* src/web_server_state.py
+
+Every time the AgentLoop adds a new message to the conversation, we should
+notify the browser. To do this, we should ensure that the method SendUpdate in
+class WebServerState is executed.
+
+Can you make a proposal for how to propagate that signal? What do you think
+would be the cleanest way?
+
+Perhaps we can register listeners on the conversation, perhaps when it gets
+constructed? We would have to propagate the callback that does it through
+CreateAgentLoopOptions.
+
+But maybe there's a different approach that's cleaner?
