@@ -3,6 +3,7 @@ import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
+from typing import List
 
 
 class GitRepositoryState(Enum):
@@ -21,23 +22,7 @@ class ResetFileCommand(AgentCommand):
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     paths = command_input.arguments
-
-    if not paths:
-      return CommandOutput(
-          output=[],
-          errors=[f"No paths provided to {self.Name()}."],
-          summary="Failed to reset files (no arguments)")
-
-    errors = [
-        f"Access to '{path}' is not allowed by the policy." for path in paths
-        if not self.file_access_policy.allow_access(path)
-    ]
-
-    if errors:
-      return CommandOutput(
-          output=[],
-          errors=errors,
-          summary="Error while resetting files due to access policy")
+    errors: List[str] = []
 
     for path in paths:
       try:

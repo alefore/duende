@@ -44,14 +44,6 @@ class SelectCommand(AgentCommand):
     args = command_input.arguments
     args_len = len(args)
 
-    if args_len < 2 or args_len > 3:
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"Incorrect number of arguments. Expected: <path> <start_pattern> [end_pattern]. Received {args_len}."
-          ],
-          summary="Select command failed due to incorrect argument count.")
-
     path = args[0]
     start_line_pattern_raw = args[1]
     end_line_pattern_raw = args[2] if args_len == 3 else start_line_pattern_raw
@@ -62,12 +54,6 @@ class SelectCommand(AgentCommand):
     else:
       start_line_pattern = re.escape(start_line_pattern_raw)
       end_line_pattern = re.escape(end_line_pattern_raw)
-
-    if not self.file_access_policy.allow_access(path):
-      return CommandOutput(
-          output=[],
-          errors=[f"The file '{path}' was not found."],
-          summary="Select command failed because the file was not found.")
 
     try:
       selection = Selection.FromLinePattern(path, start_line_pattern,
@@ -104,11 +90,7 @@ class SelectOverwriteCommand(AgentCommand):
             description="New contents to overwrite the current selection."))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if command_input.multiline_content is None:
-      return CommandOutput(
-          output=[],
-          errors=["select_overwrite requires new contents as multiline input."],
-          summary="Select overwrite failed due to missing content.")
+    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
 
     current_selection = self.selection_manager.get_selection()
 

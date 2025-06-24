@@ -38,19 +38,9 @@ class ReplacePythonCommand(AgentCommand):
             description="The new definition of the Python element."))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if len(command_input.arguments) < 1 or len(command_input.arguments) > 2:
-      return CommandOutput([], [
-          "replace_python requires one or two arguments: <identifier> [path]."
-      ], "Invalid arguments for replace_python command.")
-
-    if command_input.multiline_content is None:
-      return CommandOutput([], [
-          "replace_python requires multiline-content. For example:",
-          "#{self.name} ReadPassword <<", "new definition line 0", "line 1",
-          "line 2", "...", "#end"
-      ], "Replacement content missing.")
-
     identifier: str = command_input.arguments[0]
+    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
+
     path: Optional[str] = command_input.arguments[1] if len(
         command_input.arguments) == 2 else None
     try:

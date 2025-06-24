@@ -108,14 +108,6 @@ class TestListFilesCommand(unittest.TestCase):
     self.assertIn("Directory not found or is not accessible:", output.errors[0])
     self.assertIn("failed due to inaccessible directory.", output.summary)
 
-  def test_list_files_multiple_arguments(self):
-    command_input = CommandInput(
-        command_name="list_files", arguments=["dir1", "dir2"])
-    output = self.command.Execute(command_input)
-    self.assertEqual(output.output, [])
-    self.assertIn("expects at most one argument", output.errors[0])
-    self.assertIn("incorrect argument count", output.summary)
-
   def test_list_files_policy_filters_specific_file_out(self):
     self.file_access_policy.add_denied_path(self.denied_file_path)
 

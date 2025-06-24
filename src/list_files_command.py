@@ -32,15 +32,6 @@ class ListFilesCommand(AgentCommand):
     return "list_files"
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if len(command_input.arguments) > 1:
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"{self.Name()} expects at most one argument: the directory path."
-          ],
-          summary=f"Failed to execute {self.Name()} command due to incorrect argument count."
-      )
-
     directory = command_input.arguments[0] if command_input.arguments else "."
 
     try:

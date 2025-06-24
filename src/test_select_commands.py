@@ -51,17 +51,6 @@ class TestSelectCommands(unittest.TestCase):
     command_output = self.select_literal_cmd.Execute(command_input)
     self.assertGreater(len(command_output.errors), 0)
 
-  def test_select_invalid_arguments(self):
-    command_input = CommandInput('select', arguments=['only_one_argument'])
-    command_output = self.select_literal_cmd.Execute(command_input)
-    self.assertGreater(len(command_output.errors), 0)
-
-  def test_select_file_not_found(self):
-    command_input = CommandInput(
-        'select', arguments=['non_existent_file.txt', 'START', 'END'])
-    command_output = self.select_literal_cmd.Execute(command_input)
-    self.assertGreater(len(command_output.errors), 0)
-
   def test_select_regex(self):
     command_input = CommandInput(
         'select_regex', arguments=['test_file_regex.txt', '^Start.*', '^End.*'])
@@ -77,17 +66,6 @@ class TestSelectCommands(unittest.TestCase):
         "select <<", "Start of the content", "some content here",
         "End of the content", "#end (test_file_regex.txt)"
     ], command_output.output)
-
-  def test_select_access_denied(self):
-    command_input = CommandInput(
-        'select', arguments=['test_file.txt', 'START', 'END'])
-
-    with open("test_file.txt", "w") as f:
-      f.write("START\n")
-
-    self.file_access_policy.allow_access.return_value = False
-    command_output = self.select_literal_cmd.Execute(command_input)
-    self.assertGreater(len(command_output.errors), 0)
 
   def test_select_overwrite_no_selection(self):
     command_input = CommandInput(

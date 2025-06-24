@@ -35,25 +35,10 @@ class WriteFileCommand(AgentCommand):
             description="The content to write into the specified file."))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if len(command_input.arguments) != 1 or not command_input.multiline_content:
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"{self.Name()} expects exactly one argument: the file path and requires content."
-          ],
-          summary=f"{self.Name()} command failed due to incorrect arguments.")
 
     path = command_input.arguments[0]
-    content: List[str] = command_input.multiline_content
+    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
     logging.info(f"Write: {path}")
-
-    if not self.file_access_policy.allow_access(path):
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"Access to '{path}' is not allowed. Only files in the current directory (and subdirectories) can be written to and must satisfy the access policy."
-          ],
-          summary=f"{self.Name()} command access denied.")
 
     selection_invalidated = False
     current_selection = self.selection_manager.get_selection()
@@ -67,11 +52,12 @@ class WriteFileCommand(AgentCommand):
         os.makedirs(directory, exist_ok=True)
 
       with open(path, "w") as f:
-        f.write("\n".join(content))
+        for line in command_input.multiline_content:
+          f.write(f"{line}\n")
       if self.validation_manager:
         self.validation_manager.RegisterChange()
 
-      line_count = len(content)
+      line_count = len(command_input.multiline_content)
       output_msg = f"#{self.Name()} {path}: Success with {line_count} lines written."
       if selection_invalidated:
         output_msg += " Selection invalidated due to write operation on the same file."

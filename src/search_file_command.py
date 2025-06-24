@@ -31,17 +31,8 @@ class SearchFileCommand(AgentCommand):
         ))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if len(command_input.arguments) < 1:
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"Invalid usage, expected: #{command_input.command_name} <search_term> [file1 file2 ...]"
-          ],
-          summary="Search command failed due to insufficient arguments.")
-
-    search_term: str = command_input.arguments[0]
-    specified_files: List[str] = command_input.arguments[1:] if len(
-        command_input.arguments) > 1 else []
+    search_term: str = command_input.arguments.pop(0)
+    specified_files: List[str] = command_input.arguments
     logging.info(
         f"Searching for '{search_term}' in specified files or directory and subdirectories."
     )
