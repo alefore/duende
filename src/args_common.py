@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import re
 import sys
@@ -75,11 +76,14 @@ def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
 def CreateAgentLoopOptions(
     args: argparse.Namespace,
     confirmation_manager: ConfirmationManager,
-    on_message_added_callback: Optional[Callable[[], None]] = None) -> AgentLoopOptions:
+    on_message_added_callback: Optional[Callable[[], None]] = None
+) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
 
   # List files and check if any match the access policy
-  if not list(list_all_files('.', file_access_policy)):
+  matched_files = list(list_all_files('.', file_access_policy))
+  logging.info(f"File matched by access policy: {len(matched_files)}")
+  if not matched_files:
     print("No files match the given file access policy. Aborting execution.")
     sys.exit(1)  # Exit with a non-zero status to indicate failure
 
@@ -136,9 +140,11 @@ def CreateAgentLoopOptions(
 
 
 def LoadOrCreateConversation(
-    prompt_path: str, conversation_path: str,
+    prompt_path: str,
+    conversation_path: str,
     registry: CommandRegistry,
-    on_message_added_callback: Optional[Callable[[], None]] = None) -> Tuple[Conversation, Message]:
+    on_message_added_callback: Optional[Callable[[], None]] = None
+) -> Tuple[Conversation, Message]:
 
   conversation = Conversation.Load(conversation_path, on_message_added_callback)
   if conversation.messages:
