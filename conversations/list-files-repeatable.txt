@@ -1,0 +1,6 @@
+Look at src/list_files_command.py and src/agent_command.py
+
+Can you change ListFilesCommand to use repeatable_final for its argument?
+
+(Obviously, adjust the implementation of the Execute method accordingly; it
+should handle multiple arguments.)
