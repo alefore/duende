@@ -29,7 +29,7 @@ function updateConfirmationUI() {
   }
 }
 
-function sendConfirmation(confirmationMessage) {
+function sendConfirmation(socket, confirmationMessage) {
   socket.emit(
       'confirm',
       {confirmation: confirmationMessage, message_count: countMessages()});
@@ -51,7 +51,7 @@ function saveAutoConfirmState() {
 function maybeAutoConfirm(socket) {
   if (isConfirmationRequired && isAutoConfirmationEnabled) {
     console.log('Automatic confirmation enabled. Sending empty confirmation.');
-    sendConfirmation('');
+    sendConfirmation(socket, '');
   }
   updateConfirmationUI();
 }
@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
-    sendConfirmation(confirmationInput.value);
+    sendConfirmation(socket, confirmationInput.value);
     updateConfirmationUI();
   });
 
