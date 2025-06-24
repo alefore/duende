@@ -1,11 +1,14 @@
 body {
   overflow-y: scroll; /* Always show vertical scrollbar */
+  background-color: #fff;
+  color: #333;
 }
 
 .message {
   border: 1px solid #ccc;
   padding: 10px;
   margin-bottom: 10px;
+  background-color: #f9f9f9;
 }
 
 .message .role {
@@ -36,4 +39,29 @@ pre {
   font-size: 1em;
   resize: none; /* Disable manual resize */
   overflow: hidden; /* Hide scrollbar initially */
+  background-color: #fff;
+  color: #333;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+  }
+
+  .message {
+    border: 1px solid #555;
+    background-color: #2a2a2a;
+  }
+
+  .toggle-link {
+    color: #8ab4f8; /* A lighter blue for dark mode */
+  }
+
+  #confirmation_input {
+    background-color: #333;
+    color: #f0f0f0;
+    border: 1px solid #555;
+  }
 }
