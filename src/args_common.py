@@ -9,12 +9,14 @@ from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmation
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry, CreateCommandRegistry
-from validation import CreateValidationManager
+from validation import CreateValidationManager, ValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
 from conversation import Conversation, Message, MultilineContent
 from conversational_ai import ConversationalAI
 from gemini import Gemini
+from parsing import ExtractCommands
+from validate_command_input import ValidateCommandInput
 
 
 def CreateCommonParser() -> argparse.ArgumentParser:
@@ -117,12 +119,14 @@ def CreateAgentLoopOptions(
       git_dirty_accept=args.git_dirty_accept)
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
-  conversation, start_message = LoadOrCreateConversation(
-      args.task, conversation_path, registry, on_message_added_callback)
 
   confirmation_state = ConfirmationState(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
+
+  conversation, start_message = LoadOrCreateConversation(
+      args.task, conversation_path, registry, file_access_policy,
+      validation_manager, confirmation_state, on_message_added_callback)
 
   return AgentLoopOptions(
       conversation_path=conversation_path,
@@ -143,6 +147,9 @@ def LoadOrCreateConversation(
     prompt_path: str,
     conversation_path: str,
     registry: CommandRegistry,
+    file_access_policy: FileAccessPolicy,
+    validation_manager: Optional[ValidationManager],
+    confirmation_state: ConfirmationState,
     on_message_added_callback: Optional[Callable[[], None]] = None
 ) -> Tuple[Conversation, Message]:
 
@@ -169,8 +176,47 @@ def LoadOrCreateConversation(
       with open(agent_prompt_path, 'r') as f:
         content_sections.append(list(l.rstrip() for l in f.readlines()))
 
+    task_file_content: List[str] = []
     with open(prompt_path, 'r') as f:
-      content_sections.append(list(l.rstrip() for l in f.readlines()))
+      task_file_content = [l.rstrip() for l in f.readlines()]
+
+    commands_from_task, non_command_lines = ExtractCommands(
+        '\n'.join(task_file_content))
+
+    if non_command_lines:
+      content_sections.append(non_command_lines)
+
+    if commands_from_task:
+      for cmd_input in commands_from_task:
+        if cmd_input.command_name == "done":
+          logging.error(
+              f"{prompt_path}: #done command found in initial task file.")
+          sys.exit(1)
+
+        command = registry.Get(cmd_input.command_name)
+        if not command:
+          logging.error(
+              f"{prompt_path}: Error: Unknown command '{cmd_input.command_name}' found in task file. Aborting execution."
+          )
+          sys.exit(1)
+
+        warnings = ValidateCommandInput(command.Syntax(), cmd_input,
+                                        file_access_policy)
+        if warnings:
+          for warning in warnings:
+            logging.error(
+                f"{prompt_path}: Error validating command '{cmd_input.command_name}' from task file: {warning}. Aborting execution."
+            )
+            sys.exit(1)
+
+        command_output = command.Execute(cmd_input)
+        if command_output.errors:
+          for error in command_output.errors:
+            logging.error(
+                f"{prompt_path}: Error '#{cmd_input.command_name}': {error}.")
+            sys.exit(1)
+        if command_output.output:
+          content_sections.append(command_output.output)
 
     content_sections.append([
         '',

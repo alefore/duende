@@ -1,0 +1,10 @@
+See src/args_common.py and src/parsing.py and src/command_registry.py and maybe
+even src/agent_loop.py.
+
+When creating the initial prompt (in `LoadOrCreateConversation`), maybe run
+ExtractCommands in the contents of the --task file and execute any commands you
+find. Send to the AI all non_command lines (as returned by ExtractCommands) and,
+for all commands found, execute them and send their output to the AI.
+
+This will let the user directly put commands there, rather than having to ask
+the AI to execute those commands.
