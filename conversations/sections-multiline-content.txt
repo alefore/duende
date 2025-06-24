@@ -1,0 +1,20 @@
+See src/conversation.py and src/read_file_command.py.
+
+In general, instances of MultilineContent should prefer NOT to include strings
+with \n characters. Instead, they should just use multiple strings.
+
+That is, instead of:
+
+  ["foo\nbar\quux"]
+
+We should do:
+
+  ["foo", "bar", "quux"]
+
+That's because it enables us to correctly compute the length (number of lines)
+in the section (without having to look at the entire contents). This is
+advantageous because some things want to default to showing/hiding sections
+depending on their number of lines.
+
+Can you fix src/read_file_command.py to properly do this? That is, to return a
+list of lines (rather than a list with a single string with newline characters).

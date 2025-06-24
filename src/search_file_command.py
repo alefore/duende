@@ -73,19 +73,23 @@ class SearchFileCommand(AgentCommand):
       except Exception as e:
         errors.append(f"{file_path}: {str(e)}")
 
-    header = f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"
-    if global_match_count > match_limit:
-      csv_content = "path,lines_match,file_line_count\n"
-      csv_content += "\n".join(files_data)
+    output_lines: List[str] = [
+        f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"
+    ]
 
-      output = (
-          f"Too many matches to display ({global_match_count}, limit is {match_limit}). {header}.\n"
-          f"Files with matches:\n{csv_content}")
+    if global_match_count > match_limit:
+      output_lines.extend([
+          f"Too many matches to display ({global_match_count}, limit is {match_limit}).",
+          "Files with matches:",
+          "path,lines_match,file_line_count",
+      ])
+      output_lines.extend(files_data)
+    elif matches:
+      output_lines.extend(matches)
     else:
-      output = header + "\n" + ("\n".join(matches) if matches else
-                                f"No matches found for '{search_term}'.")
+      output_lines.append(f"No matches found for '{search_term}'.")
 
     summary = f"Searched {global_file_count} files, found {global_match_count} matches."
     if errors:
       summary += f" Errors: {len(errors)}"
-    return CommandOutput(output=[output], errors=errors, summary=summary)
+    return CommandOutput(output=output_lines, errors=errors, summary=summary)
