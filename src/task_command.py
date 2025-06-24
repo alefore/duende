@@ -18,19 +18,7 @@ class TaskCommand(AgentCommand):
     return "task"
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if len(command_input.arguments) > 1:
-      return CommandOutput(
-          output=[],
-          errors=[f"#{self.Name()}: Invalid syntax. Too many arguments given."],
-          summary=f"Error: #{self.Name()}: Too many arguments.")
-
-    if command_input.multiline_content is None:
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"#{self.Name()}: Invalid syntax. Task specification is missing."
-          ],
-          summary=f"Error: #{self.Name()}: Task specification is missing.")
+    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
 
     task_info = TaskInformation(
         task_name=command_input.arguments[0]

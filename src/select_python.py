@@ -39,21 +39,13 @@ class SelectPythonCommand(AgentCommand):
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    if not (1 <= len(command_input.arguments) <= 2):
-      return CommandOutput(
-          output=[],
-          errors=[
-              f"#{self.Name()} requires one or two arguments: "
-              "<identifier> [path]."
-          ],
-          summary="Select python command failed due to incorrect arguments.")
-
     identifier: str = command_input.arguments[0]
-    path: Optional[str] = command_input.arguments[1] if len(
+    # 'path' here is already validated by the framework due to ArgumentContentType.PATH_INPUT
+    validated_path: Optional[str] = command_input.arguments[1] if len(
         command_input.arguments) > 1 else None
 
     try:
-      selections = FindPythonDefinition(self.file_access_policy, path,
+      selections = FindPythonDefinition(self.file_access_policy, validated_path,
                                         identifier)
 
       if len(selections) == 0:
@@ -112,15 +104,23 @@ def _find_nested_definition_nodes(
 
 
 def FindPythonDefinition(file_access_policy: FileAccessPolicy,
-                         path: Optional[str],
+                         validated_path: Optional[str],
                          identifier: str) -> List[Selection]:
-  """Finds all Python code elements by identifier and returns the selections."""
+  """Finds all Python code elements by identifier and returns the selections.
+
+  Args:
+      file_access_policy: The file access policy to use for listing files.
+      validated_path: An optional path to a specific Python file, already validated
+                      by the command input parsing for existence and access.
+      identifier: The identifier to search for.
+
+  Returns:
+      A list of Selection objects for the found definitions.
+  """
   file_list: List[str]
 
-  if path:
-    if not file_access_policy.allow_access(path):
-      raise PermissionError(f"Access to '{path}' is not allowed.")
-    file_list = [path]
+  if validated_path:
+    file_list = [validated_path]
   else:
     file_list = [
         file for file in list_all_files(".", file_access_policy)

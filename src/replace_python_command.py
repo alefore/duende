@@ -39,32 +39,34 @@ class ReplacePythonCommand(AgentCommand):
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     identifier: str = command_input.arguments[0]
+    # Multiline content presence is guaranteed by validation layer.
     assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
 
-    path: Optional[str] = command_input.arguments[1] if len(
+    # 'path' here is already validated by the framework due to ArgumentContentType.PATH_INPUT_OUTPUT
+    validated_path: Optional[str] = command_input.arguments[1] if len(
         command_input.arguments) == 2 else None
     try:
-      matches: List[Selection] = FindPythonDefinition(self.file_access_policy,
-                                                      path, identifier)
+      selections: List[Selection] = FindPythonDefinition(self.file_access_policy,
+                                                      validated_path, identifier)
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"{self.Name()} error: {str(e)}"],
           summary=f"{self.Name()} error: {str(e)}")
 
-    if len(matches) == 0:
+    if len(selections) == 0:
       return CommandOutput([],
                            [f"No matches found for identifier '{identifier}'."],
                            "No matches found.")
-    if len(matches) > 1:
+    if len(selections) > 1:
       locations = [
-          f"{s.path}:{s.start_index + 1} to {s.end_index + 1}" for s in matches
+          f"{s.path}:{s.start_index + 1} to {s.end_index + 1}" for s in selections
       ]
       return CommandOutput(
           [], [f"Multiple matches found for identifier '{identifier}':"] +
           locations + ["#end (matches)"], "Multiple matches found.")
 
-    matches[0].Overwrite(command_input.multiline_content)
+    selections[0].Overwrite(command_input.multiline_content)
 
     if self.validation_manager:
       self.validation_manager.RegisterChange()

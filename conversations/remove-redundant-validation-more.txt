@@ -1,0 +1,12 @@
+The parsing logic (see src/validate_command_input.py) now directly performs various validations for inputs that are declared as:
+
+      ArgumentContentType.PATH_INPUT,
+      ArgumentContentType.PATH_INPUT_OUTPUT,
+      ArgumentContentType.PATH_OUTPUT
+
+This was done *after* many commands (implementations of class AgentCommand,
+defined in src/agent_command.py) had added their own validations. These
+command-specific validations are now redundant.
+
+Can you scan the code and find sub-classes of AgentCommand that have redundant
+validations that we could remove?
