@@ -19,12 +19,17 @@ class Message:
 
 class Conversation:
 
-  def __init__(self, on_message_added_callback: Optional[Callable[[], None]] = None) -> None:
+  def __init__(
+      self,
+      on_message_added_callback: Optional[Callable[[], None]] = None) -> None:
     self.messages: List[Message] = []
     self._on_message_added_callback = on_message_added_callback
 
   @staticmethod
-  def Load(path: str, on_message_added_callback: Optional[Callable[[], None]] = None) -> 'Conversation':
+  def Load(
+      path: str,
+      on_message_added_callback: Optional[Callable[[], None]] = None
+  ) -> 'Conversation':
     conversation = Conversation(on_message_added_callback)
     try:
       with open(path, 'r') as f:
