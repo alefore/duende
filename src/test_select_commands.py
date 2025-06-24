@@ -2,7 +2,7 @@ import os
 import unittest
 from unittest.mock import MagicMock
 from agent_command import CommandInput, CommandOutput
-from select_commands import SelectTextCommand, SelectOverwriteCommand
+from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from file_access_policy import FileAccessPolicy
 from validation import ValidationManager
@@ -14,8 +14,12 @@ class TestSelectCommands(unittest.TestCase):
     self.file_access_policy = MagicMock(FileAccessPolicy)
     self.selection_manager = SelectionManager()
     self.validation_manager = MagicMock(ValidationManager)
-    self.select_text_cmd = SelectTextCommand(self.file_access_policy,
-                                             self.selection_manager)
+
+    self.select_literal_cmd = SelectCommand(
+        self.file_access_policy, self.selection_manager, use_regex=False)
+    self.select_regex_cmd = SelectCommand(
+        self.file_access_policy, self.selection_manager, use_regex=True)
+
     self.select_overwrite_cmd = SelectOverwriteCommand(self.selection_manager,
                                                        self.validation_manager)
     self.file_access_policy.allow_access.return_value = True
@@ -29,7 +33,7 @@ class TestSelectCommands(unittest.TestCase):
       f.write("some content\n")
       f.write("END\n")
 
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_literal_cmd.Execute(command_input)
     self.assertEqual(len(command_output.errors), 0)
     self.assertEqual(
         ["select <<", "START", "some content", "END", "#end (test_file.txt)"],
@@ -44,30 +48,30 @@ class TestSelectCommands(unittest.TestCase):
       f.write("some content\n")
       f.write("END\n")
 
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_literal_cmd.Execute(command_input)
     self.assertGreater(len(command_output.errors), 0)
 
   def test_select_invalid_arguments(self):
     command_input = CommandInput('select', arguments=['only_one_argument'])
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_literal_cmd.Execute(command_input)
     self.assertGreater(len(command_output.errors), 0)
 
   def test_select_file_not_found(self):
     command_input = CommandInput(
         'select', arguments=['non_existent_file.txt', 'START', 'END'])
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_literal_cmd.Execute(command_input)
     self.assertGreater(len(command_output.errors), 0)
 
   def test_select_regex(self):
     command_input = CommandInput(
-        'select', arguments=['test_file_regex.txt', '^Start.*', '^End.*'])
+        'select_regex', arguments=['test_file_regex.txt', '^Start.*', '^End.*'])
 
     with open("test_file_regex.txt", "w") as f:
       f.write("Start of the content\n")
       f.write("some content here\n")
       f.write("End of the content\n")
 
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_regex_cmd.Execute(command_input)
     self.assertEqual(len(command_output.errors), 0)
     self.assertEqual([
         "select <<", "Start of the content", "some content here",
@@ -82,7 +86,7 @@ class TestSelectCommands(unittest.TestCase):
       f.write("START\n")
 
     self.file_access_policy.allow_access.return_value = False
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_literal_cmd.Execute(command_input)
     self.assertGreater(len(command_output.errors), 0)
 
   def test_select_overwrite_no_selection(self):
@@ -99,7 +103,7 @@ class TestSelectCommands(unittest.TestCase):
       f.write("START\n")
       f.write("END\n")
 
-    command_output = self.select_text_cmd.Execute(command_input)
+    command_output = self.select_literal_cmd.Execute(command_input)
     self.assertEqual(len(command_output.errors), 0)
     self.assertEqual(["select <<", "START", "END", "#end (test_file.txt)"],
                      command_output.output)

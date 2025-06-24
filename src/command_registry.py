@@ -10,7 +10,7 @@ from list_files_command import ListFilesCommand
 from write_file_command import WriteFileCommand
 from search_file_command import SearchFileCommand
 from select_commands import (
-    SelectTextCommand,
+    SelectCommand,
     SelectOverwriteCommand,
     SelectionManager,
 )
@@ -70,7 +70,9 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                        selection_manager))
   registry.Register(SearchFileCommand(file_access_policy))
 
-  registry.Register(SelectTextCommand(file_access_policy, selection_manager))
+  for use_regex in [True, False]:
+    registry.Register(
+        SelectCommand(file_access_policy, selection_manager, use_regex))
   registry.Register(
       SelectOverwriteCommand(selection_manager, validation_manager))
 

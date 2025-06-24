@@ -1,0 +1,7 @@
+Thinking of the semantics of #select and #select_overwrite, can you suggest
+improvements that would make them easier to use more robustly by you? I've found
+that the AI often struggles with them (for example, sends patterns that don't
+match anything due to Regex special characters; or issues the select overwrite
+with the wrong level of indentation (for python files)). As a result, I often
+end up telling the AI to stop using #select entirely. I want to make them as
+easy to use as possible.

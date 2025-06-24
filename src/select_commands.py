@@ -8,56 +8,60 @@ from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
 
 
-class SelectTextCommand(AgentCommand):
+class SelectCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy,
-               selection_manager: SelectionManager):
+  def __init__(self,
+               file_access_policy: FileAccessPolicy,
+               selection_manager: SelectionManager,
+               use_regex: bool = False):
     self.file_access_policy = file_access_policy
     self.selection_manager = selection_manager
+    self.use_regex = use_regex
 
   def Name(self) -> str:
-    return "select"
+    return "select_regex" if self.use_regex else "select"
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
-        description="Creates a new selection for the content in the path specified starting at the first line matching a start line regex pattern and ending at the first following line matching an end line regex pattern. The patterns are regular expressions, evaluated using Python's re module. The contents selected will be returned. Use select_overwrite to overwrite the selection with new contents. If your patterns contain spaces, you probably want to put quotes around them.",
+        description="Creates a new selection for the content in the path specified. The selection starts at the first line matching a start pattern and ends at the first following line matching an optional end pattern. If no end pattern is provided, only the line matching the start pattern is selected. The contents selected will be returned. Use select_overwrite to overwrite the selection with new contents. If your patterns contain spaces, you probably want to put quotes around them.",
         required=[
             Argument("path", ArgumentContentType.PATH_INPUT,
                      "Path to the file."),
-            Argument("start line pattern", ArgumentContentType.REGEX,
-                     "The start line pattern."),
-            Argument("end line pattern", ArgumentContentType.REGEX,
-                     "The end line pattern.")
+            Argument("start_line_pattern", ArgumentContentType.STRING,
+                     "The start line pattern.")
         ],
-    )
+        optional=[
+            Argument(
+                "end_line_pattern", ArgumentContentType.STRING,
+                "The end line pattern. Optional. If omitted, only the start line is selected."
+            )
+        ])
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    if len(command_input.arguments) < 3:
+    args = command_input.arguments
+    args_len = len(args)
+
+    if args_len < 2 or args_len > 3:
       return CommandOutput(
           output=[],
           errors=[
-              f"Arguments are missing, expected exactly 3: <path> <start line pattern> <end line pattern>."
+              f"Incorrect number of arguments. Expected: <path> <start_pattern> [end_pattern]. Received {args_len}."
           ],
-          summary="Select command failed due to insufficient arguments.")
+          summary="Select command failed due to incorrect argument count.")
 
-    if len(command_input.arguments) > 3:
-      error_message = (
-          f"Too many arguments were given. Expected exactly 3: <path> <start line pattern> <end line pattern>. Found:\n"
-      )
-      for i, arg in enumerate(command_input.arguments, start=1):
-        if i <= 3:
-          error_message += f"  arg {i} ({'path' if i == 1 else 'start line pattern' if i == 2 else 'end line pattern'}): \"{arg}\"\n"
-        else:
-          error_message += f"  arg {i} (unexpected!): \"{arg}\"\n"
-      return CommandOutput(
-          output=[],
-          errors=[error_message],
-          summary="Select command failed due to too many arguments.")
+    path = args[0]
+    start_line_pattern_raw = args[1]
+    end_line_pattern_raw = args[2] if args_len == 3 else start_line_pattern_raw
 
-    path, start_line_pattern, end_line_pattern = command_input.arguments
+    if self.use_regex:
+      start_line_pattern = start_line_pattern_raw
+      end_line_pattern = end_line_pattern_raw
+    else:
+      start_line_pattern = re.escape(start_line_pattern_raw)
+      end_line_pattern = re.escape(end_line_pattern_raw)
 
     if not self.file_access_policy.allow_access(path):
       return CommandOutput(
