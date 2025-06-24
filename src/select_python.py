@@ -1,5 +1,5 @@
 import ast
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Sequence
 from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from file_access_policy import FileAccessPolicy
@@ -82,6 +82,35 @@ class SelectPythonCommand(AgentCommand):
           summary=f"Select python command encountered an error: {str(e)}")
 
 
+def _find_nested_definition_nodes(
+    nodes: Sequence[ast.AST], identifier_parts: List[str]
+) -> List[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
+  """Recursively finds AST nodes matching the identifier parts."""
+  if not identifier_parts:
+    return []
+
+  current_part = identifier_parts[0]
+  remaining_parts = identifier_parts[1:]
+  matching_nodes: List[ast.FunctionDef | ast.AsyncFunctionDef
+                       | ast.ClassDef] = []
+
+  for node in nodes:
+    # Check if the node is a definition (FunctionDef, AsyncFunctionDef, ClassDef)
+    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+      if node.name == current_part:
+        if not remaining_parts:
+          # Found the final part of the identifier
+          matching_nodes.append(node)
+        else:
+          # Look for the next part within the current node's body
+          # Classes and functions have a 'body' attribute containing nested definitions
+          if hasattr(node, 'body'):
+            nested_matches = _find_nested_definition_nodes(
+                node.body, remaining_parts)
+            matching_nodes.extend(nested_matches)
+  return matching_nodes
+
+
 def FindPythonDefinition(file_access_policy: FileAccessPolicy,
                          path: Optional[str],
                          identifier: str) -> List[Selection]:
@@ -99,16 +128,18 @@ def FindPythonDefinition(file_access_policy: FileAccessPolicy,
     ]
 
   selections = []
+  identifier_parts = identifier.split('.')
 
   for file_path in file_list:
     with open(file_path, "r") as file:
       tree: ast.Module = ast.parse(file.read(), filename=file_path)
 
-    for node in ast.walk(tree):
-      if isinstance(node,
-                    (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-        if node.name == identifier and node.lineno is not None and node.end_lineno is not None:
-          selections.append(
-              Selection(file_path, node.lineno - 1, node.end_lineno - 1))
+    # Start the recursive search from the top-level nodes of the AST
+    found_nodes = _find_nested_definition_nodes(tree.body, identifier_parts)
+
+    for node in found_nodes:
+      if node.lineno is not None and node.end_lineno is not None:
+        selections.append(
+            Selection(file_path, node.lineno - 1, node.end_lineno - 1))
 
   return selections

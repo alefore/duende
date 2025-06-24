@@ -70,6 +70,65 @@ class TestSelectPythonCommand(unittest.TestCase):
     self.assertEqual(selected_output, expected_output)
     os.remove("src/tests/sample.py")
 
+  def test_execute_nested_identifier_selection(self):
+    self.file_access_policy.allow_access = Mock(return_value=True)
+    os.makedirs("src/tests", exist_ok=True)
+    code = ("class OuterClass:\n"
+            "    def outer_method(self):\n"
+            "        pass\n"
+            "    class InnerClass:\n"
+            "        def __init__(self):\n"
+            "            self.name = 'inner'\n"
+            "        def inner_method(self):\n"
+            "            return self.name\n"
+            "        def another_inner_method(self):\n"
+            "            pass\n"
+            "    def another_outer_method(self):\n"
+            "        pass\n"
+            "def top_level_func():\n"
+            "    pass\n")
+
+    with open("src/tests/nested.py", "w") as f:
+      f.write(code)
+
+    # Test nested method within a class
+    command_input = CommandInput(
+        command_name="select_python",
+        arguments=["OuterClass.InnerClass.inner_method", "src/tests/nested.py"])
+    output = self.command.Execute(command_input)
+    selected_output_lines = [
+        line for line in output.output
+        if not line.startswith(('select <<', '#end'))
+    ]
+    expected_method_code = ("        def inner_method(self):\n"
+                            "            return self.name")
+    self.assertEqual("\n".join(selected_output_lines), expected_method_code)
+
+    # Test nested class
+    command_input = CommandInput(
+        command_name="select_python",
+        arguments=["OuterClass.InnerClass", "src/tests/nested.py"])
+    output = self.command.Execute(command_input)
+    selected_output_lines = [
+        line for line in output.output
+        if not line.startswith(('select <<', '#end'))
+    ]
+    expected_class_code = ("    class InnerClass:\n"
+                           "        def __init__(self):\n"
+                           "            self.name = 'inner'\n"
+                           "        def inner_method(self):\n"
+                           "            return self.name\n"
+                           "        def another_inner_method(self):\n"
+                           "            pass")
+    self.assertEqual("\n".join(selected_output_lines), expected_class_code)
+
+    # Test deeply nested function (not explicitly covered by the simple `hasattr(node, 'body')` but should work due to `ast.FunctionDef` having a body).
+    # Need to add a deeply nested function to the test code for this.
+
+    # Cleanup
+    os.remove("src/tests/nested.py")
+    os.rmdir("src/tests")  # Remove the directory after all tests in it are done
+
 
 if __name__ == "__main__":
   unittest.main()

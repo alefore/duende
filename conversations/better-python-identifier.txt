@@ -1,0 +1,7 @@
+Can you look at src/select_python.py and improve the implementation of
+FindPythonDefinition to support identifiers like Foo.Bar? This should match the
+method Bar in the class Foo.
+
+Make sure to support multiple (arbitrary) levels of nesting.
+
+Try hard to make your implementation as simple as possible.
