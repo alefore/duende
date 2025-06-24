@@ -13,6 +13,21 @@ function requestMessages(socket) {
   socket.emit('request_update', {message_count: countMessages()});
 }
 
+function updateConfirmationUI(required) {
+  const $confirmationForm = $('#confirmation_form');
+  const $confirmationInput = $('#confirmation_input');
+
+  $confirmationInput.prop('disabled', !required);
+  if (required) {
+    $confirmationInput.focus();
+    $confirmationInput.css('height', 'auto');
+    $confirmationInput.css('height', $confirmationInput[0].scrollHeight + 'px');
+  } else {
+    $confirmationInput.val('');                // Clear content
+    $confirmationInput.css('height', 'auto');  // Reset height
+  }
+}
+
 function handleUpdate(socket, data) {
   console.log('Starting update');
   console.log(data);
@@ -55,21 +70,7 @@ function handleUpdate(socket, data) {
 
   // Update confirmation required state and form visibility
   isConfirmationRequired = data.confirmation_required;
-  const $confirmationForm = $('#confirmation_form');
-  const $confirmationInput = $('#confirmation_input');
-
-  if (isConfirmationRequired) {
-    $confirmationForm.css('display', 'block');
-    $confirmationInput.focus();
-  } else {
-    $confirmationForm.css('display', 'none');
-  }
-
-  // Auto-resize textarea after updates if it's visible
-  if ($confirmationInput.is(':visible')) {
-    $confirmationInput.css('height', 'auto');
-    $confirmationInput.css('height', $confirmationInput[0].scrollHeight + 'px');
-  }
+  updateConfirmationUI(isConfirmationRequired);  // Use the new function
 
   if (data.message_count > countMessages()) requestMessages(socket);
   scrollToBottom();
@@ -108,10 +109,15 @@ document.addEventListener('DOMContentLoaded', function() {
       confirmation: confirmationInput.value,
       message_count: countMessages()
     });
-    confirmationInput.value = '';
-    confirmationInput.style.height = 'auto';
+    // Immediately update UI to reflect "no confirmation required" state
+    updateConfirmationUI(false);
   });
 
   console.log('Requesting update.');
   socket.emit('request_update', {message_count: countMessages()});
+
+  // Call updateConfirmationUI initially to set the correct state based on
+  // `isConfirmationRequired` which is false by default, ensuring the textarea
+  // starts disabled.
+  updateConfirmationUI(isConfirmationRequired);
 });

@@ -1,0 +1,12 @@
+Read src/static/agent.js.
+
+Whenever the confirmation form is submitted, we should immediately assume that
+no confirmation is required (and change the textarea visibility).
+
+Can you modify src/static/agent.js to do that?
+
+Avoid code duplication as much as possible; if needed, extract a new function.
+
+While at it, can you change the behavior so that instead of fully hiding the
+textarea (which makes things jittery), we just disable it (but it remains
+visible, just empty)?
