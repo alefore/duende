@@ -1,0 +1,9 @@
+See src/static/agent.js.
+
+When the user presses Shift+Enter, the confirmation textarea grows dynamically
+(vertically) to accomodate the new line. That's great.
+
+Can you figure out a way to make sure that the screen stays fully scrolled to
+the bottom? I think we can't do that directly in the input handler (because the
+textarea gets expanded *after* the input is processed, which is after the
+handler has returned).

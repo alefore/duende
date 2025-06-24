@@ -87,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
   $(confirmationInput).on('input', function() {
     this.style.height = 'auto';
     this.style.height = (this.scrollHeight) + 'px';
+    scrollToBottom();
   });
 
   // Handle Enter/Shift+Enter for submission and new line
