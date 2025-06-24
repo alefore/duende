@@ -1,0 +1,10 @@
+Can you look at src/agent_server.py and src/static/agent.css and improve the
+HTML layout so that the confirmation text becomes a textarea? It should exapnd
+horizontally to fit the entirety of the screen and, ideally, also grows
+automatically vertically as the user enters multiple lines.
+
+Instead of a confirmation button, the info should be submitted when the user
+presses Enter (as long as the server is waiting for confirmation; otherwise the
+Enter press should be ignored). Pressing Shift+Enter should start a new line.
+
+Good luck!

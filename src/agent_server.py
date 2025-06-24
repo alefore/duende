@@ -26,8 +26,7 @@ HTML_TEMPLATE = """
     <div id="conversation"></div>
     <div id="confirmation"></div>
     <form id="confirmation_form" style="display: block;">
-      <input type="text" name="confirmation" placeholder="Confirmation…"><br>
-      <input id="confirmButton" type="submit" value="Confirm">
+      <textarea name="confirmation" id="confirmation_input" placeholder="Confirmation…" autofocus rows="1"></textarea>
     </form>
   </body>
 </html>

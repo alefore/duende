@@ -3,6 +3,7 @@ function scrollToBottom() {
 }
 
 let currentSessionKey = null;
+let isConfirmationRequired = false;
 
 function countMessages() {
   return $('#conversation .message').length;
@@ -52,7 +53,24 @@ function handleUpdate(socket, data) {
     $conversation.append($messageDiv);
   });
 
-  $('#confirmButton').prop('disabled', !data.confirmation_required);
+  // Update confirmation required state and form visibility
+  isConfirmationRequired = data.confirmation_required;
+  const $confirmationForm = $('#confirmation_form');
+  const $confirmationInput = $('#confirmation_input');
+
+  if (isConfirmationRequired) {
+    $confirmationForm.css('display', 'block');
+    $confirmationInput.focus();
+  } else {
+    $confirmationForm.css('display', 'none');
+  }
+
+  // Auto-resize textarea after updates if it's visible
+  if ($confirmationInput.is(':visible')) {
+    $confirmationInput.css('height', 'auto');
+    $confirmationInput.css('height', $confirmationInput[0].scrollHeight + 'px');
+  }
+
   if (data.message_count > countMessages()) requestMessages(socket);
   scrollToBottom();
 }
@@ -62,14 +80,35 @@ document.addEventListener('DOMContentLoaded', function() {
   socket.on('update', (data) => handleUpdate(socket, data));
 
   const confirmationForm = document.getElementById('confirmation_form');
-  confirmationForm.addEventListener('submit', function(event) {
+  const confirmationInput = document.getElementById(
+      'confirmation_input');  // Get the textarea element
+
+  // Auto-grow textarea on input
+  $(confirmationInput).on('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+  });
+
+  // Handle Enter/Shift+Enter for submission and new line
+  $(confirmationInput).on('keydown', function(event) {
+    if (event.key === 'Enter') {
+      if (event.shiftKey) {
+        // If Shift+Enter, allow default behavior (new line).
+      } else {
+        event.preventDefault();
+        if (isConfirmationRequired) $(confirmationForm).submit();
+      }
+    }
+  });
+
+  $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
-    const textElement = confirmationForm.elements['confirmation'];
-    socket.emit(
-        'confirm',
-        {confirmation: textElement.value, message_count: countMessages()});
-    $('#confirmButton').prop('disabled', true);
-    textElement.value = '';
+    socket.emit('confirm', {
+      confirmation: confirmationInput.value,
+      message_count: countMessages()
+    });
+    confirmationInput.value = '';
+    confirmationInput.style.height = 'auto';
   });
 
   console.log('Requesting update.');
