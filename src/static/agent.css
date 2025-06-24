@@ -2,6 +2,37 @@ body {
   overflow-y: scroll; /* Always show vertical scrollbar */
   background-color: #fff;
   color: #333;
+  padding-top: 50px; /* Space for the fixed automatic confirmation toggle */
+}
+
+h1 {
+  /* This H1 should probably be part of the fixed header too, or styled to not interfere */
+  /* For now, it's just pushed down by body padding. */
+  margin-top: 0; /* Remove default top margin to reduce empty space at the top */
+}
+
+#automatic_confirmation_toggle {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+  z-index: 1000; /* Ensure it's on top of other content */
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Vertically align content */
+  height: 30px; /* Fixed height for the toggle bar */
+}
+
+#automatic_confirmation_toggle label {
+  margin: 0; /* Remove default margin from label */
+  display: flex;
+  align-items: center;
+}
+
+#automatic_confirmation_toggle input[type="checkbox"] {
+  margin-right: 8px; /* Space between checkbox and text */
 }
 
 .message {
@@ -71,6 +102,11 @@ pre {
   body {
     background-color: #1a1a1a;
     color: #f0f0f0;
+  }
+
+  #automatic_confirmation_toggle {
+    background-color: #2a2a2a;
+    border-bottom: 1px solid #555;
   }
 
   .message {

@@ -23,6 +23,11 @@ HTML_TEMPLATE = """
   </head>
   <body>
     <h1>Agent Server Interface</h1>
+    <div id="automatic_confirmation_toggle">
+      <label for="auto_confirm_checkbox">
+        <input type="checkbox" id="auto_confirm_checkbox"> Automatic confirmation
+      </label>
+    </div>
     <div id="conversation"></div>
     <div id="confirmation"></div>
     <form id="confirmation_form" style="display: block;">

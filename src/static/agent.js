@@ -4,6 +4,7 @@ function scrollToBottom() {
 
 let currentSessionKey = null;
 let isConfirmationRequired = false;
+let isAutoConfirmationEnabled = false;
 
 function countMessages() {
   return $('#conversation .message').length;
@@ -13,25 +14,46 @@ function requestMessages(socket) {
   socket.emit('request_update', {message_count: countMessages()});
 }
 
-function updateConfirmationUI(required) {
-  const $confirmationForm = $('#confirmation_form');
+function updateConfirmationUI() {
   const $confirmationInput = $('#confirmation_input');
-
-  $confirmationInput.prop('disabled', !required);
-  if (required) {
+  $confirmationInput.prop('disabled', !isConfirmationRequired);
+  if (isConfirmationRequired) {
     $confirmationInput.focus();
-    // More robust auto-grow for initial display:
-    // Reset height, then set to scrollHeight. Use setTimeout to ensure DOM is
-    // ready.
     setTimeout(() => {
-      $confirmationInput.css(
-          'height', 'auto');  // Ensure height is not fixed by previous input
+      $confirmationInput.css('height', 'auto');
       $confirmationInput.height($confirmationInput[0].scrollHeight);
     }, 0);
   } else {
-    $confirmationInput.val('');                // Clear content
-    $confirmationInput.css('height', 'auto');  // Reset height
+    $confirmationInput.val('');
+    $confirmationInput.css('height', 'auto');
   }
+}
+
+function sendConfirmation(confirmationMessage) {
+  socket.emit(
+      'confirm',
+      {confirmation: confirmationMessage, message_count: countMessages()});
+  isConfirmationRequired = false;
+}
+
+function loadAutoConfirmState() {
+  const savedState = localStorage.getItem('auto_confirm_enabled');
+  if (savedState !== null) {
+    isAutoConfirmationEnabled = JSON.parse(savedState);
+  }
+}
+
+function saveAutoConfirmState() {
+  localStorage.setItem(
+      'auto_confirm_enabled', JSON.stringify(isAutoConfirmationEnabled));
+}
+
+function maybeAutoConfirm(socket) {
+  if (isConfirmationRequired && isAutoConfirmationEnabled) {
+    console.log('Automatic confirmation enabled. Sending empty confirmation.');
+    sendConfirmation('');
+  }
+  updateConfirmationUI();
 }
 
 function handleUpdate(socket, data) {
@@ -109,9 +131,8 @@ function handleUpdate(socket, data) {
         $conversation.append($messageDiv);
       });
 
-  // Update confirmation required state and form visibility
   isConfirmationRequired = data.confirmation_required;
-  updateConfirmationUI(isConfirmationRequired);
+  maybeAutoConfirm(socket);
 
   if (data.message_count > countMessages()) requestMessages(socket);
   scrollToBottom();
@@ -122,24 +143,28 @@ document.addEventListener('DOMContentLoaded', function() {
   socket.on('update', (data) => handleUpdate(socket, data));
 
   const confirmationForm = document.getElementById('confirmation_form');
-  const confirmationInput = document.getElementById(
-      'confirmation_input');  // Get the textarea element
+  const confirmationInput = document.getElementById('confirmation_input');
+  const autoConfirmCheckbox = document.getElementById('auto_confirm_checkbox');
 
-  // Auto-grow textarea on input
+  loadAutoConfirmState();
+  autoConfirmCheckbox.checked = isAutoConfirmationEnabled;
+
+  autoConfirmCheckbox.addEventListener('change', function() {
+    isAutoConfirmationEnabled = this.checked;
+    saveAutoConfirmState();
+    console.log('Automatic confirmation is now:', isAutoConfirmationEnabled);
+    maybeAutoConfirm(socket);
+  });
+
   $(confirmationInput).on('input', function() {
-    this.style.height = 'auto';  // Reset height to auto to allow shrinking and
-                                 // proper scrollHeight calculation
-    this.style.height =
-        this.scrollHeight + 'px';  // Set to actual scroll height
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
     scrollToBottom();
   });
 
-  // Handle Enter/Shift+Enter for submission and new line
   $(confirmationInput).on('keydown', function(event) {
     if (event.key === 'Enter') {
       if (event.shiftKey) {
-        // If Shift+Enter, allow default behavior (new line).
-        // This will also trigger the 'input' event, which handles auto-grow.
       } else {
         event.preventDefault();
         if (isConfirmationRequired) $(confirmationForm).submit();
@@ -149,19 +174,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
-    socket.emit('confirm', {
-      confirmation: confirmationInput.value,
-      message_count: countMessages()
-    });
-    // Immediately update UI to reflect "no confirmation required" state
-    updateConfirmationUI(false);
+    sendConfirmation(confirmationInput.value);
+    updateConfirmationUI();
   });
 
   console.log('Requesting initial update.');
   socket.emit('request_update', {message_count: countMessages()});
 
-  // Call updateConfirmationUI initially to set the correct state based on
-  // `isConfirmationRequired` which is false by default, ensuring the textarea
-  // starts disabled and with correct height.
-  updateConfirmationUI(isConfirmationRequired);
+  updateConfirmationUI();
 });

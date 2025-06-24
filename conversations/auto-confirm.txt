@@ -1,0 +1,13 @@
+I would like to add a toggle at the top of the HTML view with a checkbox:
+"Automatic confirmation".
+
+It should always be visible (this may need tricky adjustments to the HTML so
+that the conversation continues to scroll to the bottom, but this stays visible)
+and, by default, not be checked.
+
+If it's checked, whenever a confirmation is requested, we should immediately
+respond with an empty confirmation (and maybe console.log this).
+
+#read_file src/static/agent.js
+#read_file src/static/agent.css
+#read_file src/agent_server.py
