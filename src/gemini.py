@@ -5,7 +5,7 @@ import asyncio
 import sys
 from typing import cast, Any, Coroutine, Dict, List, Optional
 
-from conversation import Conversation, Message
+from conversation import Conversation, Message, MultilineContent
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 
 
@@ -20,12 +20,13 @@ class GeminiConversation(ConversationalAIConversation):
     for msg in self.conversation.GetMessagesList():
       gemini_role = "model" if msg.role == "assistant" else msg.role
       gemini_initial_history.append(
-          cast(genai_types.ContentDict, {
-              "role": gemini_role,
-              "parts": [{
-                  "text": msg.content
-              }]
-          }))
+          cast(
+              genai_types.ContentDict, {
+                  "role": gemini_role,
+                  "parts": [{
+                      "text": "\n".join(msg.GetContentListStr())
+                  }]
+              }))
 
     self.chat = self.model.start_chat(history=gemini_initial_history)
 
@@ -36,10 +37,12 @@ class GeminiConversation(ConversationalAIConversation):
   def SendMessage(self, message: Message) -> Message:
     self.conversation.AddMessage(message)
 
-    logging.info(f"Sending message to Gemini: '{message.content[:50]}...'")
+    logging.info(
+        f"Sending message to Gemini: '{'\n'.join(message.GetContentListStr())[:50]}...'"
+    )
 
     try:
-      response = self.chat.send_message(message.content)
+      response = self.chat.send_message("\n".join(message.GetContentListStr()))
       reply_content = response.text
 
     except Exception as e:
@@ -48,7 +51,8 @@ class GeminiConversation(ConversationalAIConversation):
 
     logging.info(f"Received response from Gemini: '{reply_content[:50]}...'")
 
-    reply_message = Message(role="assistant", content=reply_content)
+    reply_message = Message(
+        role="assistant", content_sections=[[reply_content]])
     self.conversation.AddMessage(reply_message)
     return reply_message
 

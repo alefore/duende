@@ -2,19 +2,37 @@ from typing import List, Dict, Any, Optional, Callable
 import json
 import logging
 
+MultilineContent = List[str]
+
 
 class Message:
 
-  def __init__(self, role: str, content: str):
+  def __init__(self,
+               role: str,
+               content_sections: Optional[List[MultilineContent]] = None):
     self.role = role
-    self.content = content
+    self._content_sections: List[MultilineContent] = content_sections if content_sections is not None else []
 
-  def Serialize(self) -> Dict[str, str]:
-    return {'role': self.role, 'content': self.content}
+  def Serialize(self) -> Dict[str, Any]:
+    return {'role': self.role, 'content_sections': self._content_sections}
 
   @staticmethod
   def Deserialize(data: Dict[str, Any]) -> 'Message':
-    return Message(role=data['role'], content=data['content'])
+    message = Message(role=data['role'])
+    message._content_sections = data.get('content_sections', [])
+    return message
+
+  def GetContentListStr(self) -> List[str]:
+    combined_content: List[str] = []
+    for section in self._content_sections:
+      combined_content.extend(section)
+    return combined_content
+
+  def GetContentSections(self) -> List[MultilineContent]:
+    return self._content_sections
+
+  def PushSection(self, section: MultilineContent) -> None:
+    self._content_sections.append(section)
 
 
 class Conversation:
@@ -33,9 +51,9 @@ class Conversation:
     conversation = Conversation(on_message_added_callback)
     try:
       with open(path, 'r') as f:
-        messages = json.load(f)
+        messages_data = json.load(f)
         conversation.messages.extend(
-            Message.Deserialize(message) for message in messages)
+            Message.Deserialize(message_data) for message_data in messages_data)
     except (FileNotFoundError, json.JSONDecodeError):
       logging.info("Invalid or missing data. Starting new conversation.")
     return conversation
@@ -45,7 +63,7 @@ class Conversation:
       json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
   def AddMessage(self, message: Message) -> None:
-    logging.info(f"Add message: {message}")
+    logging.info(f"Add message: {message.role}: {message.GetContentListStr()}")
     self.messages.append(message)
     if self._on_message_added_callback:
       self._on_message_added_callback()

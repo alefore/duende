@@ -1,7 +1,7 @@
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from typing import cast, Optional
-from conversation import Message, Conversation
+from conversation import Message, Conversation, MultilineContent
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 import logging
 
@@ -22,7 +22,7 @@ class ChatGPTConversation(ConversationalAIConversation):
     openai_messages: list[ChatCompletionMessageParam] = [
         cast(ChatCompletionMessageParam, {
             "role": m.role,
-            "content": m.content
+            "content": "\n".join(m.GetContentListStr())
         }) for m in self.conversation.GetMessagesList()
     ]
 
@@ -37,7 +37,8 @@ class ChatGPTConversation(ConversationalAIConversation):
     logging.info("Received response from ChatGPT.")
 
     reply_content = response.choices[0].message.content or ""
-    reply_message = Message(role="assistant", content=reply_content)
+    reply_message = Message(
+        role="assistant", content_sections=[[reply_content]])
     self.conversation.AddMessage(reply_message)
     return reply_message
 

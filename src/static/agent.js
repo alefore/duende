@@ -46,28 +46,33 @@ function handleUpdate(socket, data) {
         const $messageDiv = $('<div>').addClass('message');
         const $role = $('<p>').addClass('role').text(`${message.role}:`);
 
+        // Create collapse/expand links for the entire message content
         const $collapseLink =
             $('<span>').addClass('toggle-link collapse').text('[collapse]');
         const $expandLink =
             $('<span>').addClass('toggle-link expand').text('[expand]').hide();
 
-        const $content = $('<div>').addClass('content').append(
-            $('<pre>').text(message.content));
+        const $contentContainer = $('<div>').addClass('content-container');
+        (message.content_sections || []).forEach(section => {
+          const $sectionDiv = $('<div>').addClass('messageSection');
+          $sectionDiv.append($('<pre>').text(section.join('\n')));
+          $contentContainer.append($sectionDiv);
+        });
 
         $collapseLink.on('click', () => {
-          $content.hide();
+          $contentContainer.hide();
           $collapseLink.hide();
           $expandLink.show();
         });
 
         $expandLink.on('click', () => {
-          $content.show();
+          $contentContainer.show();
           $collapseLink.show();
           $expandLink.hide();
         });
 
         $role.append($collapseLink, $expandLink);
-        $messageDiv.append($role, $content);
+        $messageDiv.append($role, $contentContainer);  // Append the container
         $conversation.append($messageDiv);
       });
 

@@ -1,7 +1,7 @@
 import json
 import openai
 import logging
-from conversation import Conversation, Message
+from conversation import Conversation, Message, MultilineContent
 from typing import cast, Generator, List, Optional, Tuple, Union, Pattern, NamedTuple
 from validation import ValidationManager
 
@@ -50,7 +50,8 @@ class AgentLoop:
       response_message: Message = self.ai_conversation.SendMessage(next_message)
       self.conversation.Save(self.options.conversation_path)
 
-      commands, non_command_lines = ExtractCommands(response_message.content)
+      commands, non_command_lines = ExtractCommands('\n'.join(
+          response_message.GetContentListStr()))
 
       messages_for_ai: List[str] = []
 
@@ -58,7 +59,7 @@ class AgentLoop:
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
         guidance = self.options.confirmation_state.RequireConfirmation(
-            response_message.content)
+            '\n'.join(response_message.GetContentListStr()))
         if guidance:
           print("Your guidance will be sent to the AI.")
           messages_for_ai.append(f"Message from human: {guidance}")
@@ -76,7 +77,7 @@ class AgentLoop:
               "(normal if you are in the middle of applying changes). "
               "To see the failures, use: #validate")
 
-      next_message = Message(role='user', content='\n'.join(messages_for_ai))
+      next_message = Message(role='user', content_sections=[messages_for_ai])
 
   def _execute_commands(self, commands) -> Generator[str, None, None]:
     if not commands:

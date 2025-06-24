@@ -12,7 +12,7 @@ from command_registry import CommandRegistry, CreateCommandRegistry
 from validation import CreateValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
-from conversation import Conversation, Message
+from conversation import Conversation, Message, MultilineContent
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 
@@ -149,38 +149,49 @@ def LoadOrCreateConversation(
   conversation = Conversation.Load(conversation_path, on_message_added_callback)
   if conversation.messages:
     next_message = Message(
-        'system', 'The server running this interaction has been restarted.')
+        'system',
+        content_sections=[[
+            'The server running this interaction has been restarted.'
+        ]])
   else:
-    prompt = (
+    prompt_lines: MultilineContent = []
+
+    prompt_lines.append(
         "You are a coding assistant operating in a command loop environment. "
         "Send in your response commands prefixed with `#`. "
         "I will execute those commands and tell you the results. "
         "Do not hallucinate results on your own. "
-        "Anything that is not a command will be relayed to the human.\n\n")
+        "Anything that is not a command will be relayed to the human.")
 
     agent_prompt_path = 'agent/prompt.txt'
     if os.path.exists(agent_prompt_path):
       with open(agent_prompt_path, 'r') as f:
-        prompt += f.read() + "\n\n"
+        prompt_lines.extend(l.rstrip() for l in f.readlines())
 
     with open(prompt_path, 'r') as f:
-      prompt += f.read() + "\n\n"
+      prompt_lines.extend(l.rstrip() for l in f.readlines())
 
-    prompt += (
-        "Some commands accept multi-line information, like this:\n\n"
-        "#write_file foo.py <<\n"
-        "line0\n"
-        "line1\n"
-        "…\n"
-        "#end\n\n"
-        "When you're done (or if you get stuck), "
-        "issue #done to notify the human and stop this conversation.\n\n"
-        "Anything sent outside of commands will be treated as plain text.\n\n"
-        "You can send many commands per message. "
-        "For example, if you want to read 5 files, "
-        "you can issue 5 #read_file commands at once.\n\n")
-    prompt += "Available commands:\n" + registry.HelpText()
-    next_message = Message('system', prompt)
+    prompt_lines.extend([
+        '',
+        'Some commands accept multi-line information, like this:',
+        '',
+        '#write_file foo.py <<',
+        'line0',
+        'line1',
+        '…',
+        '#end',
+        'When you\'re done (or if you get stuck), '
+        'issue #done to notify the human and stop this conversation.',
+        '',
+        'Anything sent outside of commands will be treated as plain text.',
+        'You can send many commands per message. '
+        'For example, if you want to read 5 files, '
+        'you can issue 5 #read_file commands at once.',
+        '',
+        'Available commands:',
+    ])
+    prompt_lines.append(registry.HelpText())
+    next_message = Message('system', content_sections=[prompt_lines])
 
   return conversation, next_message
 

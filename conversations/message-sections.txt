@@ -1,0 +1,17 @@
+Can you add to src/conversation.py a class MultilineContent that is,
+essentially, an alias for List[str]?
+
+Can you then change the Message class to:
+
+1. Remove the `content` field
+2. Add a private field `_content_sections` with a List[MultilineContent]
+3. Add a method `GetContentListStr()` that just concatenates all sections into a single `List[str]` and returns it.
+4. Add a method `GetContentSections()` that just returns the value of `_content_sections`.
+5. Add a method `PushSection(self, MultilineContent)` that appends a new section.
+5. Change the `Save` and `Load` methods if needed. It is okay to lose the ability to load previous conversations, it doesn't matter.
+
+And then change all customers of the Message class to deal with the new API.
+
+This is a large change, so let's do it in two passes: first do all the changes
+to src/conversation.py; and then start changing customers. Maybe change
+customers one-by-one.
