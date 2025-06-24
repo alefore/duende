@@ -22,7 +22,7 @@ class ChatGPTConversation(ConversationalAIConversation):
     openai_messages: list[ChatCompletionMessageParam] = [
         cast(ChatCompletionMessageParam, {
             "role": m.role,
-            "content": "\n".join(m.GetContentListStr())
+            "content": '\n'.join(['\n'.join(s) for s in m.GetContentSections()])
         }) for m in self.conversation.GetMessagesList()
     ]
 

@@ -1,0 +1,9 @@
+Can you find callers of GetContentListStr and remove them (switch them to
+GetContentSections)?
+
+Take this as an opportunity to better handle the list of sections. For example,
+you can now long how many sections there are.
+
+While at it, also change AgentLoop.run to use a List[MultilineContent] for
+messages_for_ai, where unrelated things (e.g., the output of different commands)
+is added as separate sections.

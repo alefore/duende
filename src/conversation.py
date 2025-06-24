@@ -22,12 +22,6 @@ class Message:
     message._content_sections = data.get('content_sections', [])
     return message
 
-  def GetContentListStr(self) -> List[str]:
-    combined_content: List[str] = []
-    for section in self._content_sections:
-      combined_content.extend(section)
-    return combined_content
-
   def GetContentSections(self) -> List[MultilineContent]:
     return self._content_sections
 
@@ -63,7 +57,13 @@ class Conversation:
       json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
   def AddMessage(self, message: Message) -> None:
-    logging.info(f"Add message: {message.role}: {message.GetContentListStr()}")
+    content_sections = message.GetContentSections()
+    num_sections = len(content_sections)
+    first_section_summary = f"'{content_sections[0][0][:50]}...'" if content_sections and content_sections[
+        0] else "''"
+    logging.info(
+        f"Add message: {message.role}: {num_sections} sections, first: {first_section_summary}"
+    )
     self.messages.append(message)
     if self._on_message_added_callback:
       self._on_message_added_callback()

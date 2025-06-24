@@ -51,37 +51,41 @@ class AgentLoop:
       self.conversation.Save(self.options.conversation_path)
 
       commands, non_command_lines = ExtractCommands('\n'.join(
-          response_message.GetContentListStr()))
+          ['\n'.join(s) for s in response_message.GetContentSections()]))
 
-      messages_for_ai: List[str] = []
-
+      next_message = Message(role='user')
+      response_content_str = '\n'.join(
+          ['\n'.join(s) for s in response_message.GetContentSections()])
       if (self.options.confirm_regex and any(
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
         guidance = self.options.confirmation_state.RequireConfirmation(
-            '\n'.join(response_message.GetContentListStr()))
+            response_content_str)
         if guidance:
           print("Your guidance will be sent to the AI.")
-          messages_for_ai.append(f"Message from human: {guidance}")
+          next_message.PushSection([f"Message from human: {guidance}"])
 
       self.options.confirmation_state.RegisterInteraction()
-      messages_for_ai.extend(self._execute_commands(commands))
+      for output_section in self._execute_commands(commands):
+        next_message.PushSection(output_section)
 
       if not self.options.skip_implicit_validation:
         assert self.options.validation_manager
         validation_result = self.options.validation_manager.Validate()
         if validation_result.returncode != 0:
           logging.info(f"Validation failed: {validation_result.returncode}")
-          messages_for_ai.append(
+          next_message.PushSection([
               "The validation command is currently reporting failures "
               "(normal if you are in the middle of applying changes). "
-              "To see the failures, use: #validate")
+              "To see the failures, use: #validate"
+          ])
 
-      next_message = Message(role='user', content_sections=[messages_for_ai])
-
-  def _execute_commands(self, commands) -> Generator[str, None, None]:
+  def _execute_commands(self,
+                        commands) -> Generator[MultilineContent, None, None]:
     if not commands:
-      yield "Error: No commands found in response! Use #done if you are done with your task."
+      yield [
+          "Error: No commands found in response! Use #done if you are done with your task."
+      ]
       return
 
     for cmd_input in commands:
@@ -92,7 +96,7 @@ class AgentLoop:
           )
           if guidance:
             logging.info("Your guidance will be sent to the AI.")
-            yield f"Notice from human: {guidance}"
+            yield [f"Notice from human: {guidance}"]
             continue
         return
 
@@ -100,19 +104,21 @@ class AgentLoop:
       if not command:
         output = f"Unknown command: {cmd_input.command_name}"
         logging.error(output)
-        yield output
+        yield [output]
         continue
 
       warnings = ValidateCommandInput(command.Syntax(), cmd_input,
                                       self.options.file_access_policy)
       if warnings:
-        for warning in warnings:
-          yield f"Warning {cmd_input.command_name}: {warning}"
+        yield [
+            f"Warning {cmd_input.command_name}: {warning}"
+            for warning in warnings
+        ]
         continue
 
       command_output = command.Execute(cmd_input)
-      yield from command_output.output
+      if command_output.output:
+        yield command_output.output
       if command_output.errors:
-        for error in command_output.errors:
-          yield f"Error: {error}"
+        yield [f"Error: {e}" for e in command_output.errors]
       logging.info(command_output.summary)

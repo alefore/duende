@@ -19,14 +19,12 @@ class GeminiConversation(ConversationalAIConversation):
     gemini_initial_history: List[genai_types.ContentDict] = []
     for msg in self.conversation.GetMessagesList():
       gemini_role = "model" if msg.role == "assistant" else msg.role
+      parts = [{"text": "\n".join(s)} for s in msg.GetContentSections()]
       gemini_initial_history.append(
-          cast(
-              genai_types.ContentDict, {
-                  "role": gemini_role,
-                  "parts": [{
-                      "text": "\n".join(msg.GetContentListStr())
-                  }]
-              }))
+          cast(genai_types.ContentDict, {
+              "role": gemini_role,
+              "parts": parts
+          }))
 
     self.chat = self.model.start_chat(history=gemini_initial_history)
 
@@ -37,12 +35,19 @@ class GeminiConversation(ConversationalAIConversation):
   def SendMessage(self, message: Message) -> Message:
     self.conversation.AddMessage(message)
 
+    # Prepare message content for Gemini by transforming sections into parts
+    gemini_parts = []
+    for section in message.GetContentSections():
+      gemini_parts.append({"text": "\n".join(section)})
+
+    log_content = '\n'.join(
+        ['\n'.join(s) for s in message.GetContentSections()])
     logging.info(
-        f"Sending message to Gemini: '{'\n'.join(message.GetContentListStr())[:50]}...'"
+        f"Sending message to Gemini: '{log_content[:50]}...' (with {len(gemini_parts)} parts)"
     )
 
     try:
-      response = self.chat.send_message("\n".join(message.GetContentListStr()))
+      response = self.chat.send_message(gemini_parts)
       reply_content = response.text
 
     except Exception as e:
