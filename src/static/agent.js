@@ -20,8 +20,14 @@ function updateConfirmationUI(required) {
   $confirmationInput.prop('disabled', !required);
   if (required) {
     $confirmationInput.focus();
-    $confirmationInput.css('height', 'auto');
-    $confirmationInput.css('height', $confirmationInput[0].scrollHeight + 'px');
+    // More robust auto-grow for initial display:
+    // Reset height, then set to scrollHeight. Use setTimeout to ensure DOM is
+    // ready.
+    setTimeout(() => {
+      $confirmationInput.css(
+          'height', 'auto');  // Ensure height is not fixed by previous input
+      $confirmationInput.height($confirmationInput[0].scrollHeight);
+    }, 0);
   } else {
     $confirmationInput.val('');                // Clear content
     $confirmationInput.css('height', 'auto');  // Reset height
@@ -46,33 +52,60 @@ function handleUpdate(socket, data) {
         const $messageDiv = $('<div>').addClass('message');
         const $role = $('<p>').addClass('role').text(`${message.role}:`);
 
-        // Create collapse/expand links for the entire message content
-        const $collapseLink =
-            $('<span>').addClass('toggle-link collapse').text('[collapse]');
-        const $expandLink =
-            $('<span>').addClass('toggle-link expand').text('[expand]').hide();
-
         const $contentContainer = $('<div>').addClass('content-container');
         (message.content_sections || []).forEach(section => {
           const $sectionDiv = $('<div>').addClass('messageSection');
-          $sectionDiv.append($('<pre>').text(section.join('\n')));
+          const lineCount = section.length;
+          const $fullContentPre =
+              $('<pre>').addClass('full-content-pre').text(section.join('\n'));
+
+          if (lineCount <= 5) {
+            $sectionDiv.append($fullContentPre);
+          } else {
+            const firstLineContent = section[0] || '';
+            const $firstLinePre =
+                $('<pre>')
+                    .addClass('first-line-pre')
+                    .text(
+                        firstLineContent.length > 100 ?
+                            firstLineContent.substring(0, 100) + '...' :
+                            firstLineContent);
+
+            const $sectionHeader = $('<div>').addClass('section-header');
+            const $expandLink =
+                $('<span>').addClass('toggle-link expand').text('[expand]');
+            const $collapseLink = $('<span>')
+                                      .addClass('toggle-link collapse')
+                                      .text('[collapse]')
+                                      .hide();
+            const $lineCountSpan = $('<span>')
+                                       .addClass('line-count')
+                                       .text(` (${lineCount} lines)`);
+
+            $sectionHeader.append($expandLink, $collapseLink, $lineCountSpan);
+            $sectionDiv.append($sectionHeader, $firstLinePre, $fullContentPre);
+
+            $expandLink.on('click', () => {
+              $fullContentPre.show();
+              $firstLinePre.hide();
+              $expandLink.hide();
+              $lineCountSpan.hide();
+              $collapseLink.show();
+            });
+
+            $collapseLink.on('click', () => {
+              $fullContentPre.hide();
+              $firstLinePre.show();
+              $expandLink.show();
+              $lineCountSpan.show();
+              $collapseLink.hide();
+            });
+            $collapseLink.click();
+          }
           $contentContainer.append($sectionDiv);
         });
 
-        $collapseLink.on('click', () => {
-          $contentContainer.hide();
-          $collapseLink.hide();
-          $expandLink.show();
-        });
-
-        $expandLink.on('click', () => {
-          $contentContainer.show();
-          $collapseLink.show();
-          $expandLink.hide();
-        });
-
-        $role.append($collapseLink, $expandLink);
-        $messageDiv.append($role, $contentContainer);  // Append the container
+        $messageDiv.append($role, $contentContainer);
         $conversation.append($messageDiv);
       });
 
@@ -94,8 +127,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Auto-grow textarea on input
   $(confirmationInput).on('input', function() {
-    this.style.height = 'auto';
-    this.style.height = (this.scrollHeight) + 'px';
+    this.style.height = 'auto';  // Reset height to auto to allow shrinking and
+                                 // proper scrollHeight calculation
+    this.style.height =
+        this.scrollHeight + 'px';  // Set to actual scroll height
     scrollToBottom();
   });
 
@@ -104,6 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (event.key === 'Enter') {
       if (event.shiftKey) {
         // If Shift+Enter, allow default behavior (new line).
+        // This will also trigger the 'input' event, which handles auto-grow.
       } else {
         event.preventDefault();
         if (isConfirmationRequired) $(confirmationForm).submit();
@@ -126,6 +162,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Call updateConfirmationUI initially to set the correct state based on
   // `isConfirmationRequired` which is false by default, ensuring the textarea
-  // starts disabled.
+  // starts disabled and with correct height.
   updateConfirmationUI(isConfirmationRequired);
 });

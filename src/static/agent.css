@@ -20,13 +20,36 @@ pre {
   margin: 0; /* Remove default margin */
 }
 
+.messageSection {
+  border: 1px solid #eee; /* Thin/light border around each message section */
+  padding: 5px;
+  margin-top: 5px; /* Add some space between sections */
+  background-color: #fcfcfc; /* Slightly different background for sections */
+  overflow: auto; /* To contain floats */
+}
+
+.section-header {
+  margin-bottom: 5px;
+  overflow: auto; /* To contain floated elements within */
+}
+
 .toggle-link {
   font-size: 0.9em;
   cursor: pointer;
   color: blue;
   text-decoration: underline;
-  float: right;
-  margin-left: 10px;
+  float: right; /* Re-introduce float right for these */
+  margin-left: 10px; /* Space between links/line count */
+}
+
+.line-count {
+  font-size: 0.9em;
+  color: #666; /* Softer color for line count */
+  float: right; /* Float the line count to the right as well */
+}
+
+.first-line-pre {
+  padding-bottom: 5px; /* Add some space below the first line */
 }
 
 #confirmation_input {
@@ -38,7 +61,7 @@ pre {
   border-radius: 4px;
   font-size: 1em;
   resize: none; /* Disable manual resize */
-  overflow: hidden; /* Hide scrollbar initially */
+  /* Removed: overflow: hidden; */
   background-color: #fff;
   color: #333;
 }
@@ -57,6 +80,15 @@ pre {
 
   .toggle-link {
     color: #8ab4f8; /* A lighter blue for dark mode */
+  }
+
+  .messageSection {
+    border: 1px solid #3a3a3a; /* Darker light border */
+    background-color: #303030;
+  }
+
+  .line-count {
+    color: #aaa; /* Lighter color for dark mode */
   }
 
   #confirmation_input {

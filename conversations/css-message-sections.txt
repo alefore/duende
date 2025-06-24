@@ -1,0 +1,11 @@
+I want to improve src/static/agent.js and src/static/agent.css.
+
+1. CSS: Can you put a thin/light border around each message section?
+
+2. If a section is longer than 5 lines, it should start collapsed (force the user to expand it).
+
+3. If a section is collapsed, let's still ensure the very first line in the section is shown, somehow.
+
+4. If a section is collapsed and has more than 5 lines, somehow show the count of lines, something like: "(121 lines)" close to the expand link.
+
+Can you implement these changes?
