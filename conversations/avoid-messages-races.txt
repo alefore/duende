@@ -1,0 +1,11 @@
+See src/agent_server.py, src/web_server_state.py and src/static/agent.js.
+
+Currently there's a race condition where when a new message arrives:
+
+1. The server may start sending the new message to the client.
+2. The client may by coincidence request new messages (stating how many it currently has, which doesn't yet include the new message).
+3. The server may re-send the message to the client.
+
+Could you propose in English an approach to fix this problem? Ideally, if the
+same message is sent multiple times, the client will correctly handle the race
+condition (and ignore the 2nd update).

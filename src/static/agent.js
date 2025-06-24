@@ -39,38 +39,41 @@ function handleUpdate(socket, data) {
   }
 
   const $conversation = $('#conversation');
-  data.conversation.forEach(message => {
-    const $messageDiv = $('<div>').addClass('message');
-    const $role = $('<p>').addClass('role').text(`${message.role}:`);
 
-    const $collapseLink =
-        $('<span>').addClass('toggle-link collapse').text('[collapse]');
-    const $expandLink =
-        $('<span>').addClass('toggle-link expand').text('[expand]').hide();
+  data.conversation
+      .slice(Math.max(0, countMessages() - data.first_message_index))
+      .forEach(message => {
+        const $messageDiv = $('<div>').addClass('message');
+        const $role = $('<p>').addClass('role').text(`${message.role}:`);
 
-    const $content =
-        $('<div>').addClass('content').append($('<pre>').text(message.content));
+        const $collapseLink =
+            $('<span>').addClass('toggle-link collapse').text('[collapse]');
+        const $expandLink =
+            $('<span>').addClass('toggle-link expand').text('[expand]').hide();
 
-    $collapseLink.on('click', () => {
-      $content.hide();
-      $collapseLink.hide();
-      $expandLink.show();
-    });
+        const $content = $('<div>').addClass('content').append(
+            $('<pre>').text(message.content));
 
-    $expandLink.on('click', () => {
-      $content.show();
-      $collapseLink.show();
-      $expandLink.hide();
-    });
+        $collapseLink.on('click', () => {
+          $content.hide();
+          $collapseLink.hide();
+          $expandLink.show();
+        });
 
-    $role.append($collapseLink, $expandLink);
-    $messageDiv.append($role, $content);
-    $conversation.append($messageDiv);
-  });
+        $expandLink.on('click', () => {
+          $content.show();
+          $collapseLink.show();
+          $expandLink.hide();
+        });
+
+        $role.append($collapseLink, $expandLink);
+        $messageDiv.append($role, $content);
+        $conversation.append($messageDiv);
+      });
 
   // Update confirmation required state and form visibility
   isConfirmationRequired = data.confirmation_required;
-  updateConfirmationUI(isConfirmationRequired);  // Use the new function
+  updateConfirmationUI(isConfirmationRequired);
 
   if (data.message_count > countMessages()) requestMessages(socket);
   scrollToBottom();
@@ -113,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateConfirmationUI(false);
   });
 
-  console.log('Requesting update.');
+  console.log('Requesting initial update.');
   socket.emit('request_update', {message_count: countMessages()});
 
   // Call updateConfirmationUI initially to set the correct state based on

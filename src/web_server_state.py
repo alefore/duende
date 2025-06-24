@@ -49,7 +49,8 @@ class WebServerState:
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
         'message_count': len(self._GetMessagesList()),
-        'session_key': self.session_key
+        'session_key': self.session_key,
+        'first_message_index': client_message_count or 0
     }
     self.socketio.emit('update', data)
 
