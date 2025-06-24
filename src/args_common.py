@@ -154,24 +154,25 @@ def LoadOrCreateConversation(
             'The server running this interaction has been restarted.'
         ]])
   else:
-    prompt_lines: MultilineContent = []
+    content_sections: List[MultilineContent] = []
 
-    prompt_lines.append(
+    content_sections.append([
         "You are a coding assistant operating in a command loop environment. "
         "Send in your response commands prefixed with `#`. "
         "I will execute those commands and tell you the results. "
         "Do not hallucinate results on your own. "
-        "Anything that is not a command will be relayed to the human.")
+        "Anything that is not a command will be relayed to the human."
+    ])
 
     agent_prompt_path = 'agent/prompt.txt'
     if os.path.exists(agent_prompt_path):
       with open(agent_prompt_path, 'r') as f:
-        prompt_lines.extend(l.rstrip() for l in f.readlines())
+        content_sections.append(list(l.rstrip() for l in f.readlines()))
 
     with open(prompt_path, 'r') as f:
-      prompt_lines.extend(l.rstrip() for l in f.readlines())
+      content_sections.append(list(l.rstrip() for l in f.readlines()))
 
-    prompt_lines.extend([
+    content_sections.append([
         '',
         'Some commands accept multi-line information, like this:',
         '',
@@ -190,8 +191,8 @@ def LoadOrCreateConversation(
         '',
         'Available commands:',
     ])
-    prompt_lines.append(registry.HelpText())
-    next_message = Message('system', content_sections=[prompt_lines])
+    content_sections[-1].append(registry.HelpText())
+    next_message = Message('system', content_sections=content_sections)
 
   return conversation, next_message
 
