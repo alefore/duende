@@ -64,6 +64,11 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default=False,
       help="Allow the program to proceed even if the Git repository has uncommitted changes."
   )
+  parser.add_argument(
+      '--review',
+      action='store_true',
+      help="Trigger an AI review of changes when the agent loop issues the #done command. The review happens in a new conversation."
+  )
   return parser
 
 
@@ -82,16 +87,15 @@ def CreateAgentLoopOptions(
 ) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
 
-  # List files and check if any match the access policy
   matched_files = list(list_all_files('.', file_access_policy))
   logging.info(f"File matched by access policy: {len(matched_files)}")
   if not matched_files:
     print("No files match the given file access policy. Aborting execution.")
-    sys.exit(1)  # Exit with a non-zero status to indicate failure
+    sys.exit(1)
 
   if args.test_file_access:
     TestFileAccess(file_access_policy)
-    sys.exit(0)  # Graceful exit after testing
+    sys.exit(0)
 
   confirm_regex: Optional[Pattern] = re.compile(
       args.confirm) if args.confirm else None
@@ -124,9 +128,14 @@ def CreateAgentLoopOptions(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
+  original_task_file_content: List[str] = []
+  with open(args.task, 'r') as f:
+    original_task_file_content = [l.rstrip() for l in f.readlines()]
+
   conversation, start_message = LoadOrCreateConversation(
-      args.task, conversation_path, registry, file_access_policy,
-      validation_manager, confirmation_state, on_message_added_callback)
+      original_task_file_content, conversation_path, registry,
+      file_access_policy, validation_manager, confirmation_state,
+      on_message_added_callback)
 
   return AgentLoopOptions(
       conversation_path=conversation_path,
@@ -140,11 +149,14 @@ def CreateAgentLoopOptions(
       confirm_regex=confirm_regex,
       confirm_done=args.confirm,
       skip_implicit_validation=args.skip_implicit_validation,
-      validation_manager=validation_manager)
+      validation_manager=validation_manager,
+      do_review=args.review,
+      original_task_prompt_content=original_task_file_content,
+  )
 
 
 def LoadOrCreateConversation(
-    prompt_path: str,
+    task_file_content: List[str],
     conversation_path: str,
     registry: CommandRegistry,
     file_access_policy: FileAccessPolicy,
@@ -176,10 +188,6 @@ def LoadOrCreateConversation(
       with open(agent_prompt_path, 'r') as f:
         content_sections.append(list(l.rstrip() for l in f.readlines()))
 
-    task_file_content: List[str] = []
-    with open(prompt_path, 'r') as f:
-      task_file_content = [l.rstrip() for l in f.readlines()]
-
     commands_from_task, non_command_lines = ExtractCommands(
         '\n'.join(task_file_content))
 
@@ -189,14 +197,13 @@ def LoadOrCreateConversation(
     if commands_from_task:
       for cmd_input in commands_from_task:
         if cmd_input.command_name == "done":
-          logging.error(
-              f"{prompt_path}: #done command found in initial task file.")
+          logging.error(f"Task file: #done command found in initial task file.")
           sys.exit(1)
 
         command = registry.Get(cmd_input.command_name)
         if not command:
           logging.error(
-              f"{prompt_path}: Error: Unknown command '{cmd_input.command_name}' found in task file. Aborting execution."
+              f"Task file: Error: Unknown command '{cmd_input.command_name}' found in task file. Aborting execution."
           )
           sys.exit(1)
 
@@ -205,7 +212,7 @@ def LoadOrCreateConversation(
         if warnings:
           for warning in warnings:
             logging.error(
-                f"{prompt_path}: Error validating command '{cmd_input.command_name}' from task file: {warning}. Aborting execution."
+                f"Task file: Error validating command '{cmd_input.command_name}' from task file: {warning}. Aborting execution."
             )
             sys.exit(1)
 
@@ -213,13 +220,12 @@ def LoadOrCreateConversation(
         if command_output.errors:
           for error in command_output.errors:
             logging.error(
-                f"{prompt_path}: Error '#{cmd_input.command_name}': {error}.")
+                f"Task file: Error '#{cmd_input.command_name}': {error}.")
             sys.exit(1)
         if command_output.output:
           content_sections.append(command_output.output)
 
     content_sections.append([
-        '',
         'Some commands accept multi-line information, like this:',
         '',
         '#write_file foo.py <<',
