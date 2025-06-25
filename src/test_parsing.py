@@ -6,23 +6,23 @@ from agent_command import CommandInput
 class TestExtractCommands(unittest.TestCase):
 
   def test_single_line_command_without_arguments(self):
-    response = "#command"
+    response_lines = ["#command"]
     expected_commands = [CommandInput(command_name="command", arguments=[])]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_single_line_command_with_arguments(self):
-    response = "#command arg1 arg2"
+    response_lines = ["#command arg1 arg2"]
     expected_commands = [
         CommandInput(command_name="command", arguments=["arg1", "arg2"])
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_multiline_command(self):
-    response = "#command arg1 <<\nline1\nline2\n#end"
+    response_lines = ["#command arg1 <<", "line1", "line2", "#end"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -31,10 +31,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_multiline_command_with_empty_lines(self):
-    response = "#command arg1 <<\nfoo\n\nbar\n#end"
+    response_lines = ["#command arg1 <<", "foo", "", "bar", "#end"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -43,10 +43,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_multiline_command_with_eof_marker(self):
-    response = "#command arg1 <<EOF\nline1\nline2\nEOF"
+    response_lines = ["#command arg1 <<EOF", "line1", "line2", "EOF"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -55,10 +55,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_multiline_command_with_custom_marker(self):
-    response = "#command arg1 <<CUSTOM\nline1\nCUSTOM"
+    response_lines = ["#command arg1 <<CUSTOM", "line1", "CUSTOM"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -67,10 +67,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_multiple_commands_with_various_markers(self):
-    response = "#command1 arg1 <<EOF\nline1\nEOF\n#command2 <<END\nline2\nEND"
+    response_lines = ["#command1 arg1 <<EOF", "line1", "EOF", "#command2 <<END", "line2", "END"]
     expected_commands = [
         CommandInput(
             command_name="command1",
@@ -81,10 +81,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_multiple_commands(self):
-    response = "#command1 arg1\n#command2 arg2 <<\nline1\n#end\n#command3"
+    response_lines = ["#command1 arg1", "#command2 arg2 <<", "line1", "#end", "#command3"]
     expected_commands = [
         CommandInput(command_name="command1", arguments=["arg1"]),
         CommandInput(
@@ -95,39 +95,39 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_command_with_special_characters_using_shlex(self):
-    response = '#command "arg1 with spaces" arg2'
+    response_lines = ['#command "arg1 with spaces" arg2']
     expected_commands = [
         CommandInput(
             command_name="command", arguments=["arg1 with spaces", "arg2"])
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_invalid_shlex_argument_handling(self):
-    response = "#command 'unterminated quote"
+    response_lines = ["#command 'unterminated quote"]
     expected_commands = [
         CommandInput(command_name="command", arguments=["'unterminated quote"])
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_commands_with_random_non_command_text_in_between(self):
-    response = "Random text not a command\n#command1 arg1\nMore random text\n#command2 arg2"
+    response_lines = ["Random text not a command", "#command1 arg1", "More random text", "#command2 arg2"]
     expected_commands = [
         CommandInput(command_name="command1", arguments=["arg1"]),
         CommandInput(command_name="command2", arguments=["arg2"])
     ]
     expected_non_commands = ["Random text not a command", "More random text"]
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_command_with_multiple_arguments_begin_multiline_block(self):
-    response = "#command arg1 arg2 arg3 <<\nmulti-line content\n#end"
+    response_lines = ["#command arg1 arg2 arg3 <<", "multi-line content", "#end"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -136,29 +136,29 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_only_non_command_lines(self):
-    response = "This is a simple text.\nJust some random words."
+    response_lines = ["This is a simple text.", "Just some random words."]
     expected_commands = []
     expected_non_commands = [
         "This is a simple text.", "Just some random words."
     ]
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_interspersed_commands_and_non_commands(self):
-    response = "Some intro text.\n#command1 arg1\nMiddle text\n#command2\nEnding text."
+    response_lines = ["Some intro text.", "#command1 arg1", "Middle text", "#command2", "Ending text."]
     expected_commands = [
         CommandInput(command_name="command1", arguments=["arg1"]),
         CommandInput(command_name="command2", arguments=[])
     ]
     expected_non_commands = ["Some intro text.", "Middle text", "Ending text."]
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_single_line_with_backslash_n(self):
-    response = "#command arg1 arg2 <<\\nline1\\nline2\\n#end"
+    response_lines = ["#command arg1 arg2 <<\\nline1\\nline2\\n#end"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -167,10 +167,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_no_multiline_interpretation(self):
-    response = '#command arg1 "some <<\\nblah\\nblah\\n#end"'
+    response_lines = ['#command arg1 "some <<\\nblah\\nblah\\n#end"']
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -179,10 +179,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_non_activation_of_mode(self):
-    response = "#command <<\\nline0\\napostrophe:'\\n#end some garbage"
+    response_lines = ["#command <<\\nline0\\napostrophe:'\\n#end some garbage"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -191,10 +191,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_default_end_marker_extra_tokens(self):
-    response = "#command arg.py <<\nline0\nline1\n#end (arg.py)"
+    response_lines = ["#command arg.py <<", "line0", "line1", "#end (arg.py)"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -203,10 +203,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_end_marker_with_valid_argument(self):
-    response = "#command arg.py <<EOL\nline0\nline1\nEOL (arg.py)"
+    response_lines = ["#command arg.py <<EOL", "line0", "line1", "EOL (arg.py)"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -215,10 +215,10 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_end_marker_with_warning(self):
-    response = "#command arg <<EOL\nline0\nline1\nEOL some random text"
+    response_lines = ["#command arg <<EOL", "line0", "line1", "EOL some random text"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -229,10 +229,10 @@ class TestExtractCommands(unittest.TestCase):
         "Warning: extra tokens after EOL directive ignored: some random text"
     ]
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
   def test_end_marker_only_with_space(self):
-    response = "#command arg <<\nline0\n#endnot\n#end"
+    response_lines = ["#command arg <<", "line0", "#endnot", "#end"]
     expected_commands = [
         CommandInput(
             command_name="command",
@@ -241,7 +241,7 @@ class TestExtractCommands(unittest.TestCase):
     ]
     expected_non_commands = []
     self.assertEqual(
-        ExtractCommands(response), (expected_commands, expected_non_commands))
+        ExtractCommands(response_lines), (expected_commands, expected_non_commands))
 
 
 if __name__ == '__main__':

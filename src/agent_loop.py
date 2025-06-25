@@ -69,14 +69,13 @@ class AgentLoop:
       response_message: Message = self.ai_conversation.SendMessage(next_message)
       self.conversation.Save(self.options.conversation_path)
 
-      # TODO: Change ExtractCommands to receive a MultilineContent directly.
-      commands, non_command_lines = ExtractCommands('\n'.join([
-          '\n'.join(s.content) for s in response_message.GetContentSections()
-      ]))
+      response_lines: List[str] = []
+      for s in response_message.GetContentSections():
+        response_lines.extend(s.content)
+      commands, non_command_lines = ExtractCommands(response_lines)
 
       next_message = Message(role='user')
-      response_content_str = '\n'.join(
-          ['\n'.join(s.content) for s in response_message.GetContentSections()])
+      response_content_str = '\n'.join(response_lines)
 
       has_human_guidance = False
       if (self.options.confirm_regex and any(

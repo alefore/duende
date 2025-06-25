@@ -198,8 +198,7 @@ def LoadOrCreateConversation(
             ContentSection(
                 content=list(l.rstrip() for l in f.readlines()), summary=None))
 
-    commands_from_task, non_command_lines = ExtractCommands(
-        '\n'.join(task_file_content))
+    commands_from_task, non_command_lines = ExtractCommands(task_file_content)
 
     if non_command_lines:
       content_sections.append(

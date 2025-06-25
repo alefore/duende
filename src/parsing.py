@@ -12,11 +12,10 @@ def _GetArgs(args_str: str) -> List[str]:
     return [args_str.strip()]
 
 
-def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
+def ExtractCommands(response_lines: List[str]) -> Tuple[List[CommandInput], List[str]]:
   """
     Parses commands from a ChatGPT response and also collects non-command lines.
     """
-  lines = response.splitlines()
   commands: List[CommandInput] = []
   non_command_lines: List[str] = []
   multiline_command: Optional[CommandInput] = None
@@ -24,7 +23,7 @@ def ExtractCommands(response: str) -> Tuple[List[CommandInput], List[str]]:
 
   multi_line_folded_pattern = re.compile(r".* <<\\n(.*\\n)*#end *$")
 
-  for line in lines:
+  for line in response_lines:
     if multiline_command is not None:
       assert end_marker is not None
       assert multiline_command.multiline_content is not None

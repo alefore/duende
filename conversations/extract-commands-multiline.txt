@@ -1,0 +1,3 @@
+Can you change ExtractCommands (in src/parsing.py) to receive a multiline? Then change its customer to avoid a call to `join` (which this change makes unnecessary).
+
+I think that simplifies things.
