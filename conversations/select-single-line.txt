@@ -1,0 +1,8 @@
+I suspect #select with a single pattern (i.e., no end pattern) is buggy.
+
+Can you add tests and verify? If it is buggy, please fix the implementation.
+
+Perhaps try with some smallish (say ~5 lines) file and select something in the middle.
+
+#read_file src/select_commands.py
+#read_file src/test_select_commands.py

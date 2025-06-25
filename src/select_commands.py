@@ -1,6 +1,6 @@
 from typing import List, Optional
 import os
-import re  # Import the regex module
+import re
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
@@ -46,14 +46,15 @@ class SelectCommand(AgentCommand):
 
     path = args[0]
     start_line_pattern_raw = args[1]
-    end_line_pattern_raw = args[2] if args_len == 3 else start_line_pattern_raw
+    end_line_pattern_raw: Optional[str] = args[2] if args_len == 3 else None
 
     if self.use_regex:
       start_line_pattern = start_line_pattern_raw
       end_line_pattern = end_line_pattern_raw
     else:
       start_line_pattern = re.escape(start_line_pattern_raw)
-      end_line_pattern = re.escape(end_line_pattern_raw)
+      end_line_pattern = re.escape(
+          end_line_pattern_raw) if end_line_pattern_raw is not None else None
 
     try:
       selection = Selection.FromLinePattern(path, start_line_pattern,

@@ -67,6 +67,42 @@ class TestSelectCommands(unittest.TestCase):
         "End of the content", "#end (test_file_regex.txt)"
     ], command_output.output)
 
+  def testSelect_singlePattern_literal(self):
+    command_input = CommandInput(
+        'select', arguments=['test_file.txt', 'Target Line'])
+
+    with open("test_file.txt", "w") as f:
+      f.write("Line 1\n")
+      f.write("Target Line\n")
+      f.write("Line 3\n")
+
+    command_output = self.select_literal_cmd.Execute(command_input)
+    self.assertEqual(len(command_output.errors), 0)
+    self.assertEqual(["select <<", "Target Line", "#end (test_file.txt)"],
+                     command_output.output)
+    self.assertIsNotNone(self.selection_manager.get_selection())
+    self.assertEqual(self.selection_manager.get_selection().Read(),
+                     ["Target Line"])
+
+  def testSelect_singlePattern_regex(self):
+    command_input = CommandInput(
+        'select_regex', arguments=['test_file_regex.txt', '.*Target Line.*'])
+
+    with open("test_file_regex.txt", "w") as f:
+      f.write("Line 1\n")
+      f.write("This is a Target Line for regex\n")
+      f.write("Line 3\n")
+
+    command_output = self.select_regex_cmd.Execute(command_input)
+    self.assertEqual(len(command_output.errors), 0)
+    self.assertEqual([
+        "select <<", "This is a Target Line for regex",
+        "#end (test_file_regex.txt)"
+    ], command_output.output)
+    self.assertIsNotNone(self.selection_manager.get_selection())
+    self.assertEqual(self.selection_manager.get_selection().Read(),
+                     ["This is a Target Line for regex"])
+
   def test_select_overwrite_no_selection(self):
     command_input = CommandInput(
         'select_overwrite', [], multiline_content=["New content"])

@@ -75,28 +75,30 @@ class Selection:
 
   @classmethod
   def FromLinePattern(cls, path: str, start_line_pattern: str,
-                      end_line_pattern: str) -> 'Selection':
-    """Creates a Selection object based on line patterns using regex."""
+                      end_line_pattern: Optional[str]) -> 'Selection':
+    """Creates a Selection object based on line patterns using regex.
+    If end_line_pattern is None, only the start line is selected."""
     if not os.path.exists(path):
       raise FileNotFoundError(f"File not found: {path}")
 
     with open(path, "r") as file:
       lines: List[str] = file.readlines()
 
-    start_index = end_index = None
+    start_index = None
     for index, line in enumerate(lines):
       if start_index is None and re.search(start_line_pattern, line):
         start_index = index
-      elif start_index is not None and re.search(end_line_pattern, line):
-        end_index = index
-        break
+        if end_line_pattern is None:
+          return cls(path, start_index, start_index)
+      elif start_index is not None and end_line_pattern is not None and re.search(
+          end_line_pattern, line):
+        return cls(path, start_index, index)
 
     if start_index is None:
       raise ValueError("Could not find the specified start line pattern.")
-    if end_index is None:
+    if end_line_pattern is not None:
       raise ValueError("Could not find the specified end line pattern.")
-
-    return cls(path, start_index, end_index)
+    raise ValueError("Unexpected error in pattern matching.")
 
   def ProvideSummary(self) -> str:
     """Provides a summary of the selection made."""
