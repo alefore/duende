@@ -1,0 +1,2 @@
+Can you extend the Conversation class (see src/conversation.py) with a string
+parameter `name`? Make sure all constructors receive it.

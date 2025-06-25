@@ -161,7 +161,8 @@ class AgentLoop:
 
     review_conversation_path = self.options.conversation_path.replace(
         '.json', '.review.json')
-    review_conversation = self.options.conversation_factory.New()
+    review_conversation = self.options.conversation_factory.New(
+        name="AI Review: " + self.conversation.GetName())
 
     review_suggestions: List[MultilineContent] = []
 

@@ -121,6 +121,7 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
       git_dirty_accept=args.git_dirty_accept)
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
+  conversation_name = os.path.basename(args.task).replace('.txt', '')
 
   confirmation_state = ConfirmationState(
       confirmation_manager=confirmation_manager,
@@ -132,7 +133,8 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
 
   conversation, start_message = LoadOrCreateConversation(
       original_task_file_content, conversation_factory, conversation_path,
-      registry, file_access_policy, validation_manager, confirmation_state)
+      registry, file_access_policy, validation_manager, confirmation_state,
+      conversation_name)
 
   return AgentLoopOptions(
       conversation_factory=conversation_factory,
@@ -161,9 +163,10 @@ def LoadOrCreateConversation(
     file_access_policy: FileAccessPolicy,
     validation_manager: Optional[ValidationManager],
     confirmation_state: ConfirmationState,
+    conversation_name: str,
 ) -> Tuple[Conversation, Message]:
 
-  conversation = conversation_factory.Load(conversation_path)
+  conversation = conversation_factory.Load(conversation_path, conversation_name)
   if conversation.messages:
     next_message = Message(
         'system',
