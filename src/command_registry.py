@@ -43,7 +43,9 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                           validation_manager: Optional[ValidationManager],
                           start_new_task: Callable[[TaskInformation],
                                                    CommandOutput],
-                          git_dirty_accept: bool = False) -> CommandRegistry:
+                          git_dirty_accept: bool = False,
+                          can_write: bool = True,
+                          can_start_tasks: bool = True) -> CommandRegistry:
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
@@ -65,21 +67,27 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
     registry.Register(ValidateCommand(validation_manager))
 
   selection_manager = SelectionManager()
-  registry.Register(
-      WriteFileCommand(file_access_policy, validation_manager,
-                       selection_manager))
+  if can_write:
+    registry.Register(
+        WriteFileCommand(file_access_policy, validation_manager,
+                         selection_manager))
+
   registry.Register(SearchFileCommand(file_access_policy))
 
   for use_regex in [True, False]:
     registry.Register(
         SelectCommand(file_access_policy, selection_manager, use_regex))
-  registry.Register(
-      SelectOverwriteCommand(selection_manager, validation_manager))
+
+  if can_write:
+    registry.Register(
+        SelectOverwriteCommand(selection_manager, validation_manager))
 
   registry.Register(SelectPythonCommand(file_access_policy, selection_manager))
-  registry.Register(
-      ReplacePythonCommand(file_access_policy, validation_manager))
+  if can_write:
+    registry.Register(
+        ReplacePythonCommand(file_access_policy, validation_manager))
 
-  registry.Register(TaskCommand(start_new_task))
+  if can_start_tasks:
+    registry.Register(TaskCommand(start_new_task))
 
   return registry

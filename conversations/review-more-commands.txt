@@ -1,0 +1,10 @@
+Can you add more relevant commands to the CommandRegistry created by CreateReviewCommandRegistry?
+
+Compare it with the default command registry (from CreateCommandRegistry) and copy any commands that you think may be relevant for the AI that is in charge of doing a code review.
+
+I think you'll need to pass more parameters to CreateReviewCommandRegistry (so that you can create the relevant commands). You'll need to modify the caller, which you can find with #validate (the errors should help you find it).
+
+Good luck!
+
+#read_file src/command_registry.py
+#read_file src/review_commands.py

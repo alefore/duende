@@ -1,7 +1,6 @@
 import logging
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, ArgumentMultiline
 from conversation import MultilineContent
-from command_registry import CommandRegistry
 from typing import Callable, List, Optional
 
 
@@ -37,11 +36,3 @@ class SuggestCommand(AgentCommand):
         multiline=ArgumentMultiline(
             required=True,
             description="The detailed suggestion for the code changes."))
-
-
-def CreateReviewCommandRegistry(
-    add_suggestion_callback: Callable[[MultilineContent],
-                                      None]) -> CommandRegistry:
-  registry = CommandRegistry()
-  registry.Register(SuggestCommand(add_suggestion_callback))
-  return registry

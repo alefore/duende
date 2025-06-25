@@ -6,13 +6,15 @@ from typing import cast, Generator, List, Optional, Tuple, Union, Pattern, Named
 from validation import ValidationManager
 
 from confirmation import ConfirmationState
-from command_registry import CommandRegistry
+from command_registry import CommandRegistry, CreateCommandRegistry
 from file_access_policy import FileAccessPolicy
 from parsing import ExtractCommands
 from validate_command_input import ValidateCommandInput
 from conversational_ai import ConversationalAI
 from review_utils import GetGitDiffContent, ReadReviewPromptFile
-from review_commands import CreateReviewCommandRegistry
+from review_commands import SuggestCommand
+from select_commands import SelectionManager
+from task_command import TaskInformation, CommandOutput
 
 logging.basicConfig(level=logging.INFO)
 
@@ -36,6 +38,17 @@ class AgentLoopOptions(NamedTuple):
   original_task_prompt_content: Optional[List[str]] = None
 
 
+# Dummy function for start_new_task when tasks are disabled for the registry
+def _dummy_start_new_task(task_info: TaskInformation) -> CommandOutput:
+    # This function should never be called because can_start_tasks is False
+    # for the review registry. If it were called, it indicates a logic error.
+    logging.error(f"Attempted to start a task within a review loop, but tasks are disabled. Task: {task_info.task_name}")
+    return CommandOutput(
+        output=[],
+        errors=["Task command is disabled in review mode."],
+        summary="Task disabled in review mode.")
+
+
 class AgentLoop:
 
   def __init__(self, options: AgentLoopOptions):
@@ -46,6 +59,8 @@ class AgentLoop:
 
   def run(self) -> None:
     logging.info("Starting AgentLoop run method...")
+    # This line is reverted to its original, correct form.
+    # next_message is the input message for the AI for the current turn.
     next_message: Message = self.options.start_message
     while True:
       logging.info("Querying ChatGPT...")
@@ -55,7 +70,7 @@ class AgentLoop:
       commands, non_command_lines = ExtractCommands('\n'.join(
           ['\n'.join(s) for s in response_message.GetContentSections()]))
 
-      next_message = Message(role='user')
+      next_message = Message(role='user') # Re-initialize for the next turn's input
       response_content_str = '\n'.join(
           ['\n'.join(s) for s in response_message.GetContentSections()])
       if (self.options.confirm_regex and any(
@@ -147,7 +162,17 @@ class AgentLoop:
       review_suggestions.append(
           [f"Suggestion {len(review_suggestions) + 1}: <<"] + text + ["#end"])
 
-    review_registry = CreateReviewCommandRegistry(add_suggestion_callback)
+    review_selection_manager = SelectionManager()
+    review_registry = CreateCommandRegistry(
+        file_access_policy=self.options.file_access_policy,
+        validation_manager=self.options.validation_manager,
+        start_new_task=_dummy_start_new_task,
+        git_dirty_accept=True,
+        can_write=False,
+        can_start_tasks=False
+    )
+    review_registry.Register(SuggestCommand(add_suggestion_callback))
+
 
     review_start_sections: List[MultilineContent] = [[
         "You are an AI review assistant. Your task is to review a code changes and provide suggestions for improvement.",
