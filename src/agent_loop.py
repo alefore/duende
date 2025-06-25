@@ -82,7 +82,7 @@ class AgentLoop:
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
         guidance = self.options.confirmation_state.RequireConfirmation(
-            self.conversation.GetId(), response_content_str)
+            self.conversation.GetId(), "Accept input?")
         if guidance:
           print("Your guidance will be sent to the AI.")
           next_message.PushSection(
