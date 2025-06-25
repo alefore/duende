@@ -78,6 +78,8 @@ class AgentLoop:
           role='user')  # Re-initialize for the next turn's input
       response_content_str = '\n'.join(
           ['\n'.join(s) for s in response_message.GetContentSections()])
+
+      has_human_guidance = False
       if (self.options.confirm_regex and any(
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
@@ -86,11 +88,19 @@ class AgentLoop:
         if guidance:
           print("Your guidance will be sent to the AI.")
           next_message.PushSection([f"Message from human: {guidance}"])
+          has_human_guidance = True
 
       self.options.confirmation_state.RegisterInteraction(
           self.conversation.GetId())
-      for output_section in self._ExecuteCommands(commands):
+
+      command_outputs, should_terminate_agent_loop = self._ExecuteCommands(
+          commands)
+      for output_section in command_outputs:
         next_message.PushSection(output_section)
+
+      if should_terminate_agent_loop and not has_human_guidance:
+        logging.info("AgentLoop terminating as per command execution.")
+        break
 
       if not self.options.skip_implicit_validation:
         assert self.options.validation_manager
@@ -104,55 +114,58 @@ class AgentLoop:
               "To see the failures, use: #validate"
           ])
 
-  def _ExecuteCommands(self,
-                       commands) -> Generator[MultilineContent, None, None]:
+  def _ExecuteCommands(self, commands) -> Tuple[List[MultilineContent], bool]:
     if not commands:
-      yield [
+      return ([[
           "Error: No commands found in response! Use #done if you are done with your task."
-      ]
-      return
+      ]], False)
 
+    outputs: List[MultilineContent] = []
+    should_terminate_agent_loop: bool = False
     for cmd_input in commands:
       if cmd_input.command_name == "done":
+        should_terminate_agent_loop = True
         if self.options.do_review:
           review_feedback_content = self._RunReview()
           if review_feedback_content:
-            yield from review_feedback_content
-            return
+            should_terminate_agent_loop = False
+            outputs.extend(review_feedback_content)
 
-        if self.options.confirm_done:
+        if should_terminate_agent_loop and self.options.confirm_done:
           guidance = self.options.confirmation_state.RequireConfirmation(
-              self.conversation.GetId(),
-              "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue."
-          )
+              self.conversation.GetId(), "Confirm #done command? " +
+              "Enter an empty string to accept and terminate, " +
+              "or some message to be sent to the AI asking it to continue.")
           if guidance:
             logging.info("Your guidance will be sent to the AI.")
-            yield [f"Notice from human: {guidance}"]
-            continue
-        return
+            outputs.append([f"Notice from human: {guidance}"])
+            should_terminate_agent_loop = False
+        break
 
       command = self.options.commands_registry.Get(cmd_input.command_name)
       if not command:
         output = f"Unknown command: {cmd_input.command_name}"
         logging.error(output)
-        yield [output]
+        outputs.append([output])
         continue
 
       warnings = ValidateCommandInput(command.Syntax(), cmd_input,
                                       self.options.file_access_policy)
       if warnings:
-        yield [
+        outputs.append([
             f"Warning {cmd_input.command_name}: {warning}"
             for warning in warnings
-        ]
+        ])
         continue
 
       command_output = command.Execute(cmd_input)
       if command_output.output:
-        yield command_output.output
+        outputs.append(command_output.output)
       if command_output.errors:
-        yield [f"Error: {e}" for e in command_output.errors]
+        outputs.append([f"Error: {e}" for e in command_output.errors])
       logging.info(command_output.summary)
+
+    return outputs, should_terminate_agent_loop
 
   def _RunReview(self) -> Optional[List[MultilineContent]]:
     logging.info("Initiating AI review...")

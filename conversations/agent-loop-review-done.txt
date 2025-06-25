@@ -1,0 +1,3 @@
+I think there's a bug in AgentLoop where when a nested agent loop (from a review) is done, control is not being returned to the parent AgentLoop. Somehow the nested loop keeps going.
+
+Can you take a look and make sure things seem reasonable? The most relevant file is src/agent_loop.py (but you can read any other files).
