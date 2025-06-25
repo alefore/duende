@@ -112,6 +112,12 @@ pre {
   color: #333;
 }
 
+#confirmation_input:disabled {
+  background-color: #e0e0e0; /* A more neutral, grayed-out background */
+  border: 1px dashed #aaa; /* Dashed border for visual distinction */
+  color: #666; /* Lighter text color */
+}
+
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
   body {
@@ -150,5 +156,11 @@ pre {
     background-color: #333;
     color: #f0f0f0;
     border: 1px solid #555;
+  }
+
+  #confirmation_input:disabled {
+    background-color: #444; /* Darker neutral background for disabled in dark mode */
+    border: 1px dashed #777; /* Darker dashed border */
+    color: #999; /* Lighter gray text */
   }
 }

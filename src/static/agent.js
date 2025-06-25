@@ -33,6 +33,7 @@ function updateConfirmationUI() {
   const $confirmationInput = $('#confirmation_input');
   $confirmationInput.prop('disabled', !isConfirmationRequired);
   if (isConfirmationRequired) {
+    $confirmationInput.attr('placeholder', 'Confirmation…');
     $confirmationInput.focus();
     setTimeout(() => {
       $confirmationInput.css('height', 'auto');
@@ -40,6 +41,7 @@ function updateConfirmationUI() {
     }, 0);
   } else {
     $confirmationInput.val('');
+    $confirmationInput.attr('placeholder', '');
     $confirmationInput.css('height', 'auto');
   }
 }
