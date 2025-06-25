@@ -63,8 +63,6 @@ class AgentLoop:
 
   def run(self) -> None:
     logging.info("Starting AgentLoop run method...")
-    # This line is reverted to its original, correct form.
-    # next_message is the input message for the AI for the current turn.
     next_message: Message = self.options.start_message
     while True:
       logging.info("Querying ChatGPT...")
@@ -76,8 +74,7 @@ class AgentLoop:
           '\n'.join(s.content) for s in response_message.GetContentSections()
       ]))
 
-      next_message = Message(
-          role='user')  # Re-initialize for the next turn's input
+      next_message = Message(role='user')
       response_content_str = '\n'.join(
           ['\n'.join(s.content) for s in response_message.GetContentSections()])
 
@@ -91,7 +88,8 @@ class AgentLoop:
           print("Your guidance will be sent to the AI.")
           next_message.PushSection(
               ContentSection(
-                  content=[f"Message from human: {guidance}"], summary=None))
+                  content=[f"Message from human: {guidance}"],
+                  summary="Human guidance for AI"))
           has_human_guidance = True
 
       self.options.confirmation_state.RegisterInteraction(
@@ -99,9 +97,8 @@ class AgentLoop:
 
       command_outputs, should_terminate_agent_loop = self._ExecuteCommands(
           commands)
-      for output_section in command_outputs:
-        next_message.PushSection(
-            ContentSection(content=output_section, summary=None))
+      for content_section in command_outputs:
+        next_message.PushSection(content_section)
 
       if should_terminate_agent_loop and not has_human_guidance:
         logging.info("AgentLoop terminating as per command execution.")
@@ -120,18 +117,23 @@ class AgentLoop:
                       "(normal if you are in the middle of applying changes). "
                       "To see the failures, use: #validate"
                   ],
-                  summary=None))
+                  summary="Validation status (failures detected)"))
 
-  def _ExecuteCommands(self, commands) -> Tuple[List[MultilineContent], bool]:
+  def _ExecuteCommands(self, commands) -> Tuple[List[ContentSection], bool]:
     if not commands:
-      return ([[
-          "Error: No commands found in response! Use #done if you are done with your task."
-      ]], False)
+      return ([
+          ContentSection(
+              content=[
+                  "Error: No commands found in response! Use #done if you are done with your task."
+              ],
+              summary="Error: No commands received")
+      ], False)
 
-    outputs: List[MultilineContent] = []
+    outputs: List[ContentSection] = []
     should_terminate_agent_loop: bool = False
     for cmd_input in commands:
-      if cmd_input.command_name == "done":
+      command_name = cmd_input.command_name
+      if command_name == "done":
         should_terminate_agent_loop = True
         if self.options.do_review:
           review_feedback_content = self._RunReview()
@@ -146,36 +148,48 @@ class AgentLoop:
               "or some message to be sent to the AI asking it to continue.")
           if guidance:
             logging.info("Your guidance will be sent to the AI.")
-            outputs.append([f"Notice from human: {guidance}"])
+            outputs.append(
+                ContentSection(
+                    content=[f"Notice from human: {guidance}"],
+                    summary="Human decision to continue"))
             should_terminate_agent_loop = False
         break
 
-      command = self.options.commands_registry.Get(cmd_input.command_name)
+      command = self.options.commands_registry.Get(command_name)
       if not command:
-        output = f"Unknown command: {cmd_input.command_name}"
+        output = f"Error: Unknown command: {command_name}"
         logging.error(output)
-        outputs.append([output])
+        outputs.append(ContentSection(content=[output], summary=output))
         continue
 
       warnings = ValidateCommandInput(command.Syntax(), cmd_input,
                                       self.options.file_access_policy)
       if warnings:
-        outputs.append([
-            f"Warning {cmd_input.command_name}: {warning}"
-            for warning in warnings
-        ])
+        outputs.append(
+            ContentSection(
+                content=[
+                    f"Warning {command_name}: {warning}" for warning in warnings
+                ],
+                summary=f"Command '{command_name}' validation warnings"))
         continue
 
       command_output = command.Execute(cmd_input)
       if command_output.output:
-        outputs.append(command_output.output)
+        outputs.append(
+            ContentSection(
+                content=command_output.output,
+                summary=command_output.summary or
+                f"Output for command '{command_name}'"))
       if command_output.errors:
-        outputs.append([f"Error: {e}" for e in command_output.errors])
+        outputs.append(
+            ContentSection(
+                content=[f"Error: {e}" for e in command_output.errors],
+                summary=f"Errors for command '{command_name}'"))
       logging.info(command_output.summary)
 
     return outputs, should_terminate_agent_loop
 
-  def _RunReview(self) -> Optional[List[MultilineContent]]:
+  def _RunReview(self) -> Optional[List[ContentSection]]:
     logging.info("Initiating AI review...")
 
     git_diff_output = GetGitDiffContent()
@@ -193,7 +207,7 @@ class AgentLoop:
           ContentSection(
               content=[f"Suggestion {len(review_suggestions) + 1}: <<"] + text +
               ["#end"],
-              summary=None))
+              summary=f"Review Suggestion {len(review_suggestions) + 1}"))
 
     review_selection_manager = SelectionManager()
     review_registry = CreateCommandRegistry(
@@ -224,8 +238,10 @@ class AgentLoop:
                 "",
                 "Available commands for review:",
             ],
-            summary=None),
-        ContentSection(content=[review_registry.HelpText()], summary=None)
+            summary="Review context and guidelines for the AI"),
+        ContentSection(
+            content=[review_registry.HelpText()],
+            summary="Available commands for AI review")
     ]
     review_start_message = Message(
         'system', content_sections=review_start_sections)
@@ -259,8 +275,8 @@ class AgentLoop:
       review_suggestions.append(
           ContentSection(
               content=["Please try to address these suggestions."],
-              summary=None))
-      return [s.content for s in review_suggestions]
+              summary="Instructions after review suggestions"))
+      return review_suggestions
     else:
       logging.info("AI review found no suggestions.")
       return None
