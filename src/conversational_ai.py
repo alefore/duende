@@ -15,6 +15,5 @@ class ConversationalAI(ABC):
 
   @abstractmethod
   def StartConversation(
-      self,
-      conversation: Optional[Conversation]) -> ConversationalAIConversation:
+      self, conversation: Conversation) -> ConversationalAIConversation:
     pass

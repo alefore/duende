@@ -9,10 +9,10 @@ import logging
 class ChatGPTConversation(ConversationalAIConversation):
 
   def __init__(self, client: OpenAI, model: str,
-               conversation: Optional[Conversation]):
+               conversation: Conversation) -> None:
     self.client = client
     self.model = model
-    self.conversation = conversation or Conversation()
+    self.conversation = conversation
     logging.info(f"Starting conversation, "
                  f"messages: {len(self.conversation.GetMessagesList())}")
 
@@ -20,10 +20,13 @@ class ChatGPTConversation(ConversationalAIConversation):
     self.conversation.AddMessage(message)
 
     openai_messages: list[ChatCompletionMessageParam] = [
-        cast(ChatCompletionMessageParam, {
-            "role": m.role,
-            "content": '\n'.join(['\n'.join(s) for s in m.GetContentSections()])
-        }) for m in self.conversation.GetMessagesList()
+        cast(
+            ChatCompletionMessageParam, {
+                "role":
+                    m.role,
+                "content":
+                    '\n'.join(['\n'.join(s) for s in m.GetContentSections()])
+            }) for m in self.conversation.GetMessagesList()
     ]
 
     logging.info("Sending message to ChatGPT.")
@@ -52,7 +55,6 @@ class ChatGPT(ConversationalAI):
     self.model = model
 
   def StartConversation(
-      self,
-      conversation: Optional[Conversation]) -> ConversationalAIConversation:
+      self, conversation: Conversation) -> ConversationalAIConversation:
     return ChatGPTConversation(
         client=self.client, model=self.model, conversation=conversation)

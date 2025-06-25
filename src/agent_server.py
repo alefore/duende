@@ -4,6 +4,7 @@ from flask_socketio import SocketIO
 import logging
 
 from args_common import CreateCommonParser
+from conversation import ConversationId
 from web_server_state import WebServerState
 from random_key import GenerateRandomKey
 
@@ -50,10 +51,11 @@ def interact():
   return HTML_TEMPLATE
 
 
-def SendUpdate(server_state, data):
+def SendUpdate(server_state, data) -> None:
   message_count = data.get('message_count', 0)
   logging.info(f"Received: request_update, message_count: {message_count}")
-  server_state.SendUpdate(message_count, confirmation_required=None)
+  server_state.SendUpdate(
+      data.get('conversation_id'), message_count, confirmation_required=None)
 
 
 def run_server() -> None:
@@ -64,6 +66,7 @@ def run_server() -> None:
   @socketio.on('confirm')
   def handle_confirmation(data) -> None:
     logging.info("Received: confirm.")
+    conversation_id = data.get('conversation_id')
     server_state.ReceiveConfirmation(data.get('confirmation'))
     SendUpdate(server_state, data)
 

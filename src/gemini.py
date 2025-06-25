@@ -12,9 +12,9 @@ from conversational_ai import ConversationalAI, ConversationalAIConversation
 class GeminiConversation(ConversationalAIConversation):
 
   def __init__(self, model: genai.GenerativeModel,
-               conversation: Optional[Conversation]):
+               conversation: Conversation) -> None:
     self.model = model
-    self.conversation = conversation or Conversation()
+    self.conversation = conversation
 
     gemini_initial_history: List[genai_types.ContentDict] = []
     for msg in self.conversation.GetMessagesList():
@@ -76,8 +76,7 @@ class Gemini(ConversationalAI):
     logging.info(f"Initialized Gemini AI with model: {self.model_name}")
 
   def StartConversation(
-      self,
-      conversation: Optional[Conversation]) -> ConversationalAIConversation:
+      self, conversation: Conversation) -> ConversationalAIConversation:
     return GeminiConversation(model=self.model, conversation=conversation)
 
   def _ListModels(self):

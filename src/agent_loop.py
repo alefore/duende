@@ -13,8 +13,9 @@ from validate_command_input import ValidateCommandInput
 from conversational_ai import ConversationalAI
 from review_utils import GetGitDiffContent, ReadReviewPromptFile
 from review_commands import SuggestCommand
-from select_commands import SelectionManager
-from task_command import TaskInformation, CommandOutput
+from selection_manager import SelectionManager
+from task_command import TaskInformation
+from agent_command import CommandOutput
 
 logging.basicConfig(level=logging.INFO)
 
@@ -81,12 +82,13 @@ class AgentLoop:
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
         guidance = self.options.confirmation_state.RequireConfirmation(
-            response_content_str)
+            self.conversation.GetId(), response_content_str)
         if guidance:
           print("Your guidance will be sent to the AI.")
           next_message.PushSection([f"Message from human: {guidance}"])
 
-      self.options.confirmation_state.RegisterInteraction()
+      self.options.confirmation_state.RegisterInteraction(
+          self.conversation.GetId())
       for output_section in self._ExecuteCommands(commands):
         next_message.PushSection(output_section)
 
@@ -119,6 +121,7 @@ class AgentLoop:
 
         if self.options.confirm_done:
           guidance = self.options.confirmation_state.RequireConfirmation(
+              self.conversation.GetId(),
               "Confirm #done command? Enter an empty string to accept and terminate, or some message to be sent to the AI asking it to continue."
           )
           if guidance:

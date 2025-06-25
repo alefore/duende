@@ -30,13 +30,17 @@ class Message:
     self._content_sections.append(section)
 
 
+ConversationId = int
+
+
 class Conversation:
 
   def __init__(
       self,
       unique_id: int,
-      on_message_added_callback: Optional[Callable[[], None]] = None) -> None:
-    self.unique_id = unique_id
+      on_message_added_callback: Optional[Callable[[int],
+                                                   None]] = None) -> None:
+    self._unique_id = unique_id
     self.messages: List[Message] = []
     self._on_message_added_callback = on_message_added_callback
 
@@ -44,7 +48,8 @@ class Conversation:
   def Load(
       unique_id: int,
       path: str,
-      on_message_added_callback: Optional[Callable[[], None]] = None
+      on_message_added_callback: Optional[Callable[[ConversationId],
+                                                   None]] = None
   ) -> 'Conversation':
     conversation = Conversation(unique_id, on_message_added_callback)
     try:
@@ -70,26 +75,38 @@ class Conversation:
     )
     self.messages.append(message)
     if self._on_message_added_callback:
-      self._on_message_added_callback()
+      self._on_message_added_callback(self._unique_id)
 
   def GetMessagesList(self) -> List[Message]:
     return self.messages
 
+  def GetId(self) -> ConversationId:
+    return self._unique_id
+
 
 class ConversationFactory:
 
-  def __init__(self,
-               on_message_added_callback: Optional[Callable[[], None]] = None):
-    self._next_id = 0
+  def __init__(
+      self,
+      on_message_added_callback: Optional[Callable[[ConversationId],
+                                                   None]] = None
+  ) -> None:
+    self._next_id: ConversationId = 0
+    self._conversations: Dict[ConversationId, Conversation] = {}
     self.on_message_added_callback = on_message_added_callback
 
   def New(self) -> Conversation:
     output = Conversation(self._next_id, self.on_message_added_callback)
+    self._conversations[self._next_id] = output
     self._next_id += 1
     return output
 
   def Load(self, path):
     output = Conversation.Load(self._next_id, path,
                                self.on_message_added_callback)
+    self._conversations[self._next_id] = output
     self._next_id += 1
     return output
+
+  def Get(self, id: ConversationId) -> Conversation:
+    return self._conversations[id]

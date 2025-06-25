@@ -5,31 +5,31 @@ from confirmation import AsyncConfirmationManager
 
 class TestAsyncConfirmationManager(unittest.TestCase):
 
-  def setUp(self):
+  def setUp(self) -> None:
     self.manager = AsyncConfirmationManager()
 
-  def test_initial_state(self):
+  def test_initial_state(self) -> None:
     """Test the initial state of AsyncConfirmationManager."""
     self.assertIsNone(self.manager.get_pending_message(),
                       "Initial message should be None.")
 
-  def provide_confirmation(self, message):
+  def provide_confirmation(self, message) -> None:
     self.manager.provide_confirmation(message)
 
-  def test_provide_confirmation(self):
+  def test_provide_confirmation(self) -> None:
     """Test providing confirmation."""
     confirmation_thread = threading.Thread(
         target=self.provide_confirmation, args=("Yes",))
     confirmation_thread.start()
 
     test_message = "Are you sure?"
-    confirmation = self.manager.RequireConfirmation(test_message)
+    confirmation = self.manager.RequireConfirmation(0, test_message)
 
     self.assertEqual(confirmation, "Yes",
                      "Confirmation should match the provided input.")
     confirmation_thread.join()
 
-  def test_pending_message(self):
+  def test_pending_message(self) -> None:
     """Test that a message is pending until confirmation is given."""
     test_message = "Confirm this action."
     pending_message_before = self.manager.get_pending_message()
@@ -42,7 +42,7 @@ class TestAsyncConfirmationManager(unittest.TestCase):
     confirmation_thread.start()
 
     # Message should be set before confirmation is provided
-    pending_message = self.manager.RequireConfirmation(test_message)
+    pending_message = self.manager.RequireConfirmation(0, test_message)
 
     self.assertEqual(pending_message, "Proceed",
                      "Confirmation should be 'Proceed'.")
