@@ -132,14 +132,16 @@ function handleUpdate(socket, data) {
         const $contentContainer = $('<div>').addClass('content-container');
         (message.content_sections || []).forEach(section => {
           const $sectionDiv = $('<div>').addClass('messageSection');
-          const lineCount = section.length;
-          const $fullContentPre =
-              $('<pre>').addClass('full-content-pre').text(section.join('\n'));
+          const lineCount = section.content.length;
+          const $fullContentPre = $('<pre>')
+                                      .addClass('full-content-pre')
+                                      .text(section.content.join('\n'));
 
           if (lineCount <= 5) {
             $sectionDiv.append($fullContentPre);
           } else {
-            const firstLineContent = section[0] || '';
+            const firstLineContent =
+                section.summary || section.content[0] || '';
             const $firstLinePre =
                 $('<pre>')
                     .addClass('first-line-pre')
