@@ -30,7 +30,7 @@ class WebServerState:
     Thread(target=AgentLoop(options).run).start()
 
   def SendUpdate(self, conversation_id, client_message_count: Optional[int],
-                 confirmation_required: Optional[bool]) -> None:
+                 confirmation_required: Optional[str]) -> None:
     try:
       conversation = self.conversation_factory.Get(conversation_id)
       conversation_name = conversation.GetName()
@@ -51,8 +51,7 @@ class WebServerState:
       logging.info("Sending update without new messages.")
 
     if confirmation_required is None:
-      confirmation_required = (
-          self.confirmation_manager.get_pending_message() is not None)
+      confirmation_required = self.confirmation_manager.get_pending_message()
     data = {
         'conversation_id': conversation_id,
         'conversation_name': conversation_name,
@@ -65,9 +64,9 @@ class WebServerState:
     self.socketio.emit('update', data)
 
   def _confirmation_requested(self, conversation_id: ConversationId,
-                              message_ignored: str) -> None:
+                              message: str) -> None:
     logging.info("Confirmation requested.")
-    self.SendUpdate(conversation_id, None, confirmation_required=True)
+    self.SendUpdate(conversation_id, None, confirmation_required=message)
 
   def ReceiveConfirmation(self, confirmation_message) -> None:
     logging.info("Received confirmation.")
