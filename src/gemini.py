@@ -57,7 +57,10 @@ class GeminiConversation(ConversationalAIConversation):
     logging.info(f"Received response from Gemini: '{reply_content[:50]}...'")
 
     reply_message = Message(
-        role="assistant", content_sections=[ContentSection(content=[reply_content], summary=None)])
+        role="assistant",
+        content_sections=[
+            ContentSection(content=reply_content.splitlines(), summary=None)
+        ])
     self.conversation.AddMessage(reply_message)
     return reply_message
 
