@@ -1,0 +1,5 @@
+Compare ResetFileCommand with WriteFileCommand. WriteFileCommand correctly calls into the validation_manager to register changes. Can you change ResetFileCommand to *also* call into validation_manager when at least one file is reset?
+
+#read_file src/write_file_command.py
+#read_file src/git_commands.py
+#read_file src/validation.py

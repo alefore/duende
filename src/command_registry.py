@@ -51,9 +51,8 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
   registry.Register(ListFilesCommand(file_access_policy))
 
   git_state = CheckGitRepositoryState()
-
   if git_state == GitRepositoryState.CLEAN:
-    registry.Register(ResetFileCommand(file_access_policy))
+    registry.Register(ResetFileCommand(file_access_policy, validation_manager))
   elif git_state == GitRepositoryState.NOT_CLEAN:
     if git_dirty_accept:
       print(

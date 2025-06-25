@@ -3,7 +3,8 @@ import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
-from typing import List
+from typing import List, Optional
+from validation import ValidationManager
 
 
 class GitRepositoryState(Enum):
@@ -14,8 +15,10 @@ class GitRepositoryState(Enum):
 
 class ResetFileCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy) -> None:
+  def __init__(self, file_access_policy: FileAccessPolicy,
+               validation_manager: Optional[ValidationManager]) -> None:
     self.file_access_policy = file_access_policy
+    self.validation_manager = validation_manager
 
   def Name(self) -> str:
     return "reset_file"
@@ -23,12 +26,17 @@ class ResetFileCommand(AgentCommand):
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     paths = command_input.arguments
     errors: List[str] = []
+    successful_resets = 0
 
     for path in paths:
       try:
         subprocess.run(["git", "checkout", path], check=True)
+        successful_resets += 1
       except subprocess.CalledProcessError as e:
         errors.append(str(e))
+
+    if successful_resets > 0 and self.validation_manager:
+      self.validation_manager.RegisterChange()
 
     if errors:
       return CommandOutput(
@@ -50,7 +58,6 @@ class ResetFileCommand(AgentCommand):
 
 def CheckGitRepositoryState() -> GitRepositoryState:
   try:
-    # Check if we are inside a git repository
     subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
                    check=True,
                    stdout=subprocess.PIPE,
