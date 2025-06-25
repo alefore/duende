@@ -50,6 +50,7 @@ function sendConfirmation(socket, confirmationMessage) {
     message_count: countMessages(),
     conversation_id: activeConversationId
   });
+  console.log('CONFIRMATION: Send confirmation.')
   isConfirmationRequired = false;
 }
 
@@ -190,6 +191,7 @@ function handleUpdate(socket, data) {
 
   showConversation(conversationId);
   isConfirmationRequired = data.confirmation_required;
+  console.log(`CONFIRMATION: Signal from server: {isConfirmationRequired}`)
   maybeAutoConfirm(socket);
 
   if (data.message_count > currentMessagesInDiv)
