@@ -11,24 +11,19 @@ class ValidateCommand(AgentCommand):
   def Name(self) -> str:
     return "validate"
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
-        description="Executes validation script to verify code integrity. Recommended to run this command after making changes.")
+        description="Executes validation script to verify code integrity. Recommended to run this command after making changes."
+    )
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     result = self.validation_manager.Validate()
-    if not result:
-      return CommandOutput(
-          output=[],
-          errors=["Validation script not found or not executable."],
-          summary="Validation script not found or permission denied.")
 
-    if result.returncode != 0:
+    if not result.success:
       return CommandOutput(
           output=[],
-          errors=[f"Validation failed: {result.stderr.strip()}"],
+          errors=[f"#validate_output FAIL << "] + result.error + ["#end"],
           summary="Validation script failed.")
 
     return CommandOutput(

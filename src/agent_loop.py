@@ -95,8 +95,9 @@ class AgentLoop:
       if not self.options.skip_implicit_validation:
         assert self.options.validation_manager
         validation_result = self.options.validation_manager.Validate()
-        if validation_result.returncode != 0:
-          logging.info(f"Validation failed: {validation_result.returncode}")
+        if not validation_result.success:
+          logging.info(
+              f"Validation failed: {'\\n'.join(validation_result.error)}")
           next_message.PushSection([
               "The validation command is currently reporting failures "
               "(normal if you are in the middle of applying changes). "

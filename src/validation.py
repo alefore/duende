@@ -1,39 +1,50 @@
 import os
 import subprocess
 import logging
-from typing import Optional
+from typing import Optional, NamedTuple
+
+from conversation import MultilineContent
+
+
+class ValidationResult(NamedTuple):
+  success: bool
+  output: MultilineContent
+  error: MultilineContent
 
 
 class ValidationManager:
 
   def __init__(self) -> None:
     self.validation_script: str = "agent/validate.sh"
-    self.validation_output: Optional[subprocess.CompletedProcess] = None
+    self.validation_output: Optional[ValidationResult] = None
 
   def RegisterChange(self) -> None:
     self.validation_output = None
 
-  def Validate(self) -> subprocess.CompletedProcess:
+  def Validate(self) -> ValidationResult:
     if self.validation_output is None:
       self.validation_output = self._execute_validation_script()
 
-      if self.validation_output.returncode != 0:
+      if not self.validation_output.success:
         logging.error(
-            f"Validation failed: {self.validation_output.stderr.strip()}")
+            f"Validation failed: {'\\n'.join(self.validation_output.error)}")
       else:
         logging.info("Validation succeeded.")
 
     return self.validation_output
 
-  def _execute_validation_script(self) -> subprocess.CompletedProcess:
+  def _execute_validation_script(self) -> ValidationResult:
     try:
-      return subprocess.run([self.validation_script],
-                            capture_output=True,
-                            text=True)
+      process = subprocess.run([self.validation_script],
+                               capture_output=True,
+                               text=True)
+      return ValidationResult(
+          success=process.returncode == 0,
+          output=process.stdout.splitlines(),
+          error=process.stderr.splitlines())
     except Exception as e:
       logging.error(f"Error executing validation script: {str(e)}")
-      return subprocess.CompletedProcess(
-          args=[self.validation_script], returncode=1, stderr=str(e))
+      return ValidationResult(success=False, output=[], error=[str(e)])
 
 
 def CreateValidationManager() -> Optional[ValidationManager]:

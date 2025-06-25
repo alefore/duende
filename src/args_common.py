@@ -107,7 +107,7 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
 
   if validation_manager:
     initial_validation_result = validation_manager.Validate()
-    if initial_validation_result and initial_validation_result.returncode != 0:
+    if initial_validation_result and not initial_validation_result.success:
       raise RuntimeError(
           "Initial validation failed, aborting further operations.")
 

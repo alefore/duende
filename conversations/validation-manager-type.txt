@@ -1,0 +1,3 @@
+Can you change the ValidationManager class so that its interface does not expose types in the subprocess module? The fact that ValidationManager uses subprocess to validate is an implementation detail and should not be exposes through the interface.
+
+Before you make any changes, please read files src/validation.py and make a proposal in plain English for what you think the interface (for the Validate method) should use.
