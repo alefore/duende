@@ -29,7 +29,8 @@ HTML_TEMPLATE = """
         <input type="checkbox" id="auto_confirm_checkbox"> Automatic confirmation
       </label>
     </div>
-    <div id="conversation"></div>
+    <div id="conversation_selector"></div>
+    <div id="conversation_container"></div>
     <div id="confirmation"></div>
     <form id="confirmation_form" style="display: block;">
       <textarea name="confirmation" id="confirmation_input" placeholder="Confirmation…" autofocus rows="1"></textarea>

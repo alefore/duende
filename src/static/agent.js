@@ -1,17 +1,32 @@
-function scrollToBottom() {
-  window.scrollTo(0, document.body.scrollHeight);
-}
-
+let activeConversationId = null;
 let currentSessionKey = null;
 let isConfirmationRequired = false;
 let isAutoConfirmationEnabled = false;
 
-function countMessages() {
-  return $('#conversation .message').length;
+function getConversationDiv(conversationId) {
+  return $(`#conversation-${conversationId}`);
 }
 
-function requestMessages(socket) {
-  socket.emit('request_update', {message_count: countMessages()});
+function getActiveConversationDiv() {
+  return getConversationDiv(activeConversationId);
+}
+
+function scrollToBottom() {
+  // Only scroll if the active conversation is visible
+  if (activeConversationId !== null &&
+      getActiveConversationDiv().is(':visible'))
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function countMessages() {
+  if (activeConversationId === null) return 0;
+  return getActiveConversationDiv().find('.message').length;
+}
+
+function requestMessages(socket, conversationId) {
+  socket.emit(
+      'request_update',
+      {message_count: countMessages(), conversation_id: conversationId});
 }
 
 function updateConfirmationUI() {
@@ -30,9 +45,11 @@ function updateConfirmationUI() {
 }
 
 function sendConfirmation(socket, confirmationMessage) {
-  socket.emit(
-      'confirm',
-      {confirmation: confirmationMessage, message_count: countMessages()});
+  socket.emit('confirm', {
+    confirmation: confirmationMessage,
+    message_count: countMessages(),
+    conversation_id: activeConversationId
+  });
   isConfirmationRequired = false;
 }
 
@@ -56,20 +73,57 @@ function maybeAutoConfirm(socket) {
   updateConfirmationUI();
 }
 
+function showConversation(conversationId) {
+  $('.conversation').hide();  // Hide all.
+  activeConversationId = conversationId;
+  const $targetConversation = getActiveConversationDiv();
+  if ($targetConversation.length === 0) {
+    console.warn(`Conversation div for ID ${conversationId} not found.`);
+    return;
+  }
+  $targetConversation.show();  // Show the selected one
+  const $conversationSelector = $('#conversation_selector');
+  if (parseInt($conversationSelector.val()) !== conversationId)
+    $conversationSelector.val(conversationId);
+  scrollToBottom();
+}
+
 function handleUpdate(socket, data) {
   console.log('Starting update');
   console.log(data);
 
+  const conversationId = data.conversation_id;
+
+  const $conversationSelector = $('#conversation_selector');
+  let $option = $conversationSelector.find(`option[value="${conversationId}"]`);
+  if ($option.length === 0) {
+    console.log('Creating selector...');
+    $option = $('<option>')
+                  .val(conversationId)
+                  .text(`Conversation ${conversationId}`);
+    $conversationSelector.append($option);
+  }
+  $conversationSelector.val(conversationId);
+
   if (currentSessionKey !== data.session_key) {
     console.log('Session key changed. Clearing conversation.');
-    $('#conversation').empty();
+    $('#conversation_container').empty();
     currentSessionKey = data.session_key;
   }
 
-  const $conversation = $('#conversation');
+  let $conversationDiv = $(`#conversation-${conversationId}`);
+  if ($conversationDiv.length === 0) {
+    console.log(`Creating container for conversation ${conversationId}`);
+    $conversationDiv = $('<div>')
+                           .addClass('conversation')
+                           .attr('id', `conversation-${conversationId}`)
+                           .hide();
+    $('#conversation_container').append($conversationDiv);
+  }
 
+  const currentMessagesInDiv = $conversationDiv.find('.message').length;
   data.conversation
-      .slice(Math.max(0, countMessages() - data.first_message_index))
+      .slice(Math.max(0, currentMessagesInDiv - data.first_message_index))
       .forEach(message => {
         const $messageDiv = $('<div>').addClass('message');
         const $role = $('<p>').addClass('role').text(`${message.role}:`);
@@ -128,14 +182,15 @@ function handleUpdate(socket, data) {
         });
 
         $messageDiv.append($role, $contentContainer);
-        $conversation.append($messageDiv);
+        $conversationDiv.append($messageDiv);
       });
 
+  showConversation(conversationId);
   isConfirmationRequired = data.confirmation_required;
   maybeAutoConfirm(socket);
 
-  if (data.message_count > countMessages()) requestMessages(socket);
-  scrollToBottom();
+  if (data.message_count > currentMessagesInDiv)
+    requestMessages(socket, conversationId);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -145,6 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const confirmationForm = document.getElementById('confirmation_form');
   const confirmationInput = document.getElementById('confirmation_input');
   const autoConfirmCheckbox = document.getElementById('auto_confirm_checkbox');
+  // Need to ensure these elements exist in the HTML (select for conversations,
+  // and container for conversation divs) Assuming they will be added to
+  // index.html as part of this feature.
+  const $conversationSelector = $('#conversation_selector');
 
   loadAutoConfirmState();
   autoConfirmCheckbox.checked = isAutoConfirmationEnabled;
@@ -165,6 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
   $(confirmationInput).on('keydown', function(event) {
     if (event.key === 'Enter') {
       if (event.shiftKey) {
+        // Allow shift+enter for new line
       } else {
         event.preventDefault();
         if (isConfirmationRequired) $(confirmationForm).submit();
@@ -178,8 +238,14 @@ document.addEventListener('DOMContentLoaded', function() {
     updateConfirmationUI();
   });
 
+  $conversationSelector.on('change', function() {
+    // When user changes selection, show that conversation
+    showConversation(parseInt($(this).val()));
+  });
+
   console.log('Requesting initial update.');
-  socket.emit('request_update', {message_count: countMessages()});
+  const initialConversationId = 0;
+  requestMessages(socket, initialConversationId);
 
   updateConfirmationUI();
 });
