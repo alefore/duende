@@ -12,7 +12,7 @@ from command_registry import CommandRegistry, CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
-from conversation import Conversation, Message, MultilineContent
+from conversation import Conversation, ConversationFactory, Message, MultilineContent
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from parsing import ExtractCommands
@@ -80,11 +80,9 @@ def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
   raise Exception(f"Unknown AI: {args.model}")
 
 
-def CreateAgentLoopOptions(
-    args: argparse.Namespace,
-    confirmation_manager: ConfirmationManager,
-    on_message_added_callback: Optional[Callable[[], None]] = None
-) -> AgentLoopOptions:
+def CreateAgentLoopOptions(args: argparse.Namespace,
+                           confirmation_manager: ConfirmationManager,
+                           conversation_factory) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
 
   matched_files = list(list_all_files('.', file_access_policy))
@@ -133,11 +131,11 @@ def CreateAgentLoopOptions(
     original_task_file_content = [l.rstrip() for l in f.readlines()]
 
   conversation, start_message = LoadOrCreateConversation(
-      original_task_file_content, conversation_path, registry,
-      file_access_policy, validation_manager, confirmation_state,
-      on_message_added_callback)
+      original_task_file_content, conversation_factory, conversation_path,
+      registry, file_access_policy, validation_manager, confirmation_state)
 
   return AgentLoopOptions(
+      conversation_factory=conversation_factory,
       conversation_path=conversation_path,
       model=args.model,
       conversation=conversation,
@@ -157,15 +155,15 @@ def CreateAgentLoopOptions(
 
 def LoadOrCreateConversation(
     task_file_content: List[str],
+    conversation_factory: ConversationFactory,
     conversation_path: str,
     registry: CommandRegistry,
     file_access_policy: FileAccessPolicy,
     validation_manager: Optional[ValidationManager],
     confirmation_state: ConfirmationState,
-    on_message_added_callback: Optional[Callable[[], None]] = None
 ) -> Tuple[Conversation, Message]:
 
-  conversation = Conversation.Load(conversation_path, on_message_added_callback)
+  conversation = conversation_factory.Load(conversation_path)
   if conversation.messages:
     next_message = Message(
         'system',

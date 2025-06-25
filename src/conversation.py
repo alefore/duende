@@ -34,16 +34,19 @@ class Conversation:
 
   def __init__(
       self,
+      unique_id: int,
       on_message_added_callback: Optional[Callable[[], None]] = None) -> None:
+    self.unique_id = unique_id
     self.messages: List[Message] = []
     self._on_message_added_callback = on_message_added_callback
 
   @staticmethod
   def Load(
+      unique_id: int,
       path: str,
       on_message_added_callback: Optional[Callable[[], None]] = None
   ) -> 'Conversation':
-    conversation = Conversation(on_message_added_callback)
+    conversation = Conversation(unique_id, on_message_added_callback)
     try:
       with open(path, 'r') as f:
         messages_data = json.load(f)
@@ -71,3 +74,22 @@ class Conversation:
 
   def GetMessagesList(self) -> List[Message]:
     return self.messages
+
+
+class ConversationFactory:
+
+  def __init__(self,
+               on_message_added_callback: Optional[Callable[[], None]] = None):
+    self._next_id = 0
+    self.on_message_added_callback = on_message_added_callback
+
+  def New(self) -> Conversation:
+    output = Conversation(self._next_id, self.on_message_added_callback)
+    self._next_id += 1
+    return output
+
+  def Load(self, path):
+    output = Conversation.Load(self._next_id, path,
+                               self.on_message_added_callback)
+    self._next_id += 1
+    return output

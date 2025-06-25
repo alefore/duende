@@ -7,12 +7,12 @@ from args_common import CreateAgentLoopOptions
 from agent_loop import AgentLoop
 from confirmation import AsyncConfirmationManager
 from random_key import GenerateRandomKey
-from conversation import Message
+from conversation import ConversationFactory, Message
 
 
 class WebServerState:
 
-  def __init__(self, args, socketio: SocketIO):
+  def __init__(self, args, socketio: SocketIO) -> None:
     self.socketio = socketio
     self.confirmation_manager = AsyncConfirmationManager(
         self._confirmation_requested)
@@ -20,10 +20,9 @@ class WebServerState:
 
     try:
       options = CreateAgentLoopOptions(
-          args,
-          self.confirmation_manager,
-          on_message_added_callback=lambda: self.SendUpdate(
-              None, confirmation_required=None))
+          args, self.confirmation_manager,
+          ConversationFactory(
+              lambda: self.SendUpdate(None, confirmation_required=None)))
     except RuntimeError as e:
       logging.error(e)
       raise e

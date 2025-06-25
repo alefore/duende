@@ -1,7 +1,7 @@
 import json
 import openai
 import logging
-from conversation import Conversation, Message, MultilineContent
+from conversation import Conversation, ConversationFactory, Message, MultilineContent
 from typing import cast, Generator, List, Optional, Tuple, Union, Pattern, NamedTuple
 from validation import ValidationManager
 
@@ -22,6 +22,7 @@ CONVERSATION_KEY = 'conversation'
 
 
 class AgentLoopOptions(NamedTuple):
+  conversation_factory: ConversationFactory
   conversation_path: str
   model: str
   conversation: Conversation
@@ -40,13 +41,15 @@ class AgentLoopOptions(NamedTuple):
 
 # Dummy function for start_new_task when tasks are disabled for the registry
 def _dummy_start_new_task(task_info: TaskInformation) -> CommandOutput:
-    # This function should never be called because can_start_tasks is False
-    # for the review registry. If it were called, it indicates a logic error.
-    logging.error(f"Attempted to start a task within a review loop, but tasks are disabled. Task: {task_info.task_name}")
-    return CommandOutput(
-        output=[],
-        errors=["Task command is disabled in review mode."],
-        summary="Task disabled in review mode.")
+  # This function should never be called because can_start_tasks is False
+  # for the review registry. If it were called, it indicates a logic error.
+  logging.error(
+      f"Attempted to start a task within a review loop, but tasks are disabled. Task: {task_info.task_name}"
+  )
+  return CommandOutput(
+      output=[],
+      errors=["Task command is disabled in review mode."],
+      summary="Task disabled in review mode.")
 
 
 class AgentLoop:
@@ -70,7 +73,8 @@ class AgentLoop:
       commands, non_command_lines = ExtractCommands('\n'.join(
           ['\n'.join(s) for s in response_message.GetContentSections()]))
 
-      next_message = Message(role='user') # Re-initialize for the next turn's input
+      next_message = Message(
+          role='user')  # Re-initialize for the next turn's input
       response_content_str = '\n'.join(
           ['\n'.join(s) for s in response_message.GetContentSections()])
       if (self.options.confirm_regex and any(
@@ -154,7 +158,7 @@ class AgentLoop:
 
     review_conversation_path = self.options.conversation_path.replace(
         '.json', '.review.json')
-    review_conversation = Conversation()
+    review_conversation = self.options.conversation_factory.New()
 
     review_suggestions: List[MultilineContent] = []
 
@@ -169,10 +173,8 @@ class AgentLoop:
         start_new_task=_dummy_start_new_task,
         git_dirty_accept=True,
         can_write=False,
-        can_start_tasks=False
-    )
+        can_start_tasks=False)
     review_registry.Register(SuggestCommand(add_suggestion_callback))
-
 
     review_start_sections: List[MultilineContent] = [[
         "You are an AI review assistant. Your task is to review a code changes and provide suggestions for improvement.",
@@ -201,6 +203,7 @@ class AgentLoop:
 
     AgentLoop(
         AgentLoopOptions(
+            conversation_factory=self.options.conversation_factory,
             conversation_path=review_conversation_path,
             model=self.options.model,
             conversation=review_conversation,
