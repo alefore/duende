@@ -11,34 +11,6 @@ from random_key import GenerateRandomKey
 app = Flask(__name__)
 app.config['SECRET_KEY'] = GenerateRandomKey(24)
 
-HTML_TEMPLATE = """
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Agent Server</title>
-    <link rel=stylesheet href="/static/agent.css">
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/static/agent.js"></script>
-  </head>
-  <body>
-    <h1>Agent Server Interface</h1>
-    <div id="automatic_confirmation_toggle">
-      <label for="auto_confirm_checkbox">
-        <input type="checkbox" id="auto_confirm_checkbox"> Automatic confirmation
-      </label>
-    </div>
-    <div id="conversation_selector"></div>
-    <div id="conversation_container"></div>
-    <div id="confirmation"></div>
-    <form id="confirmation_form" style="display: block;">
-      <textarea name="confirmation" id="confirmation_input" placeholder="Confirmation…" autofocus rows="1"></textarea>
-    </form>
-  </body>
-</html>
-"""
-
 
 def parse_arguments() -> argparse.Namespace:
   parser = CreateCommonParser()
@@ -48,8 +20,8 @@ def parse_arguments() -> argparse.Namespace:
 
 
 @app.route("/", methods=["GET"])
-def interact():
-  return HTML_TEMPLATE
+def Interact():
+  return app.send_static_file('index.html')
 
 
 def SendUpdate(server_state, data) -> None:
