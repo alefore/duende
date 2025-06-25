@@ -49,31 +49,6 @@ class Selection:
       file.writelines(lines)
 
   @classmethod
-  def FromLineContent(cls, path: str, start_line_content: str,
-                      end_line_content: str) -> 'Selection':
-    """Creates a Selection object based on line content."""
-    if not os.path.exists(path):
-      raise FileNotFoundError(f"File not found: {path}")
-
-    with open(path, "r") as file:
-      lines: List[str] = file.readlines()
-
-    start_index = end_index = None
-    for index, line in enumerate(lines):
-      if start_index is None and start_line_content in line:
-        start_index = index
-      elif start_index is not None and end_line_content in line:
-        end_index = index
-        break
-
-    if start_index is None:
-      raise ValueError("Could not find the specified start line content.")
-    if end_index is None:
-      raise ValueError("Could not find the specified end line content.")
-
-    return cls(path, start_index, end_index)
-
-  @classmethod
   def FromLinePattern(cls, path: str, start_line_pattern: str,
                       end_line_pattern: Optional[str]) -> 'Selection':
     """Creates a Selection object based on line patterns using regex.
