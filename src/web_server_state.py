@@ -31,9 +31,16 @@ class WebServerState:
 
   def SendUpdate(self, conversation_id, client_message_count: Optional[int],
                  confirmation_required: Optional[bool]) -> None:
+    try:
+      conversation = self.conversation_factory.Get(conversation_id)
+      conversation_name = conversation.GetName()
+      messages_list = conversation.GetMessagesList()
+    except KeyError:
+      logging.error(f"Conversation with ID {conversation_id} not found. Cannot send update.")
+      return
+
     if client_message_count is not None:
-      new_messages = self._GetMessagesList(
-          conversation_id)[client_message_count:]
+      new_messages = messages_list[client_message_count:]
       logging.info(
           f"Client has {client_message_count} messages. "
           f"Sending from {client_message_count}, count: {len(new_messages)}.")
@@ -46,16 +53,15 @@ class WebServerState:
           self.confirmation_manager.get_pending_message() is not None)
     data = {
         'conversation_id': conversation_id,
+        'conversation_name': conversation_name,
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
-        'message_count': len(self._GetMessagesList(conversation_id)),
+        'message_count': len(messages_list),
         'session_key': self.session_key,
         'first_message_index': client_message_count or 0
     }
     self.socketio.emit('update', data)
 
-  def _GetMessagesList(self, conversation_id: ConversationId) -> List[Message]:
-    return self.conversation_factory.Get(conversation_id).GetMessagesList()
 
   def _confirmation_requested(self, conversation_id: ConversationId,
                               message_ignored: str) -> None:

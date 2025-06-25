@@ -1,0 +1,5 @@
+Can you extend src/web_server_state.py so that it includes a parameter `conversation_name` on the SendUpdate socketio message?
+
+To get the name, call the Get method on the conversation_factory (see src/conversation.py), which does a look-up by ID.
+
+Make sure you handle "invalid ID (not found)" appropriately. Perhaps just log an error and have SendUpdate not do anything in that situation.

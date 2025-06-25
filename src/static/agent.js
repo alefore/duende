@@ -93,16 +93,17 @@ function handleUpdate(socket, data) {
   console.log(data);
 
   const conversationId = data.conversation_id;
+  const conversationName =
+      data.conversation_name || `Conversation ${conversationId}`;
 
   const $conversationSelector = $('#conversation_selector');
   let $option = $conversationSelector.find(`option[value="${conversationId}"]`);
   if ($option.length === 0) {
     console.log('Creating selector...');
-    $option = $('<option>')
-                  .val(conversationId)
-                  .text(`Conversation ${conversationId}`);
+    $option = $('<option>').val(conversationId);
     $conversationSelector.append($option);
   }
+  $option.text(conversationName);
   $conversationSelector.val(conversationId);
 
   if (currentSessionKey !== data.session_key) {
