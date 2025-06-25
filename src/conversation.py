@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Callable
 import json
 import logging
 
+# Avoid strings with newline characters; to break lines, just add more entries.
 MultilineContent = List[str]
 
 
