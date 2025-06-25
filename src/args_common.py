@@ -12,7 +12,7 @@ from command_registry import CommandRegistry, CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
-from conversation import Conversation, ConversationFactory, Message, MultilineContent
+from conversation import Conversation, ConversationFactory, Message, MultilineContent, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from parsing import ExtractCommands
@@ -170,30 +170,40 @@ def LoadOrCreateConversation(
   if conversation.messages:
     next_message = Message(
         'system',
-        content_sections=[[
-            'The server running this interaction has been restarted.'
-        ]])
+        content_sections=[
+            ContentSection(
+                content=[
+                    'The server running this interaction has been restarted.'
+                ],
+                summary=None)
+        ])
   else:
-    content_sections: List[MultilineContent] = []
+    content_sections: List[ContentSection] = []
 
-    content_sections.append([
-        "You are a coding assistant operating in a command loop environment. "
-        "Send in your response commands prefixed with `#`. "
-        "I will execute those commands and tell you the results. "
-        "Do not hallucinate results on your own. "
-        "Anything that is not a command will be relayed to the human."
-    ])
+    content_sections.append(
+        ContentSection(
+            content=[
+                "You are a coding assistant operating in a command loop environment. "
+                "Send in your response commands prefixed with `#`. "
+                "I will execute those commands and tell you the results. "
+                "Do not hallucinate results on your own. "
+                "Anything that is not a command will be relayed to the human."
+            ],
+            summary=None))
 
     agent_prompt_path = 'agent/prompt.txt'
     if os.path.exists(agent_prompt_path):
       with open(agent_prompt_path, 'r') as f:
-        content_sections.append(list(l.rstrip() for l in f.readlines()))
+        content_sections.append(
+            ContentSection(
+                content=list(l.rstrip() for l in f.readlines()), summary=None))
 
     commands_from_task, non_command_lines = ExtractCommands(
         '\n'.join(task_file_content))
 
     if non_command_lines:
-      content_sections.append(non_command_lines)
+      content_sections.append(
+          ContentSection(content=non_command_lines, summary=None))
 
     if commands_from_task:
       for cmd_input in commands_from_task:
@@ -224,27 +234,32 @@ def LoadOrCreateConversation(
                 f"Task file: Error '#{cmd_input.command_name}': {error}.")
             sys.exit(1)
         if command_output.output:
-          content_sections.append(command_output.output)
+          content_sections.append(
+              ContentSection(content=command_output.output, summary=None))
 
-    content_sections.append([
-        'Some commands accept multi-line information, like this:',
-        '',
-        '#write_file foo.py <<',
-        'line0',
-        'line1',
-        '…',
-        '#end',
-        'When you\'re done (or if you get stuck), '
-        'issue #done to notify the human and stop this conversation.',
-        '',
-        'Anything sent outside of commands will be treated as plain text.',
-        'You can send many commands per message. '
-        'For example, if you want to read 5 files, '
-        'you can issue 5 #read_file commands at once.',
-        '',
-        'Available commands:',
-    ])
-    content_sections[-1].append(registry.HelpText())
+    content_sections.append(
+        ContentSection(
+            content=[
+                'Some commands accept multi-line information, like this:',
+                '',
+                '#write_file foo.py <<',
+                'line0',
+                'line1',
+                '…',
+                '#end',
+                'When you\'re done (or if you get stuck), '
+                'issue #done to notify the human and stop this conversation.',
+                '',
+                'Anything sent outside of commands will be treated as plain text.',
+                'You can send many commands per message. '
+                'For example, if you want to read 5 files, '
+                'you can issue 5 #read_file commands at once.',
+                '',
+                'Available commands:',
+            ],
+            summary=None))
+    content_sections[-1].content.append(
+        registry.HelpText())  # Append to the content list of the last section
     next_message = Message('system', content_sections=content_sections)
 
   return conversation, next_message

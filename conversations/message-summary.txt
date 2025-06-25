@@ -1,0 +1,5 @@
+Can you extend the Message class so that each content section has an optional str field with a summary? This can be used by commands to append information for the human but which should never be sent to the AI.
+
+I will use this later for communicating with the frontend (showing these messages to the human).
+
+#read_file src/conversation.py

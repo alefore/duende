@@ -5,7 +5,7 @@ import asyncio
 import sys
 from typing import cast, Any, Coroutine, Dict, List, Optional
 
-from conversation import Conversation, Message, MultilineContent
+from conversation import Conversation, Message, MultilineContent, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 
 
@@ -19,7 +19,7 @@ class GeminiConversation(ConversationalAIConversation):
     gemini_initial_history: List[genai_types.ContentDict] = []
     for msg in self.conversation.GetMessagesList():
       gemini_role = "model" if msg.role == "assistant" else msg.role
-      parts = [{"text": "\n".join(s)} for s in msg.GetContentSections()]
+      parts = [{"text": "\n".join(s.content)} for s in msg.GetContentSections()]
       gemini_initial_history.append(
           cast(genai_types.ContentDict, {
               "role": gemini_role,
@@ -38,10 +38,10 @@ class GeminiConversation(ConversationalAIConversation):
     # Prepare message content for Gemini by transforming sections into parts
     gemini_parts = []
     for section in message.GetContentSections():
-      gemini_parts.append({"text": "\n".join(section)})
+      gemini_parts.append({"text": "\n".join(section.content)})
 
     log_content = '\n'.join(
-        ['\n'.join(s) for s in message.GetContentSections()])
+        ['\n'.join(s.content) for s in message.GetContentSections()])
     logging.info(
         f"Sending message to Gemini: '{log_content[:50]}...' (with {len(gemini_parts)} parts)"
     )
@@ -57,7 +57,7 @@ class GeminiConversation(ConversationalAIConversation):
     logging.info(f"Received response from Gemini: '{reply_content[:50]}...'")
 
     reply_message = Message(
-        role="assistant", content_sections=[[reply_content]])
+        role="assistant", content_sections=[ContentSection(content=[reply_content], summary=None)])
     self.conversation.AddMessage(reply_message)
     return reply_message
 

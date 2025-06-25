@@ -1,7 +1,7 @@
 import json
 import openai
 import logging
-from conversation import Conversation, ConversationFactory, Message, MultilineContent
+from conversation import Conversation, ConversationFactory, Message, MultilineContent, ContentSection
 from typing import cast, Generator, List, Optional, Tuple, Union, Pattern, NamedTuple
 from validation import ValidationManager
 
@@ -71,13 +71,15 @@ class AgentLoop:
       response_message: Message = self.ai_conversation.SendMessage(next_message)
       self.conversation.Save(self.options.conversation_path)
 
-      commands, non_command_lines = ExtractCommands('\n'.join(
-          ['\n'.join(s) for s in response_message.GetContentSections()]))
+      # TODO: Change ExtractCommands to receive a MultilineContent directly.
+      commands, non_command_lines = ExtractCommands('\n'.join([
+          '\n'.join(s.content) for s in response_message.GetContentSections()
+      ]))
 
       next_message = Message(
           role='user')  # Re-initialize for the next turn's input
       response_content_str = '\n'.join(
-          ['\n'.join(s) for s in response_message.GetContentSections()])
+          ['\n'.join(s.content) for s in response_message.GetContentSections()])
 
       has_human_guidance = False
       if (self.options.confirm_regex and any(
@@ -87,7 +89,9 @@ class AgentLoop:
             self.conversation.GetId(), response_content_str)
         if guidance:
           print("Your guidance will be sent to the AI.")
-          next_message.PushSection([f"Message from human: {guidance}"])
+          next_message.PushSection(
+              ContentSection(
+                  content=[f"Message from human: {guidance}"], summary=None))
           has_human_guidance = True
 
       self.options.confirmation_state.RegisterInteraction(
@@ -96,7 +100,8 @@ class AgentLoop:
       command_outputs, should_terminate_agent_loop = self._ExecuteCommands(
           commands)
       for output_section in command_outputs:
-        next_message.PushSection(output_section)
+        next_message.PushSection(
+            ContentSection(content=output_section, summary=None))
 
       if should_terminate_agent_loop and not has_human_guidance:
         logging.info("AgentLoop terminating as per command execution.")
@@ -108,11 +113,14 @@ class AgentLoop:
         if not validation_result.success:
           logging.info(
               f"Validation failed: {'\\n'.join(validation_result.error)}")
-          next_message.PushSection([
-              "The validation command is currently reporting failures "
-              "(normal if you are in the middle of applying changes). "
-              "To see the failures, use: #validate"
-          ])
+          next_message.PushSection(
+              ContentSection(
+                  content=[
+                      "The validation command is currently reporting failures "
+                      "(normal if you are in the middle of applying changes). "
+                      "To see the failures, use: #validate"
+                  ],
+                  summary=None))
 
   def _ExecuteCommands(self, commands) -> Tuple[List[MultilineContent], bool]:
     if not commands:
@@ -178,11 +186,14 @@ class AgentLoop:
     review_conversation = self.options.conversation_factory.New(
         name="AI Review: " + self.conversation.GetName())
 
-    review_suggestions: List[MultilineContent] = []
+    review_suggestions: List[ContentSection] = []
 
     def add_suggestion_callback(text: MultilineContent) -> None:
       review_suggestions.append(
-          [f"Suggestion {len(review_suggestions) + 1}: <<"] + text + ["#end"])
+          ContentSection(
+              content=[f"Suggestion {len(review_suggestions) + 1}: <<"] + text +
+              ["#end"],
+              summary=None))
 
     review_selection_manager = SelectionManager()
     review_registry = CreateCommandRegistry(
@@ -194,23 +205,28 @@ class AgentLoop:
         can_start_tasks=False)
     review_registry.Register(SuggestCommand(add_suggestion_callback))
 
-    review_start_sections: List[MultilineContent] = [[
-        "You are an AI review assistant. Your task is to review a code changes and provide suggestions for improvement.",
-        "Use the #suggest command for each individual suggestion you want to issue. Each #suggest command should contain a single, actionable suggestion.",
-        "When you have no more suggestions, issue the #done command.",
-        "",
-        "Original task prompt for the main agent:",
-        *(self.options.original_task_prompt_content or
-          ["No original task prompt content available."]),
-        "",
-        "Current Git Diff (showing uncommitted changes):",
-        *git_diff_output,
-        "",
-        "Review Guidelines (from agent/review.txt):",
-        *review_prompt_content,
-        "",
-        "Available commands for review:",
-    ], [review_registry.HelpText()]]
+    review_start_sections: List[ContentSection] = [
+        ContentSection(
+            content=[
+                "You are an AI review assistant. Your task is to review a code changes and provide suggestions for improvement.",
+                "Use the #suggest command for each individual suggestion you want to issue. Each #suggest command should contain a single, actionable suggestion.",
+                "When you have no more suggestions, issue the #done command.",
+                "",
+                "Original task prompt for the main agent:",
+                *(self.options.original_task_prompt_content or
+                  ["No original task prompt content available."]),
+                "",
+                "Current Git Diff (showing uncommitted changes):",
+                *git_diff_output,
+                "",
+                "Review Guidelines (from agent/review.txt):",
+                *review_prompt_content,
+                "",
+                "Available commands for review:",
+            ],
+            summary=None),
+        ContentSection(content=[review_registry.HelpText()], summary=None)
+    ]
     review_start_message = Message(
         'system', content_sections=review_start_sections)
 
@@ -240,8 +256,11 @@ class AgentLoop:
 
     if review_suggestions:
       logging.info(f"AI review found {len(review_suggestions)} suggestions.")
-      review_suggestions.append(["Please try to address these suggestions."])
-      return review_suggestions
+      review_suggestions.append(
+          ContentSection(
+              content=["Please try to address these suggestions."],
+              summary=None))
+      return [s.content for s in review_suggestions]
     else:
       logging.info("AI review found no suggestions.")
       return None

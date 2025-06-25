@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Callable, NamedTuple
 import json
 import logging
 
@@ -6,27 +6,43 @@ import logging
 MultilineContent = List[str]
 
 
+class ContentSection(NamedTuple):
+  content: MultilineContent
+  summary: Optional[str] = None
+
+
 class Message:
 
   def __init__(self,
                role: str,
-               content_sections: Optional[List[MultilineContent]] = None):
+               content_sections: Optional[List[ContentSection]] = None):
     self.role = role
-    self._content_sections: List[MultilineContent] = content_sections if content_sections is not None else []
+    self._content_sections: List[ContentSection] = content_sections if content_sections is not None else []
 
   def Serialize(self) -> Dict[str, Any]:
-    return {'role': self.role, 'content_sections': self._content_sections}
+    serialized_sections = []
+    for section in self._content_sections:
+      section_dict: Dict[str, Any] = {'content': section.content}
+      if section.summary is not None:
+        section_dict['summary'] = section.summary
+      serialized_sections.append(section_dict)
+    return {'role': self.role, 'content_sections': serialized_sections}
 
   @staticmethod
   def Deserialize(data: Dict[str, Any]) -> 'Message':
     message = Message(role=data['role'])
-    message._content_sections = data.get('content_sections', [])
+    raw_sections = data.get('content_sections', [])
+    for section_data in raw_sections:
+      content = section_data.get('content', [])
+      summary = section_data.get('summary')
+      message._content_sections.append(
+          ContentSection(content=content, summary=summary))
     return message
 
-  def GetContentSections(self) -> List[MultilineContent]:
+  def GetContentSections(self) -> List[ContentSection]:
     return self._content_sections
 
-  def PushSection(self, section: MultilineContent) -> None:
+  def PushSection(self, section: ContentSection) -> None:
     self._content_sections.append(section)
 
 
@@ -70,10 +86,13 @@ class Conversation:
   def AddMessage(self, message: Message) -> None:
     content_sections = message.GetContentSections()
     num_sections = len(content_sections)
-    first_section_summary = f"'{content_sections[0][0][:50]}...'" if content_sections and content_sections[
-        0] else "''"
+    first_section_content_log = "''"
+    if content_sections:
+      content_list = content_sections[0].content
+      if content_list:
+        first_section_content_log = f"'{content_list[0][:50]}...'"
     logging.info(
-        f"Add message: {message.role}: {num_sections} sections, first: {first_section_summary}"
+        f"Add message: {message.role}: {num_sections} sections, first: {first_section_content_log}"
     )
     self.messages.append(message)
     if self._on_message_added_callback:

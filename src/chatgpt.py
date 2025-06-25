@@ -1,8 +1,8 @@
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from typing import cast, Optional
-from conversation import Message, Conversation, MultilineContent
 from conversational_ai import ConversationalAI, ConversationalAIConversation
+from conversation import Message, Conversation, MultilineContent, ContentSection
 import logging
 
 
@@ -25,7 +25,8 @@ class ChatGPTConversation(ConversationalAIConversation):
                 "role":
                     m.role,
                 "content":
-                    '\n'.join(['\n'.join(s) for s in m.GetContentSections()])
+                    '\n'.join(
+                        ['\n'.join(s.content) for s in m.GetContentSections()])
             }) for m in self.conversation.GetMessagesList()
     ]
 
@@ -41,7 +42,10 @@ class ChatGPTConversation(ConversationalAIConversation):
 
     reply_content = response.choices[0].message.content or ""
     reply_message = Message(
-        role="assistant", content_sections=[[reply_content]])
+        role="assistant",
+        content_sections=[
+            ContentSection(content=[reply_content], summary=None)
+        ])
     self.conversation.AddMessage(reply_message)
     return reply_message
 

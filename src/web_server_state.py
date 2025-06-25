@@ -36,7 +36,9 @@ class WebServerState:
       conversation_name = conversation.GetName()
       messages_list = conversation.GetMessagesList()
     except KeyError:
-      logging.error(f"Conversation with ID {conversation_id} not found. Cannot send update.")
+      logging.error(
+          f"Conversation with ID {conversation_id} not found. Cannot send update."
+      )
       return
 
     if client_message_count is not None:
@@ -61,7 +63,6 @@ class WebServerState:
         'first_message_index': client_message_count or 0
     }
     self.socketio.emit('update', data)
-
 
   def _confirmation_requested(self, conversation_id: ConversationId,
                               message_ignored: str) -> None:
