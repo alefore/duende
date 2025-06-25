@@ -1,0 +1,5 @@
+Can you review the files in src/static/ and help me improve the CSS so that the <select id=conversation_selector> is always visible? The scroll bar should not affect it. It should only affect the contents in conversation_container.
+
+In other words, conversation_selector (and the auto_confirm_checkbox) should always stay at the top of the page, no matter the vertical scrolling.
+
+Feel free to put both inside a common div if that helps.

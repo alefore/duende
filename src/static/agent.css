@@ -2,7 +2,7 @@ body {
   overflow-y: scroll; /* Always show vertical scrollbar */
   background-color: #fff;
   color: #333;
-  padding-top: 50px; /* Space for the fixed automatic confirmation toggle */
+  padding-top: 70px; /* Adjusted space for the fixed header (height of controls + padding) */
 }
 
 h1 {
@@ -11,18 +11,28 @@ h1 {
   margin-top: 0; /* Remove default top margin to reduce empty space at the top */
 }
 
-#automatic_confirmation_toggle {
+#fixed_header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  background-color: #f0f0f0;
-  padding: 10px;
-  border-bottom: 1px solid #ccc;
-  z-index: 1000; /* Ensure it's on top of other content */
+  background-color: #f0f0f0; /* Same as old toggle */
+  border-bottom: 1px solid #ccc; /* Same as old toggle */
+  z-index: 1000;
+  padding: 10px; /* Top and bottom padding for the fixed header */
+  display: flex;
+  flex-direction: row; /* Display items side-by-side */
+  align-items: center; /* Vertically align content */
+  box-sizing: border-box; /* Include padding in element's total width/height */
+  gap: 20px; /* Space between the checkbox and the selector */
+}
+
+#automatic_confirmation_toggle {
+  /* Removed: position, top, left, right, background-color, border-bottom, z-index */
   display: flex; /* Use flexbox for alignment */
   align-items: center; /* Vertically align content */
-  height: 30px; /* Fixed height for the toggle bar */
+  /* Removed height and margin-bottom as items are now row-flexed */
+  flex-shrink: 0; /* Prevent it from shrinking */
 }
 
 #automatic_confirmation_toggle label {
@@ -34,6 +44,11 @@ h1 {
 #automatic_confirmation_toggle input[type="checkbox"] {
   margin-right: 8px; /* Space between checkbox and text */
 }
+
+#conversation_selector {
+  flex-grow: 1; /* Allow the selector to take up available space */
+}
+
 
 .message {
   border: 1px solid #ccc;
@@ -104,9 +119,13 @@ pre {
     color: #f0f0f0;
   }
 
-  #automatic_confirmation_toggle {
+  #fixed_header {
     background-color: #2a2a2a;
     border-bottom: 1px solid #555;
+  }
+
+  #automatic_confirmation_toggle {
+    /* No specific dark mode background for this, inherited from fixed_header */
   }
 
   .message {

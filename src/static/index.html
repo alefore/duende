@@ -9,13 +9,15 @@
     <script src="/static/agent.js"></script>
   </head>
   <body>
-    <h1>Agent Server Interface</h1>
-    <div id="automatic_confirmation_toggle">
-      <label for="auto_confirm_checkbox">
-        <input type="checkbox" id="auto_confirm_checkbox"> Automatic confirmation
-      </label>
+    <div id="fixed_header">
+      <div id="automatic_confirmation_toggle">
+        <label for="auto_confirm_checkbox">
+          <input type="checkbox" id="auto_confirm_checkbox"> Automatic confirmation
+        </label>
+      </div>
+      <select id="conversation_selector"></select>
     </div>
-    <div id="conversation_selector"></div>
+    <h1>Agent Server Interface</h1>
     <div id="conversation_container"></div>
     <div id="confirmation"></div>
     <form id="confirmation_form" style="display: block;">
