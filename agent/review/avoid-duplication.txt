@@ -1,0 +1,3 @@
+Review task: Avoid duplication of code. Look for opportunities to simplify this code base by not repeating logic in multiple places. Instead, this logic can be extracted to a common function, perhaps receiving appropriate parameters.
+
+Obviously, this only makes sense if the function corresponds to a single logical concept. If two unrelated conceps happen to look similar (by coincidence), they should probably not be merged.

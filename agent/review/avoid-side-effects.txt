@@ -1,0 +1,12 @@
+Review task: Try to avoid code with side-effects (e.g., assignment) when the same thing can be achieved in immutable ways. Obviously, don't take this to the extreme (i.e., pay attentio to how complex the implementation is).
+
+For example, instead of:
+
+  output = []
+  for x in ComputeList():
+    output.append(x * 2)
+  output.append(5)
+
+Prefer something like:
+
+  output = [x * 2 for x in ComputeList()] + [5]

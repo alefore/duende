@@ -1,0 +1,5 @@
+Review task: Identify places where static type annotations can be added, in ways that enable mypy to detect type mismatches statically.
+
+In general, all functions and variables should have a type annotation.
+
+An exception to this may be variables where the type is very evident from the context (as long as mypy can infer it).

@@ -1,0 +1,10 @@
+Review task: Try to avoid code that introduces (and assigns) variables that are only used in a single place. Instead, inline the code definition, to avoid declaring a noun for the variable.
+
+For example, instead of:
+
+  my_variable = SomeExpression().GetFoo(bar)
+  return ExtractData(my_variable)
+
+Just inline the body:
+
+  return ExtractData(SomeExpression().GetFoo(bar))

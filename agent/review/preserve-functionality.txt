@@ -1,0 +1,3 @@
+Review task: Ensure that this code change doesn't accidentally remove previous functionality, unrelated to the prompt.
+
+For example, the code should not delete unit tests (unless they are rendered obsolete by the new feature that the prompt is asking for). It should not accidentally disable any previous features.
