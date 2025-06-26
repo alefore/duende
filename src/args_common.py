@@ -106,7 +106,7 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
         "Validation script is not available; consider using --skip_implicit_validation."
     )
 
-  if validation_manager:
+  if validation_manager and not args.skip_implicit_validation:
     initial_validation_result = validation_manager.Validate()
     if initial_validation_result and not initial_validation_result.success:
       raise RuntimeError(
