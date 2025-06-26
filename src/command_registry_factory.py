@@ -23,6 +23,16 @@ from help_command import HelpCommand
 import sys
 
 
+def _create_base_registry(
+    file_access_policy: FileAccessPolicy) -> CommandRegistry:
+  registry = CommandRegistry()
+  registry.Register(HelpCommand(registry))
+  registry.Register(ReadFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(file_access_policy))
+  registry.Register(SearchFileCommand(file_access_policy))
+  return registry
+
+
 def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                           validation_manager: Optional[ValidationManager],
                           start_new_task: Callable[[TaskInformation],
@@ -30,11 +40,7 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                           git_dirty_accept: bool = False,
                           can_write: bool = True,
                           can_start_tasks: bool = True) -> CommandRegistry:
-  registry = CommandRegistry()
-  help_command = HelpCommand(registry)
-  registry.Register(help_command)
-  registry.Register(ReadFileCommand(file_access_policy))
-  registry.Register(ListFilesCommand(file_access_policy))
+  registry = _create_base_registry(file_access_policy)
 
   git_state = CheckGitRepositoryState()
   if git_state == GitRepositoryState.CLEAN:
@@ -57,8 +63,6 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
         WriteFileCommand(file_access_policy, validation_manager,
                          selection_manager))
 
-  registry.Register(SearchFileCommand(file_access_policy))
-
   for use_regex in [True, False]:
     registry.Register(
         SelectCommand(file_access_policy, selection_manager, use_regex))
@@ -76,3 +80,8 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
     registry.Register(TaskCommand(start_new_task))
 
   return registry
+
+
+def CreateReviewCommandRegistry(
+    file_access_policy: FileAccessPolicy) -> CommandRegistry:
+  return _create_base_registry(file_access_policy)

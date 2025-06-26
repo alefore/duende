@@ -7,7 +7,7 @@ from typing import Callable, List, Optional
 
 from agent_command import CommandOutput
 from agent_loop_options import AgentLoopOptions
-from command_registry_factory import CreateCommandRegistry
+from command_registry_factory import CreateReviewCommandRegistry
 from confirmation import ConfirmationState
 from conversation import ContentSection, Message, MultilineContent
 from file_access_policy import FileAccessPolicy
@@ -85,13 +85,8 @@ def _run_single_review(
               ] + text + ["#end"],
               summary=f"Review Suggestion {index} from {review_file_name}"))
 
-  review_registry = CreateCommandRegistry(
-      file_access_policy=parent_options.file_access_policy,
-      validation_manager=parent_options.validation_manager,
-      start_new_task=_dummy_start_new_task,
-      git_dirty_accept=True,
-      can_write=False,
-      can_start_tasks=False)
+  review_registry = CreateReviewCommandRegistry(
+      file_access_policy=parent_options.file_access_policy)
   review_registry.Register(SuggestCommand(add_suggestion_callback))
 
   review_start_sections: List[ContentSection] = [
