@@ -1,0 +1,13 @@
+Can you add a help command? It should optionally receive a list of commands as arguments and show more information about them.
+
+Once implemented, the command needs to be added to the commands-registry.
+
+Maybe implement it in src/help_command.py
+
+This should simply output the result of calling the existing RenderHelpText function.
+
+You can see an example command in src/read_file_command.py.
+
+#read_file src/command_registry.py
+#search RenderHelpText
+#read_file src/read_file_command.py

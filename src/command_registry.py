@@ -18,6 +18,7 @@ from select_python import SelectPythonCommand
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskCommand, CommandOutput, TaskInformation
+from help_command import HelpCommand
 import sys
 
 
@@ -34,7 +35,8 @@ class CommandRegistry:
 
   def HelpText(self) -> str:
     all_descriptions = []
-    for command in self.commands.values():
+    sorted_commands = sorted(self.commands.values(), key=lambda c: c.Name())
+    for command in sorted_commands:
       all_descriptions.append(RenderHelpText(command.Name(), command.Syntax()))
     return '\n\n'.join(all_descriptions)
 
@@ -47,6 +49,7 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                           can_write: bool = True,
                           can_start_tasks: bool = True) -> CommandRegistry:
   registry = CommandRegistry()
+  registry.Register(HelpCommand(registry))
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
 
