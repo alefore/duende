@@ -122,6 +122,7 @@ def _run_single_review(review_prompt_path: str,
       confirm_every=None)
 
   review_options = AgentLoopOptions(
+      task_prompt_content=original_task_prompt_content,
       conversation_factory=parent_options.conversation_factory,
       conversation_path=review_conversation_path,
       model=parent_options.model,
@@ -136,7 +137,6 @@ def _run_single_review(review_prompt_path: str,
       skip_implicit_validation=True,
       validation_manager=None,
       do_review=False,
-      original_task_prompt_content=None,
   )
 
   agent_loop_runner(review_options)

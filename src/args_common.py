@@ -138,6 +138,7 @@ def CreateAgentLoopOptions(
       conversation_name)
 
   return AgentLoopOptions(
+      task_prompt_content=task_file_content,
       conversation_factory=conversation_factory,
       conversation_path=conversation_path,
       model=args.model,
@@ -152,7 +153,6 @@ def CreateAgentLoopOptions(
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
       do_review=args.review,
-      original_task_prompt_content=task_file_content,
   )
 
 
