@@ -33,14 +33,13 @@ class WebServerState:
                  confirmation_required: Optional[str]) -> None:
     try:
       conversation = self.conversation_factory.Get(conversation_id)
-      conversation_name = conversation.GetName()
-      messages_list = conversation.GetMessagesList()
     except KeyError:
       logging.error(
           f"Conversation with ID {conversation_id} not found. Cannot send update."
       )
       return
 
+    messages_list = conversation.GetMessagesList()
     if client_message_count is not None:
       new_messages = messages_list[client_message_count:]
       logging.info(
@@ -54,7 +53,7 @@ class WebServerState:
       confirmation_required = self.confirmation_manager.get_pending_message()
     data = {
         'conversation_id': conversation_id,
-        'conversation_name': conversation_name,
+        'conversation_name': conversation.GetName(),
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
         'message_count': len(messages_list),
