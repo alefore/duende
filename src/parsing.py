@@ -12,7 +12,8 @@ def _GetArgs(args_str: str) -> List[str]:
     return [args_str.strip()]
 
 
-def ExtractCommands(response_lines: List[str]) -> Tuple[List[CommandInput], List[str]]:
+def ExtractCommands(
+    response_lines: List[str]) -> Tuple[List[CommandInput], List[str]]:
   """
     Parses commands from a ChatGPT response and also collects non-command lines.
     """

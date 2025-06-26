@@ -18,15 +18,18 @@ function scrollToBottom() {
     window.scrollTo(0, document.body.scrollHeight);
 }
 
-function countMessages() {
-  if (activeConversationId === null) return 0;
-  return getActiveConversationDiv().find('.message').length;
+function countMessages(conversationId) {
+  if (conversationId === null) return 0;
+  const $conversationDiv = getConversationDiv(conversationId);
+  if ($conversationDiv.length === 0) return 0;
+  return $conversationDiv.find('.message').length;
 }
 
 function requestMessages(socket, conversationId) {
-  socket.emit(
-      'request_update',
-      {message_count: countMessages(), conversation_id: conversationId});
+  socket.emit('request_update', {
+    message_count: countMessages(conversationId),
+    conversation_id: conversationId
+  });
 }
 
 function updateConfirmationUI() {
@@ -49,7 +52,7 @@ function updateConfirmationUI() {
 function sendConfirmation(socket, confirmationMessage) {
   socket.emit('confirm', {
     confirmation: confirmationMessage,
-    message_count: countMessages(),
+    message_count: countMessages(activeConversationId),
     conversation_id: activeConversationId
   });
   console.log('CONFIRMATION: Send confirmation.')
@@ -125,7 +128,7 @@ function handleUpdate(socket, data) {
     $('#conversation_container').append($conversationDiv);
   }
 
-  const currentMessagesInDiv = $conversationDiv.find('.message').length;
+  const currentMessagesInDiv = countMessages(conversationId);
   data.conversation
       .slice(Math.max(0, currentMessagesInDiv - data.first_message_index))
       .forEach(message => {
@@ -196,20 +199,56 @@ function handleUpdate(socket, data) {
   console.log(`CONFIRMATION: Signal from server: {isConfirmationRequired}`)
   maybeAutoConfirm(socket);
 
-  if (data.message_count > currentMessagesInDiv)
+  if (data.message_count > countMessages(conversationId))
     requestMessages(socket, conversationId);
+}
+
+function handleListConversations(socket, conversations) {
+  console.log('Received conversation list:', conversations);
+  const $conversationSelector = $('#conversation_selector');
+
+  conversations.forEach(conversation => {
+    const conversationId = conversation.id;
+    const conversationName = conversation.name;
+
+    let $option =
+        $conversationSelector.find(`option[value="${conversationId}"]`);
+    if ($option.length === 0) {
+      $option = $('<option>').val(conversationId).text(conversationName);
+      $conversationSelector.append($option);
+    } else {
+      $option.text(conversationName);
+    }
+
+    let $conversationDiv = getConversationDiv(conversationId);
+    if ($conversationDiv.length === 0) {
+      $conversationDiv = $('<div>')
+                           .addClass('conversation')
+                           .attr('id', `conversation-${conversationId}`)
+                           .hide();
+      $('#conversation_container').append($conversationDiv);
+    }
+
+    const clientMessageCount = countMessages(conversationId);
+    if (conversation.message_count > clientMessageCount) {
+      console.log(
+          `Client has ${clientMessageCount} messages for convo ` +
+          `${conversationId}, server has ${conversation.message_count}. ` +
+          `Requesting update.`);
+      requestMessages(socket, conversationId);
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
   const socket = io();
   socket.on('update', (data) => handleUpdate(socket, data));
+  socket.on(
+      'list_conversations', (data) => handleListConversations(socket, data));
 
   const confirmationForm = document.getElementById('confirmation_form');
   const confirmationInput = document.getElementById('confirmation_input');
   const autoConfirmCheckbox = document.getElementById('auto_confirm_checkbox');
-  // Need to ensure these elements exist in the HTML (select for conversations,
-  // and container for conversation divs) Assuming they will be added to
-  // index.html as part of this feature.
   const $conversationSelector = $('#conversation_selector');
 
   loadAutoConfirmState();
@@ -250,9 +289,8 @@ document.addEventListener('DOMContentLoaded', function() {
     showConversation(parseInt($(this).val()));
   });
 
-  console.log('Requesting initial update.');
-  const initialConversationId = 0;
-  requestMessages(socket, initialConversationId);
+  console.log('Requesting conversation list.');
+  socket.emit('list_conversations');
 
   updateConfirmationUI();
 });

@@ -14,7 +14,6 @@ class SuggestCommand(AgentCommand):
     return "suggest"
 
   def Execute(self, cmd_input: CommandInput) -> CommandOutput:
-    suggestion_content = cmd_input.multiline_content
     if not cmd_input.multiline_content:
       return CommandOutput(
           output=[],

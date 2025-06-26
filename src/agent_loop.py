@@ -143,6 +143,7 @@ class AgentLoop:
       warnings = ValidateCommandInput(command.Syntax(), cmd_input,
                                       self.options.file_access_policy)
       if warnings:
+        logging.info(f"Warnings: {','.join(warnings)}")
         outputs.append(
             ContentSection(
                 content=[
