@@ -159,7 +159,7 @@ pre {
   }
 
   #confirmation_input:disabled {
-    background-color: #444; /* Darker neutral background for disabled in dark mode */
+    background-color: #222; /* Darker neutral background for disabled in dark mode */
     border: 1px dashed #777; /* Darker dashed border */
     color: #999; /* Lighter gray text */
   }
