@@ -47,6 +47,11 @@ def run_server() -> None:
   def start_update(data) -> None:
     SendUpdate(server_state, data)
 
+  @socketio.on('list_conversations')
+  def list_conversations() -> None:
+    logging.info("Received: list_conversations request")
+    server_state.ListConversations()
+
   socketio.run(app, port=args.port)
 
 
