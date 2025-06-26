@@ -47,7 +47,8 @@ class HelpCommand(AgentCommand):
         errors=errors,
         summary=self._summary(valid_commands, unknown_commands))
 
-  def _summary(self, valid_commands, unknown_commands):
+  def _summary(self, valid_commands: list[AgentCommand],
+               unknown_commands: list[str]) -> str:
     summary_parts = []
     if valid_commands:
       valid_names = sorted(c.Name() for c in valid_commands)
