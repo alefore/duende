@@ -6,8 +6,9 @@ from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
 
-def _ListFileDetails(directory,
-                     file_access_policy) -> Tuple[List[str], List[str]]:
+def _ListFileDetails(
+    directory: str,
+    file_access_policy: FileAccessPolicy) -> Tuple[List[str], List[str]]:
   details: List[str] = []
   errors: List[str] = []
   for file in list_all_files(directory, file_access_policy):
