@@ -26,8 +26,7 @@ class HelpCommand(AgentCommand):
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     command_names = sorted(
-        set(command_input.arguments or
-            [c.Name() for c in self.command_registry.list_all()]))
+        set(command_input.arguments or self.command_registry.list_all()))
 
     valid_commands: List[AgentCommand] = []
     unknown_commands: MultilineContent = []
