@@ -17,14 +17,14 @@ class CommandRegistry:
   def __init__(self) -> None:
     self.commands: Dict[str, AgentCommand] = {}
 
-  def Register(self, command: AgentCommand):
+  def Register(self, command: AgentCommand) -> None:
     self.commands[command.Name()] = command
 
   def Get(self, name: str) -> Optional[AgentCommand]:
     return self.commands.get(name)
 
-  def list_all(self):
-    return self.commands.keys()
+  def list_all(self) -> list[str]:
+    return list(self.commands.keys())
 
   def HelpText(self) -> MultilineContent:
     return FormatHelp(
