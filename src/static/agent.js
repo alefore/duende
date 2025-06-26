@@ -20,6 +20,16 @@ function getOrCreateConversationDiv(conversationId) {
   return $conversationDiv;
 }
 
+function updateConversationSelectorOption(conversationId, conversationName) {
+  const $conversationSelector = $('#conversation_selector');
+  let $option = $conversationSelector.find(`option[value="${conversationId}"]`);
+  if ($option.length === 0) {
+    $option = $('<option>').val(conversationId);
+    $conversationSelector.append($option);
+  }
+  $option.text(conversationName);
+}
+
 function getActiveConversationDiv() {
   return getConversationDiv(activeConversationId);
 }
@@ -45,20 +55,22 @@ function requestMessages(socket, conversationId) {
   });
 }
 
+function autoResize($element) {
+  $element.css('height', 'auto');
+  $element.height($element[0].scrollHeight);
+}
+
 function updateConfirmationUI() {
   const $confirmationInput = $('#confirmation_input');
   $confirmationInput.prop('disabled', !isConfirmationRequired);
   if (isConfirmationRequired) {
     $confirmationInput.attr('placeholder', 'Confirmation…');
     $confirmationInput.focus();
-    setTimeout(() => {
-      $confirmationInput.css('height', 'auto');
-      $confirmationInput.height($confirmationInput[0].scrollHeight);
-    }, 0);
+    setTimeout(() => autoResize($confirmationInput), 0);
   } else {
     $confirmationInput.val('');
     $confirmationInput.attr('placeholder', '');
-    $confirmationInput.css('height', 'auto');
+    autoResize($confirmationInput);
   }
 }
 
@@ -115,15 +127,8 @@ function handleUpdate(socket, data) {
   const conversationName =
       data.conversation_name || `Conversation ${conversationId}`;
 
-  const $conversationSelector = $('#conversation_selector');
-  let $option = $conversationSelector.find(`option[value="${conversationId}"]`);
-  if ($option.length === 0) {
-    console.log('Creating selector...');
-    $option = $('<option>').val(conversationId);
-    $conversationSelector.append($option);
-  }
-  $option.text(conversationName);
-  $conversationSelector.val(conversationId);
+  updateConversationSelectorOption(conversationId, conversationName);
+  $('#conversation_selector').val(conversationId);
 
   if (currentSessionKey !== data.session_key) {
     console.log('Session key changed. Clearing conversation.');
@@ -211,22 +216,14 @@ function handleUpdate(socket, data) {
 
 function handleListConversations(socket, conversations) {
   console.log('Received conversation list:', conversations);
-  const $conversationSelector = $('#conversation_selector');
 
   conversations.forEach(conversation => {
     const conversationId = conversation.id;
     const conversationName = conversation.name;
 
-    let $option =
-        $conversationSelector.find(`option[value="${conversationId}"]`);
-    if ($option.length === 0) {
-      $option = $('<option>').val(conversationId).text(conversationName);
-      $conversationSelector.append($option);
-    } else {
-      $option.text(conversationName);
-    }
+    updateConversationSelectorOption(conversationId, conversationName);
 
-    let $conversationDiv = getOrCreateConversationDiv(conversationId);
+    getOrCreateConversationDiv(conversationId);
 
     const clientMessageCount = countMessages(conversationId);
     if (conversation.message_count > clientMessageCount) {
@@ -261,8 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   $(confirmationInput).on('input', function() {
-    this.style.height = 'auto';
-    this.style.height = this.scrollHeight + 'px';
+    autoResize($(this));
     scrollToBottom();
   });
 
