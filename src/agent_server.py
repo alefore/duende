@@ -2,6 +2,7 @@ import argparse
 from flask import Flask, request
 from flask_socketio import SocketIO
 import logging
+from typing import Any
 
 from args_common import CreateCommonParser
 from conversation import ConversationId
@@ -20,7 +21,7 @@ def parse_arguments() -> argparse.Namespace:
 
 
 @app.route("/", methods=["GET"])
-def Interact():
+def Interact() -> Any:
   return app.send_static_file('index.html')
 
 
