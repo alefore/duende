@@ -3,6 +3,14 @@ import os
 import re
 
 
+class StartPatternNotFound(ValueError):
+  pass
+
+
+class EndPatternNotFound(ValueError):
+  pass
+
+
 class Selection:
 
   def __init__(self, path: str, start_index: int, end_index: int) -> None:
@@ -68,9 +76,9 @@ class Selection:
         return cls(path, start_index, index)
 
     if start_index is None:
-      raise ValueError("Could not find the specified start line pattern.")
+      raise StartPatternNotFound()
     if end_line_pattern is not None:
-      raise ValueError("Could not find the specified end line pattern.")
+      raise EndPatternNotFound()
     raise ValueError("Unexpected error in pattern matching.")
 
   def ProvideSummary(self) -> str:

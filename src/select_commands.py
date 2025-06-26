@@ -5,7 +5,7 @@ import re
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
-from selection_manager import Selection, SelectionManager
+from selection_manager import Selection, SelectionManager, StartPatternNotFound, EndPatternNotFound
 
 
 class SelectCommand(AgentCommand):
@@ -65,6 +65,20 @@ class SelectCommand(AgentCommand):
           output=["select <<"] + selected_lines + [f"#end ({path})"],
           errors=[],
           summary=selection.ProvideSummary())
+    except StartPatternNotFound:
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"{self.Name()}: Could not find start pattern '{start_line_pattern_raw}' in {path}."
+          ],
+          summary="Select command error: start pattern not found.")
+    except EndPatternNotFound:
+      return CommandOutput(
+          output=[],
+          errors=[
+              f"{self.Name()}: Could not find end pattern '{end_line_pattern_raw}' in {path} after finding start pattern."
+          ],
+          summary="Select command error: end pattern not found.")
     except Exception as e:
       return CommandOutput(
           output=[],

@@ -1,0 +1,1 @@
+Can you find ways to make the errors returned by #select and #select_regex more explicit? These errors are returned to an AI, so the more helpful/specific we can make it, the better off we'll be. For example, if a pattern or content fails to match, we should mention the pattern explicitly.
