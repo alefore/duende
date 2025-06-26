@@ -81,10 +81,9 @@ def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
   raise Exception(f"Unknown AI: {args.model}")
 
 
-def CreateAgentLoopOptions(args: argparse.Namespace,
-                           confirmation_manager: ConfirmationManager,
-                           conversation_factory: ConversationFactory
-                          ) -> AgentLoopOptions:
+def CreateAgentLoopOptions(
+    args: argparse.Namespace, confirmation_manager: ConfirmationManager,
+    conversation_factory: ConversationFactory) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
 
   matched_files = list(list_all_files('.', file_access_policy))
@@ -129,14 +128,14 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
-  original_task_file_content: List[str] = []
+  task_file_content: List[str] = []
   with open(args.task, 'r') as f:
-    original_task_file_content = [l.rstrip() for l in f.readlines()]
+    task_file_content = [l.rstrip() for l in f.readlines()]
 
   conversation, start_message = LoadOrCreateConversation(
-      original_task_file_content, args.task, conversation_factory,
-      conversation_path, registry, file_access_policy, validation_manager,
-      confirmation_state, conversation_name)
+      task_file_content, args.task, conversation_factory, conversation_path,
+      registry, file_access_policy, validation_manager, confirmation_state,
+      conversation_name)
 
   return AgentLoopOptions(
       conversation_factory=conversation_factory,
@@ -153,7 +152,7 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
       do_review=args.review,
-      original_task_prompt_content=original_task_file_content,
+      original_task_prompt_content=task_file_content,
   )
 
 

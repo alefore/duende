@@ -146,8 +146,7 @@ class AgentLoop:
           List[ContentSection]] = review_utils.run_parallel_reviews(
               parent_options=self.options,
               agent_loop_runner=agent_loop_runner,
-              original_task_prompt_content=self.options
-              .original_task_prompt_content)
+              original_task_prompt_content=self.options.task_prompt_content)
       if review_feedback_content:
         for section in review_feedback_content:
           next_message.PushSection(section)

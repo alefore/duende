@@ -53,15 +53,12 @@ def ReadReviewPromptFile(file_path: str) -> List[str]:
     return [l.rstrip() for l in f.readlines()]
 
 
-def _run_single_review(
-    review_prompt_path: str,
-    parent_options: AgentLoopOptions,
-    agent_loop_runner: Callable[[AgentLoopOptions], None],
-    review_suggestions: List[ContentSection],
-    lock: threading.Lock,
-    git_diff_output: List[str],
-    original_task_prompt_content: List[str],
-):
+def _run_single_review(review_prompt_path: str,
+                       parent_options: AgentLoopOptions,
+                       agent_loop_runner: Callable[[AgentLoopOptions], None],
+                       review_suggestions: List[ContentSection],
+                       lock: threading.Lock, git_diff_output: List[str],
+                       original_task_prompt_content: List[str]) -> None:
   logging.info(f"Starting review for {review_prompt_path}...")
 
   review_prompt_content = ReadReviewPromptFile(review_prompt_path)
@@ -149,8 +146,7 @@ def _run_single_review(
 def run_parallel_reviews(
     parent_options: AgentLoopOptions,
     agent_loop_runner: Callable[[AgentLoopOptions], None],
-    original_task_prompt_content: Optional[List[str]]
-) -> Optional[List[ContentSection]]:
+    original_task_prompt_content: List[str]) -> Optional[List[ContentSection]]:
   """Runs reviews in parallel based on files in agent/review/*.txt.
 
   Args:
