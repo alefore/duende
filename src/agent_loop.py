@@ -3,8 +3,9 @@ import openai
 import logging
 from conversation import Conversation, ConversationFactory, Message, ContentSection
 from typing import cast, Generator, List, Optional, Tuple, Union
-from validation import ValidationManager
 
+from validation import ValidationManager
+from agent_command import CommandInput
 from agent_command import CommandOutput
 from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
@@ -83,7 +84,8 @@ class AgentLoop:
                   summary="Validation status (failures detected)"))
 
   # Return value indicates whether #done was received.
-  def _ExecuteCommands(self, commands) -> Tuple[List[ContentSection], bool]:
+  def _ExecuteCommands(
+      self, commands: List[CommandInput]) -> Tuple[List[ContentSection], bool]:
     if not commands:
       return ([
           ContentSection(
@@ -137,7 +139,7 @@ class AgentLoop:
   def _HandleDoneCommand(self, next_message: Message) -> bool:
     if self.options.do_review:
 
-      def agent_loop_runner(options: AgentLoopOptions):
+      def agent_loop_runner(options: AgentLoopOptions) -> None:
         AgentLoop(options).run()
 
       review_feedback_content: Optional[
