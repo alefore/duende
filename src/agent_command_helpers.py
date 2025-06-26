@@ -21,6 +21,7 @@ def HelpText(name: str, syntax: CommandSyntax) -> MultilineContent:
     output.append("#end")
 
   output.append(f"  {syntax.description}")
+  output.append("")
   return output
 
 
