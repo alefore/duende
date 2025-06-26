@@ -42,7 +42,7 @@ class AsyncConfirmationManager(ConfirmationManager):
         self.on_confirmation_requested(conversation_id, message)
     return self.confirm_queue.get()  # Blocks until item is present
 
-  def provide_confirmation(self, confirmation: str):
+  def provide_confirmation(self, confirmation: str) -> None:
     with self.message_lock:
       self.current_message = None
     self.confirm_queue.put(confirmation)
