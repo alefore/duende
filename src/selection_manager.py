@@ -9,7 +9,6 @@ class Selection:
     self.path = path
     self.start_index = start_index
     self.end_index = end_index
-    self.selected_lines: List[str] = []
 
   def Read(self) -> List[str]:
     """Reads corresponding lines from the file and returns them."""
@@ -22,8 +21,7 @@ class Selection:
     if self.start_index < 0 or self.end_index >= len(lines):
       raise ValueError("Start or end index out of range.")
 
-    self.selected_lines = lines[self.start_index:self.end_index + 1]
-    return self.selected_lines
+    return lines[self.start_index:self.end_index + 1]
 
   def Overwrite(self, new_contents: List[str]):
     """
