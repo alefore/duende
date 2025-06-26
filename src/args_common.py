@@ -83,7 +83,8 @@ def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
 
 def CreateAgentLoopOptions(args: argparse.Namespace,
                            confirmation_manager: ConfirmationManager,
-                           conversation_factory) -> AgentLoopOptions:
+                           conversation_factory: ConversationFactory
+                          ) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
 
   matched_files = list(list_all_files('.', file_access_policy))
@@ -96,7 +97,7 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
     TestFileAccess(file_access_policy)
     sys.exit(0)
 
-  confirm_regex: Optional[Pattern] = re.compile(
+  confirm_regex: Optional[Pattern[str]] = re.compile(
       args.confirm) if args.confirm else None
 
   validation_manager = CreateValidationManager()
@@ -277,6 +278,6 @@ def CreateFileAccessPolicy(
   return CompositeFileAccessPolicy(policies)
 
 
-def TestFileAccess(file_access_policy: FileAccessPolicy):
+def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
   for file in list_all_files('.', file_access_policy):
     print(file)
