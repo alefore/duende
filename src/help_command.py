@@ -1,17 +1,17 @@
-from typing import TYPE_CHECKING
+from typing import Dict, List
 
 from agent_command import (AgentCommand, Argument, ArgumentContentType,
                            CommandInput, CommandOutput, CommandSyntax)
-from agent_command_helpers import HelpText as RenderHelpText
-
-if TYPE_CHECKING:
-  from command_registry import CommandRegistry
+from agent_command_helpers import FormatHelp
 
 
 class HelpCommand(AgentCommand):
 
-  def __init__(self, command_registry: "CommandRegistry"):
-    self.command_registry = command_registry
+  def __init__(self):
+    self.all_commands: Dict[str, AgentCommand] = {}
+
+  def SetAllCommands(self, all_commands: Dict[str, AgentCommand]):
+    self.all_commands = all_commands
 
   def Name(self) -> str:
     return "help"
@@ -27,23 +27,41 @@ class HelpCommand(AgentCommand):
         ))
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    if not command_input.arguments:
+    command_names = command_input.arguments
+    if not command_names:
+      help_text = FormatHelp(list(self.all_commands.values()))
       return CommandOutput(
-          output=[self.command_registry.HelpText()],
+          output=[help_text],
           errors=[],
           summary="Displayed help for all commands.")
 
-    all_descriptions = []
-    errors = []
-    for name in command_input.arguments:
-      command = self.command_registry.Get(name)
-      if command:
-        all_descriptions.append(
-            RenderHelpText(command.Name(), command.Syntax()))
-      else:
-        errors.append(f"#{self.Name()}: Unknown command '{name}'")
+    names_to_show = sorted(list(set(command_names)))
 
-    summary = f"Displayed help for: {', '.join(command_input.arguments)}."
-    output = ["\n\n".join(all_descriptions)] if all_descriptions else []
+    valid_commands: List[AgentCommand] = []
+    unknown_commands: List[str] = []
+    for name in names_to_show:
+      command = self.all_commands.get(name)
+      if command:
+        valid_commands.append(command)
+      else:
+        unknown_commands.append(name)
+
+    errors = []
+    if unknown_commands:
+      errors.append(
+          f"#{self.Name()}: Unknown command(s): {', '.join(unknown_commands)}")
+
+    output = []
+    if valid_commands:
+      output.append(FormatHelp(valid_commands))
+
+    summary_parts = []
+    if valid_commands:
+      valid_names = sorted([c.Name() for c in valid_commands])
+      summary_parts.append(f"Displayed help for: {', '.join(valid_names)}.")
+    if unknown_commands:
+      summary_parts.append(
+          f"Unknown command(s): {', '.join(unknown_commands)}.")
+    summary = " ".join(summary_parts)
 
     return CommandOutput(output=output, errors=errors, summary=summary)

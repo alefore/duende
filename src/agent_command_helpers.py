@@ -1,4 +1,5 @@
-from agent_command import CommandSyntax, Argument, ArgumentMultiline
+from typing import List
+from agent_command import AgentCommand, CommandSyntax, Argument, ArgumentMultiline
 
 
 def HelpText(name: str, syntax: CommandSyntax) -> str:
@@ -30,3 +31,12 @@ def HelpText(name: str, syntax: CommandSyntax) -> str:
 
   output.append(f"  {syntax.description}")
   return "\n".join(output)
+
+
+def FormatHelp(commands: List[AgentCommand]) -> str:
+  """Returns a formatted help string for a list of commands."""
+  sorted_commands = sorted(commands, key=lambda c: c.Name())
+  all_descriptions = [
+      HelpText(command.Name(), command.Syntax()) for command in sorted_commands
+  ]
+  return '\n\n'.join(all_descriptions)
