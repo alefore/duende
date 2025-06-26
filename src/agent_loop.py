@@ -66,7 +66,7 @@ class AgentLoop:
     logging.info("Starting AgentLoop run method...")
     next_message: Message = self.options.start_message
     while True:
-      logging.info("Querying ChatGPT...")
+      logging.info("Querying AI...")
       response_message: Message = self.ai_conversation.SendMessage(next_message)
       self.conversation.Save(self.options.conversation_path)
 
@@ -245,7 +245,7 @@ class AgentLoop:
             ],
             summary="Review context and guidelines for the AI"),
         ContentSection(
-            content=[review_registry.HelpText()],
+            content=review_registry.HelpText(),
             summary="Available commands for AI review")
     ]
     review_start_message = Message(
