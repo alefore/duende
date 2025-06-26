@@ -17,9 +17,8 @@ function run_command {
   rm -f "$tmp_output"
 }
 
-run_command "~/bin/mypy src/agent_cli.py"
-run_command "~/bin/mypy src/agent_server.py"
-run_command "~/bin/mypy src/validate_command_input.py"
+run_command "~/bin/mypy --strict src/agent_cli.py"
+run_command "~/bin/mypy --strict src/agent_server.py"
 
 for file in src/test_*.py; do
   run_command "${VALIDATE_PYTHON:-python3} $file"
