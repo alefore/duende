@@ -6,7 +6,8 @@ from typing import cast, Generator, List, Optional, Tuple, Union, Pattern, Named
 from validation import ValidationManager
 
 from confirmation import ConfirmationState
-from command_registry import CommandRegistry, CreateCommandRegistry
+from command_registry import CommandRegistry
+from command_registry_factory import CreateCommandRegistry
 from file_access_policy import FileAccessPolicy
 from parsing import ExtractCommands
 from validate_command_input import ValidateCommandInput

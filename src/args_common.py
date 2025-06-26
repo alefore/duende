@@ -8,7 +8,8 @@ from agent_loop import AgentLoopOptions
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
-from command_registry import CommandRegistry, CreateCommandRegistry
+from command_registry import CommandRegistry
+from command_registry_factory import CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
 from task_command import CommandOutput, TaskInformation
 from chatgpt import ChatGPT
@@ -261,10 +262,8 @@ def LoadOrCreateConversation(
                 'you can issue 5 #read_file commands at once.',
                 '',
                 'Available commands:',
-            ],
+            ] + registry.HelpText(),
             summary='Commands overview.'))
-    content_sections[-1].content.append(
-        registry.HelpText())  # Append to the content list of the last section
     next_message = Message('system', content_sections=content_sections)
 
   return conversation, next_message

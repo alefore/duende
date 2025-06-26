@@ -1,42 +1,32 @@
 from typing import List
 from agent_command import AgentCommand, CommandSyntax, Argument, ArgumentMultiline
+from conversation import MultilineContent
 
 
-def HelpText(name: str, syntax: CommandSyntax) -> str:
+def HelpText(name: str, syntax: CommandSyntax) -> MultilineContent:
   """Renders a help string corresponding to the `syntax` object."""
-  parts = [f"#{name}"]
-
-  # Required arguments
-  for arg in syntax.required:
-    parts.append(arg.name)
-
-  # Optional positional arguments
-  for arg in syntax.optional:
-    parts.append(f"[{arg.name}]")
-
-  # Repeatable final argument
+  header_parts = ([f"#{name}"] + [arg.name for arg in syntax.required] +
+                  [f"[{arg.name}]" for arg in syntax.optional])
   if syntax.repeatable_final:
-    parts.append(f"[{syntax.repeatable_final.name}…]")
+    header_parts.append(f"[{syntax.repeatable_final.name}…]")
+  if syntax.multiline:
+    header_parts.append(" <<")
 
-  header = " ".join(parts)
-  output = []
-  output.append(header)
+  output: MultilineContent = [" ".join(header_parts)]
 
   if syntax.multiline:
-    output[0] = output[0] + " <<"
     if syntax.multiline.description:
       output.append(syntax.multiline.description)
       output.append("…")
     output.append("#end")
 
   output.append(f"  {syntax.description}")
-  return "\n".join(output)
+  return output
 
 
-def FormatHelp(commands: List[AgentCommand]) -> str:
-  """Returns a formatted help string for a list of commands."""
-  sorted_commands = sorted(commands, key=lambda c: c.Name())
-  all_descriptions = [
-      HelpText(command.Name(), command.Syntax()) for command in sorted_commands
-  ]
-  return '\n\n'.join(all_descriptions)
+def FormatHelp(commands: List[AgentCommand]) -> MultilineContent:
+  output: MultilineContent = []
+  for command in sorted(commands, key=lambda c: c.Name()):
+    output.extend(HelpText(command.Name(), command.Syntax()))
+
+  return output
