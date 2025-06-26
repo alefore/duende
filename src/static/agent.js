@@ -7,6 +7,19 @@ function getConversationDiv(conversationId) {
   return $(`#conversation-${conversationId}`);
 }
 
+function getOrCreateConversationDiv(conversationId) {
+  let $conversationDiv = getConversationDiv(conversationId);
+  if ($conversationDiv.length === 0) {
+    console.log(`Creating container for conversation ${conversationId}`);
+    $conversationDiv = $('<div>')
+                           .addClass('conversation')
+                           .attr('id', `conversation-${conversationId}`)
+                           .hide();
+    $('#conversation_container').append($conversationDiv);
+  }
+  return $conversationDiv;
+}
+
 function getActiveConversationDiv() {
   return getConversationDiv(activeConversationId);
 }
@@ -55,7 +68,7 @@ function sendConfirmation(socket, confirmationMessage) {
     message_count: countMessages(activeConversationId),
     conversation_id: activeConversationId
   });
-  console.log('CONFIRMATION: Send confirmation.')
+  console.log('Confirmation: Send confirmation.')
   isConfirmationRequired = false;
 }
 
@@ -118,15 +131,7 @@ function handleUpdate(socket, data) {
     currentSessionKey = data.session_key;
   }
 
-  let $conversationDiv = $(`#conversation-${conversationId}`);
-  if ($conversationDiv.length === 0) {
-    console.log(`Creating container for conversation ${conversationId}`);
-    $conversationDiv = $('<div>')
-                           .addClass('conversation')
-                           .attr('id', `conversation-${conversationId}`)
-                           .hide();
-    $('#conversation_container').append($conversationDiv);
-  }
+  let $conversationDiv = getOrCreateConversationDiv(conversationId);
 
   const currentMessagesInDiv = countMessages(conversationId);
   data.conversation
@@ -196,7 +201,8 @@ function handleUpdate(socket, data) {
 
   showConversation(conversationId);
   isConfirmationRequired = data.confirmation_required;
-  console.log(`CONFIRMATION: Signal from server: {isConfirmationRequired}`)
+  console.log(`Confirmation: Signal from server: ${conversationId}: ${
+      isConfirmationRequired}`)
   maybeAutoConfirm(socket);
 
   if (data.message_count > countMessages(conversationId))
@@ -220,14 +226,7 @@ function handleListConversations(socket, conversations) {
       $option.text(conversationName);
     }
 
-    let $conversationDiv = getConversationDiv(conversationId);
-    if ($conversationDiv.length === 0) {
-      $conversationDiv = $('<div>')
-                           .addClass('conversation')
-                           .attr('id', `conversation-${conversationId}`)
-                           .hide();
-      $('#conversation_container').append($conversationDiv);
-    }
+    let $conversationDiv = getOrCreateConversationDiv(conversationId);
 
     const clientMessageCount = countMessages(conversationId);
     if (conversation.message_count > clientMessageCount) {
