@@ -1,4 +1,5 @@
 from typing import List, Optional
+import argparse
 import logging
 from flask_socketio import SocketIO
 from threading import Thread
@@ -12,7 +13,7 @@ from conversation import ConversationFactory, ConversationId, Message
 
 class WebServerState:
 
-  def __init__(self, args, socketio: SocketIO) -> None:
+  def __init__(self, args: argparse.Namespace, socketio: SocketIO) -> None:
     self.socketio = socketio
     self.confirmation_manager = AsyncConfirmationManager(
         self._confirmation_requested)
@@ -29,7 +30,8 @@ class WebServerState:
 
     Thread(target=AgentLoop(options).run).start()
 
-  def SendUpdate(self, conversation_id, client_message_count: Optional[int],
+  def SendUpdate(self, conversation_id: ConversationId,
+                 client_message_count: Optional[int],
                  confirmation_required: Optional[str]) -> None:
     try:
       conversation = self.conversation_factory.Get(conversation_id)
@@ -67,7 +69,7 @@ class WebServerState:
     logging.info("Confirmation requested.")
     self.SendUpdate(conversation_id, None, confirmation_required=message)
 
-  def ReceiveConfirmation(self, confirmation_message) -> None:
+  def ReceiveConfirmation(self, confirmation_message: str) -> None:
     logging.info("Received confirmation.")
     self.confirmation_manager.provide_confirmation(confirmation_message)
 
