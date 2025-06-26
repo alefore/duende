@@ -1,8 +1,10 @@
 import os
+from typing import Iterator
 from file_access_policy import FileAccessPolicy
 
 
-def list_all_files(directory: str, file_access_policy: FileAccessPolicy):
+def list_all_files(directory: str,
+                   file_access_policy: FileAccessPolicy) -> Iterator[str]:
   """Generates all file paths in a directory and its subdirectories, filtered by the file access policy for output."""
 
   abs_directory = os.path.abspath(directory)
