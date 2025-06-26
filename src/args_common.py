@@ -132,9 +132,9 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
     original_task_file_content = [l.rstrip() for l in f.readlines()]
 
   conversation, start_message = LoadOrCreateConversation(
-      original_task_file_content, conversation_factory, conversation_path,
-      registry, file_access_policy, validation_manager, confirmation_state,
-      conversation_name)
+      original_task_file_content, args.task, conversation_factory,
+      conversation_path, registry, file_access_policy, validation_manager,
+      confirmation_state, conversation_name)
 
   return AgentLoopOptions(
       conversation_factory=conversation_factory,
@@ -157,6 +157,7 @@ def CreateAgentLoopOptions(args: argparse.Namespace,
 
 def LoadOrCreateConversation(
     task_file_content: List[str],
+    task_file_path: str,
     conversation_factory: ConversationFactory,
     conversation_path: str,
     registry: CommandRegistry,
@@ -189,20 +190,23 @@ def LoadOrCreateConversation(
                 "Do not hallucinate results on your own. "
                 "Anything that is not a command will be relayed to the human."
             ],
-            summary=None))
+            summary='Hard-coded opening instructions.'))
 
     agent_prompt_path = 'agent/prompt.txt'
     if os.path.exists(agent_prompt_path):
       with open(agent_prompt_path, 'r') as f:
         content_sections.append(
             ContentSection(
-                content=list(l.rstrip() for l in f.readlines()), summary=None))
+                content=list(l.rstrip() for l in f.readlines()),
+                summary=f"Constant prompt guidance: {agent_prompt_path}"))
 
     commands_from_task, non_command_lines = ExtractCommands(task_file_content)
 
     if non_command_lines:
       content_sections.append(
-          ContentSection(content=non_command_lines, summary=None))
+          ContentSection(
+              content=non_command_lines,
+              summary=f"Non-command lines from --task file ({task_file_path})"))
 
     if commands_from_task:
       for cmd_input in commands_from_task:
@@ -234,7 +238,9 @@ def LoadOrCreateConversation(
             sys.exit(1)
         if command_output.output:
           content_sections.append(
-              ContentSection(content=command_output.output, summary=None))
+              ContentSection(
+                  content=command_output.output,
+                  summary=command_output.summary))
 
     content_sections.append(
         ContentSection(
@@ -256,7 +262,7 @@ def LoadOrCreateConversation(
                 '',
                 'Available commands:',
             ],
-            summary=None))
+            summary='Commands overview.'))
     content_sections[-1].content.append(
         registry.HelpText())  # Append to the content list of the last section
     next_message = Message('system', content_sections=content_sections)
