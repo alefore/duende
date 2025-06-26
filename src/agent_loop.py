@@ -94,13 +94,11 @@ class AgentLoop:
       self.options.confirmation_state.RegisterInteraction(
           self.conversation.GetId())
 
-      command_outputs, should_terminate_agent_loop = self._ExecuteCommands(
-          commands)
+      command_outputs, done_command_received = self._ExecuteCommands(commands)
       for content_section in command_outputs:
         next_message.PushSection(content_section)
 
-      if should_terminate_agent_loop and not has_human_guidance:
-        logging.info("AgentLoop terminating as per command execution.")
+      if done_command_received and self._HandleDoneCommand(next_message):
         break
 
       if not self.options.skip_implicit_validation:
@@ -118,6 +116,7 @@ class AgentLoop:
                   ],
                   summary="Validation status (failures detected)"))
 
+  # Return value indicates whether #done was received.
   def _ExecuteCommands(self, commands) -> Tuple[List[ContentSection], bool]:
     if not commands:
       return ([
@@ -129,30 +128,10 @@ class AgentLoop:
       ], False)
 
     outputs: List[ContentSection] = []
-    should_terminate_agent_loop: bool = False
     for cmd_input in commands:
       command_name = cmd_input.command_name
       if command_name == "done":
-        should_terminate_agent_loop = True
-        if self.options.do_review:
-          review_feedback_content = self._RunReview()
-          if review_feedback_content:
-            should_terminate_agent_loop = False
-            outputs.extend(review_feedback_content)
-
-        if should_terminate_agent_loop and self.options.confirm_done:
-          guidance = self.options.confirmation_state.RequireConfirmation(
-              self.conversation.GetId(), "Confirm #done command? " +
-              "Enter an empty string to accept and terminate, " +
-              "or some message to be sent to the AI asking it to continue.")
-          if guidance:
-            logging.info("Your guidance will be sent to the AI.")
-            outputs.append(
-                ContentSection(
-                    content=[f"Notice from human: {guidance}"],
-                    summary="Human decision to continue"))
-            should_terminate_agent_loop = False
-        break
+        return outputs, True
 
       command = self.options.commands_registry.Get(command_name)
       if not command:
@@ -186,7 +165,31 @@ class AgentLoop:
                 summary=f"Errors for command '{command_name}'"))
       logging.info(command_output.summary)
 
-    return outputs, should_terminate_agent_loop
+    return outputs, False
+
+  def _HandleDoneCommand(self, next_message: Message) -> bool:
+    if self.options.do_review:
+      review_feedback_content: Optional[
+          List[ContentSection]] = self._RunReview()
+      if review_feedback_content:
+        for section in review_feedback_content:
+          next_message.PushSection(section)
+        return False
+
+    if self.options.confirm_done:
+      guidance = self.options.confirmation_state.RequireConfirmation(
+          self.conversation.GetId(), "Confirm #done command? " +
+          "Enter an empty string to accept and terminate, " +
+          "or some message to be sent to the AI asking it to continue.")
+      if guidance:
+        logging.info("Your guidance will be sent to the AI.")
+        next_message.PushSection(
+            ContentSection(
+                content=[f"Notice from human: {guidance}"],
+                summary="Human decision to continue"))
+        return False
+
+    return True
 
   def _RunReview(self) -> Optional[List[ContentSection]]:
     logging.info("Initiating AI review...")
