@@ -1,5 +1,6 @@
 import google.generativeai as genai
 import google.generativeai.types as genai_types
+from google.generativeai.generative_models import GenerativeModel
 import logging
 import asyncio
 import sys
@@ -11,7 +12,7 @@ from conversational_ai import ConversationalAI, ConversationalAIConversation
 
 class GeminiConversation(ConversationalAIConversation):
 
-  def __init__(self, model: genai.GenerativeModel,
+  def __init__(self, model: GenerativeModel,
                conversation: Conversation) -> None:
     self.model = model
     self.conversation = conversation
