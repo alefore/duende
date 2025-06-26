@@ -1,0 +1,22 @@
+Change AgentLoop's review functionality to support many parallel review conversations.
+
+It should get a list of files inside agent/review/*.txt (instead of looking at agent/review.txt). For each match, the "parent" AgentLoop (where do_review is true) should start a separate nested "review" AgentLoop, using the contents of the file as an input to the prompt (where currently agent/review.txt is used).
+
+All the nested loops should run in parallel, so probably each needs to run in it's own thread.
+
+The parent conversation should only continue when all child reviews are done, aggregating their suggestions.
+
+Please put all the review-related logic in file src/review_utils.py (try to leave AgentLoop small, it's already fairly big).
+
+To avoid circular dependencies:
+
+1. Move AgentLoopOptions to a separate module src/agent_loop_options.py (and remove it from src/agent_loop.py).
+
+2. Update all dependencies of AgentLoopOptions to import from the new location.
+
+3. src/review_utils.py can depend on AgentLoopOptions, but shouldn't see AgentLoop. Instead, it should receive a Callable[[AgentLoopOptions], None] that internally creates *and* runs the corresponding agent loop.
+
+Do not include TYPE_CHECKING.
+
+#read_file src/agent_loop.py
+#read_file src/review_utils.py

@@ -1,57 +1,22 @@
 import json
 import openai
 import logging
-from conversation import Conversation, ConversationFactory, Message, MultilineContent, ContentSection
-from typing import cast, Generator, List, Optional, Tuple, Union, Pattern, NamedTuple
+from conversation import Conversation, ConversationFactory, Message, ContentSection
+from typing import cast, Generator, List, Optional, Tuple, Union
 from validation import ValidationManager
 
-from confirmation import ConfirmationState
+from agent_command import CommandOutput
+from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
 from command_registry_factory import CreateCommandRegistry
+from confirmation import ConfirmationState
+from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
 from parsing import ExtractCommands
+import review_utils
 from validate_command_input import ValidateCommandInput
-from conversational_ai import ConversationalAI
-from review_utils import GetGitDiffContent, ReadReviewPromptFile
-from review_commands import SuggestCommand
-from selection_manager import SelectionManager
-from task_command import TaskInformation
-from agent_command import CommandOutput
 
 logging.basicConfig(level=logging.INFO)
-
-CONVERSATION_KEY = 'conversation'
-
-
-class AgentLoopOptions(NamedTuple):
-  conversation_factory: ConversationFactory
-  conversation_path: str
-  model: str
-  conversation: Conversation
-  start_message: Message
-  commands_registry: CommandRegistry
-  confirmation_state: ConfirmationState
-  file_access_policy: FileAccessPolicy
-  conversational_ai: ConversationalAI
-  confirm_regex: Optional[Pattern] = None
-  confirm_done: bool = False
-  skip_implicit_validation: bool = False
-  validation_manager: Optional[ValidationManager] = None
-  do_review: bool = False
-  original_task_prompt_content: Optional[List[str]] = None
-
-
-# Dummy function for start_new_task when tasks are disabled for the registry
-def _dummy_start_new_task(task_info: TaskInformation) -> CommandOutput:
-  # This function should never be called because can_start_tasks is False
-  # for the review registry. If it were called, it indicates a logic error.
-  logging.error(
-      f"Attempted to start a task within a review loop, but tasks are disabled. Task: {task_info.task_name}"
-  )
-  return CommandOutput(
-      output=[],
-      errors=["Task command is disabled in review mode."],
-      summary="Task disabled in review mode.")
 
 
 class AgentLoop:
@@ -171,8 +136,16 @@ class AgentLoop:
 
   def _HandleDoneCommand(self, next_message: Message) -> bool:
     if self.options.do_review:
+
+      def agent_loop_runner(options: AgentLoopOptions):
+        AgentLoop(options).run()
+
       review_feedback_content: Optional[
-          List[ContentSection]] = self._RunReview()
+          List[ContentSection]] = review_utils.run_parallel_reviews(
+              parent_options=self.options,
+              agent_loop_runner=agent_loop_runner,
+              original_task_prompt_content=self.options
+              .original_task_prompt_content)
       if review_feedback_content:
         for section in review_feedback_content:
           next_message.PushSection(section)
@@ -192,98 +165,3 @@ class AgentLoop:
         return False
 
     return True
-
-  def _RunReview(self) -> Optional[List[ContentSection]]:
-    logging.info("Initiating AI review...")
-
-    git_diff_output = GetGitDiffContent()
-    review_prompt_content = ReadReviewPromptFile()
-
-    review_conversation_path = self.options.conversation_path.replace(
-        '.json', '.review.json')
-    review_conversation = self.options.conversation_factory.New(
-        name="AI Review: " + self.conversation.GetName())
-
-    review_suggestions: List[ContentSection] = []
-
-    def add_suggestion_callback(text: MultilineContent) -> None:
-      index = len(review_suggestions) + 1
-      logging.info(f"Adding suggestion: {index}")
-      review_suggestions.append(
-          ContentSection(
-              content=[f"Suggestion {index}: <<"] + text + ["#end"],
-              summary=f"Review Suggestion {index}"))
-
-    review_selection_manager = SelectionManager()
-    review_registry = CreateCommandRegistry(
-        file_access_policy=self.options.file_access_policy,
-        validation_manager=self.options.validation_manager,
-        start_new_task=_dummy_start_new_task,
-        git_dirty_accept=True,
-        can_write=False,
-        can_start_tasks=False)
-    review_registry.Register(SuggestCommand(add_suggestion_callback))
-
-    review_start_sections: List[ContentSection] = [
-        ContentSection(
-            content=[
-                "You are an AI review assistant. Your task is to review a code changes and provide suggestions for improvement.",
-                "Use the #suggest command for each individual suggestion you want to issue. Each #suggest command should contain a single, actionable suggestion.",
-                "When you have no more suggestions, issue the #done command.",
-                "",
-                "Original task prompt for the main agent:",
-                *(self.options.original_task_prompt_content or
-                  ["No original task prompt content available."]),
-                "",
-                "Current Git Diff (showing uncommitted changes):",
-                *git_diff_output,
-                "",
-                "Review Guidelines (from agent/review.txt):",
-                *review_prompt_content,
-                "",
-                "Available commands for review:",
-            ],
-            summary="Review context and guidelines for the AI"),
-        ContentSection(
-            content=review_registry.HelpText(),
-            summary="Available commands for AI review")
-    ]
-    review_start_message = Message(
-        'system', content_sections=review_start_sections)
-
-    review_confirmation_state = ConfirmationState(
-        confirmation_manager=self.options.confirmation_state
-        .confirmation_manager,
-        confirm_every=None)
-
-    logging.info('Parent: Starting nested review agent loop.')
-    AgentLoop(
-        AgentLoopOptions(
-            conversation_factory=self.options.conversation_factory,
-            conversation_path=review_conversation_path,
-            model=self.options.model,
-            conversation=review_conversation,
-            start_message=review_start_message,
-            commands_registry=review_registry,
-            confirmation_state=review_confirmation_state,
-            file_access_policy=self.options.file_access_policy,
-            conversational_ai=self.options.conversational_ai,
-            confirm_regex=None,
-            confirm_done=False,
-            skip_implicit_validation=True,
-            validation_manager=None,
-            do_review=False,
-            original_task_prompt_content=None,
-        )).run()
-    logging.info('Parent: Nested review agent loop done.')
-
-    if review_suggestions:
-      logging.info(f"AI review found {len(review_suggestions)} suggestions.")
-      review_suggestions.append(
-          ContentSection(
-              content=["Please try to address these suggestions."],
-              summary="Instructions after review suggestions"))
-      return review_suggestions
-    else:
-      logging.info("AI review found no suggestions.")
-      return None
