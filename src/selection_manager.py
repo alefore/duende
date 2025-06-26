@@ -31,7 +31,7 @@ class Selection:
 
     return lines[self.start_index:self.end_index + 1]
 
-  def Overwrite(self, new_contents: List[str]):
+  def Overwrite(self, new_contents: List[str]) -> None:
     """
     Replaces the selection with new contents (deleting previous contents).
     'new_contents' should not include newline characters at the end of each line.
