@@ -70,3 +70,14 @@ class WebServerState:
   def ReceiveConfirmation(self, confirmation_message) -> None:
     logging.info("Received confirmation.")
     self.confirmation_manager.provide_confirmation(confirmation_message)
+
+  def ListConversations(self) -> None:
+    logging.info("Listing conversations.")
+    conversations_data = []
+    for conversation in self.conversation_factory.GetAll():
+      conversations_data.append({
+          'id': conversation.GetId(),
+          'name': conversation.GetName(),
+          'message_count': len(conversation.GetMessagesList()),
+      })
+    self.socketio.emit('list_conversations', conversations_data)
