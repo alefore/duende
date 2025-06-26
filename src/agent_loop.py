@@ -205,11 +205,12 @@ class AgentLoop:
     review_suggestions: List[ContentSection] = []
 
     def add_suggestion_callback(text: MultilineContent) -> None:
+      index = len(review_suggestions) + 1
+      logging.info(f"Adding suggestion: {index}")
       review_suggestions.append(
           ContentSection(
-              content=[f"Suggestion {len(review_suggestions) + 1}: <<"] + text +
-              ["#end"],
-              summary=f"Review Suggestion {len(review_suggestions) + 1}"))
+              content=[f"Suggestion {index}: <<"] + text + ["#end"],
+              summary=f"Review Suggestion {index}"))
 
     review_selection_manager = SelectionManager()
     review_registry = CreateCommandRegistry(
@@ -253,6 +254,7 @@ class AgentLoop:
         .confirmation_manager,
         confirm_every=None)
 
+    logging.info('Parent: Starting nested review agent loop.')
     AgentLoop(
         AgentLoopOptions(
             conversation_factory=self.options.conversation_factory,
@@ -271,6 +273,7 @@ class AgentLoop:
             do_review=False,
             original_task_prompt_content=None,
         )).run()
+    logging.info('Parent: Nested review agent loop done.')
 
     if review_suggestions:
       logging.info(f"AI review found {len(review_suggestions)} suggestions.")
