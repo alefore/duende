@@ -134,3 +134,6 @@ class ConversationFactory:
 
   def Get(self, id: ConversationId) -> Conversation:
     return self._conversations[id]
+
+  def GetAll(self) -> List[Conversation]:
+    return list(self._conversations.values())
