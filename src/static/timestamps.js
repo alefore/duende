@@ -42,13 +42,15 @@ function createTimestampView(timestamp) {
     }
 
     $element.text(text);
-    // We use 10 seconds to make sure we give JS a chance to add this event to
-    // the DOM (when we first create it).
-    if (nextUpdateInMs > 10000) {
+    // If we're not showing an absolute date, schedule an update.
+    if (nextUpdateInMs !== -1) {
       setTimeout(() => {
+        // Only update if the element is still in the DOM.
         if ($.contains(document.documentElement, $element[0])) {
           updateText();
         }
+      }, nextUpdateInMs);
+    }
       }, nextUpdateInMs);
     }
   }
