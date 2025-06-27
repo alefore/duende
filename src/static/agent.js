@@ -54,7 +54,7 @@ function loadAutoConfirmState() {
 
 function saveAutoConfirmState() {
   localStorage.setItem(
-      'auto_confirm_enabled', JSON.stringify(autoConfirmCheckbox.checked));
+      'auto_confirm_enabled', JSON.stringify(autoConfirmCheckbox().checked));
 }
 
 function maybeAutoConfirm(socket) {
