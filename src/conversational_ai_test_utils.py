@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List
 
 from conversation import Conversation, Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -32,10 +32,19 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
 class FakeConversationalAI(ConversationalAI):
   """A fake implementation of ConversationalAI for testing."""
 
-  def __init__(self, scripted_responses: List[str]):
+  def __init__(self, scripted_responses: Dict[str, List[str]]):
     self.scripted_responses = scripted_responses
+    # Keep track of which conversations have been started to help debugging
+    self.started_conversations: Dict[str, int] = {}
 
   def StartConversation(
       self, conversation: Conversation) -> ConversationalAIConversation:
+    name = conversation.GetName()
+    if name not in self.scripted_responses:
+      raise KeyError(
+          f"The conversation name '{name}' is not a key in the scripted_responses dictionary. "
+          f"Started conversations so far: {list(self.started_conversations.keys())}"
+      )
+    self.started_conversations[name] = conversation.GetId()
     return FakeConversationalAIConversation(conversation,
-                                            self.scripted_responses)
+                                            self.scripted_responses[name])

@@ -1,0 +1,11 @@
+Take a look at the tests for AgentLoop. Can you implement a test for the do_review functionality? It should kick in three nested reviews.
+
+You will probably need to extend various files to support this. For example, it's possible that the FakeConversationalAI class will need to be extended to support multiple conversations.
+
+Feel free to read any other files you may want to get context about.
+
+It's possible this will uncover bugs. Who knows!
+
+#read_file src/agent_loop.py
+#read_file src/test_agent_loop.py
+#read_file src/conversational_ai_test_utils.py

@@ -1,10 +1,13 @@
 import os
 import unittest
-from unittest.mock import MagicMock, call
-from typing import List
+from unittest.mock import MagicMock, call, patch
+from typing import Dict, List, Union
+import glob
 
+import review_utils
 from agent_command import (AgentCommand, CommandInput, CommandOutput,
-                           CommandSyntax, Argument, ArgumentContentType)
+                           CommandSyntax, Argument, ArgumentContentType,
+                           ArgumentMultiline)
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
@@ -20,7 +23,7 @@ class TestAgentLoop(unittest.TestCase):
     """Set up common stateless mocks for all tests."""
     self.mock_list_files_command = MagicMock(spec=AgentCommand)
     self.mock_list_files_command.Name.return_value = "list_files"
-    self.mock_list_files_command.Aliases.return_value = set()
+    self.mock_list_files_command.Aliases.return_value = []
     self.mock_list_files_command.Syntax.return_value = CommandSyntax(
         multiline=None,
         required=[],
@@ -32,7 +35,7 @@ class TestAgentLoop(unittest.TestCase):
 
     self.mock_read_file_command = MagicMock(spec=AgentCommand)
     self.mock_read_file_command.Name.return_value = "read_file"
-    self.mock_read_file_command.Aliases.return_value = set()
+    self.mock_read_file_command.Aliases.return_value = []
     self.mock_read_file_command.Syntax.return_value = CommandSyntax(
         multiline=None,
         required=[
@@ -50,9 +53,27 @@ class TestAgentLoop(unittest.TestCase):
     self.mock_read_file_command.Execute.return_value = CommandOutput(
         output=["file content"], errors=[], summary="Read 1 file.")
 
+    self.mock_write_file_command = MagicMock(spec=AgentCommand)
+    self.mock_write_file_command.Name.return_value = "write_file"
+    self.mock_write_file_command.Aliases.return_value = []
+    self.mock_write_file_command.Syntax.return_value = CommandSyntax(
+        multiline=ArgumentMultiline(description="The content to write."),
+        required=[
+            Argument(
+                name='path',
+                arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
+                description='Path to the file to write.')
+        ],
+        optional=[],
+        repeatable_final=None,
+    )
+    self.mock_write_file_command.Execute.return_value = CommandOutput(
+        output=[], errors=[], summary="Wrote to file.")
+
     self.registry = CommandRegistry()
     self.registry.Register(self.mock_list_files_command)
     self.registry.Register(self.mock_read_file_command)
+    self.registry.Register(self.mock_write_file_command)
 
     self.mock_confirmation_state = MagicMock()
     self.mock_confirmation_state.RequireConfirmation.return_value = ""
@@ -62,8 +83,9 @@ class TestAgentLoop(unittest.TestCase):
     self.file_access_policy = CurrentDirectoryFileAccessPolicy()
 
   def _run_agent_loop_for_test(self,
-                               scripted_responses: list[str],
-                               confirm_done: bool = False) -> List[Message]:
+                               scripted_responses: Dict[str, List[str]],
+                               confirm_done: bool = False,
+                               do_review: bool = False) -> List[Message]:
     """Creates and runs an AgentLoop instance, returning the conversation."""
     self.fake_ai = FakeConversationalAI(scripted_responses=scripted_responses)
     conversation = Conversation(unique_id=0, name="test-name")
@@ -82,6 +104,7 @@ class TestAgentLoop(unittest.TestCase):
         file_access_policy=self.file_access_policy,
         conversational_ai=self.fake_ai,
         confirm_done=confirm_done,
+        do_review=do_review,
         skip_implicit_validation=True,
     )
     agent_loop = AgentLoop(options)
@@ -93,7 +116,8 @@ class TestAgentLoop(unittest.TestCase):
     Tests a simple interaction where the AI issues one command and then #done.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test(["#list_files", "#done"])
+    messages = self._run_agent_loop_for_test(
+        {"test-name": ["#list_files", "#done"]})
 
     # 2. Assertions: Verify the loop behaved as expected.
     # The conversation should have 4 messages:
@@ -122,7 +146,7 @@ class TestAgentLoop(unittest.TestCase):
     """
     # 1. Setup and run the agent loop.
     messages = self._run_agent_loop_for_test(
-        ["This is just conversational text.", "#done"])
+        {"test-name": ["This is just conversational text.", "#done"]})
 
     # 2. Assertions
     # The conversation should have 4 messages:
@@ -145,7 +169,8 @@ class TestAgentLoop(unittest.TestCase):
     Tests that the loop sends an error back to the AI for an unknown command.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test(["#unknown_command", "#done"])
+    messages = self._run_agent_loop_for_test(
+        {"test-name": ["#unknown_command", "#done"]})
 
     # 2. Assertions
     # The conversation should have 4 messages:
@@ -171,7 +196,7 @@ class TestAgentLoop(unittest.TestCase):
     # 1. Setup and run the agent loop.
     # The scripted response contains two command lines in a single message.
     messages = self._run_agent_loop_for_test(
-        ["#list_files\n#read_file foo.py", "#done"])
+        {"test-name": ["#list_files\n#read_file foo.py", "#done"]})
 
     # 2. Assertions
     self.mock_list_files_command.Execute.assert_called_once()
@@ -199,8 +224,8 @@ class TestAgentLoop(unittest.TestCase):
     self.mock_confirmation_state.RequireConfirmation.side_effect = [
         "You are not done, please list files.", ""
     ]
-    messages = self._run_agent_loop_for_test(["#done", "#list_files", "#done"],
-                                             confirm_done=True)
+    messages = self._run_agent_loop_for_test(
+        {"test-name": ["#done", "#list_files", "#done"]}, confirm_done=True)
 
     # 2. Assertions
     # The conversation should have 6 messages:
@@ -226,6 +251,84 @@ class TestAgentLoop(unittest.TestCase):
 
     # Check that the next command was executed after guidance
     self.mock_list_files_command.Execute.assert_called_once()
+
+  def test_do_review_parallel(self):
+    """Tests that do_review can trigger three parallel reviews."""
+    main_conv_name = "test-name"
+    review_0_conv_name = "AI Review (review_0): test-name"
+    review_1_conv_name = "AI Review (review_1): test-name"
+    review_2_conv_name = "AI Review (review_2): test-name"
+
+    scripted_responses = {
+        main_conv_name: [
+            "#write_file a.py <<\n'a'\n#end\n#done",
+            "#done",
+        ],
+        review_0_conv_name: [
+            "#suggest <<\nFeedback from review 0.\n#end\n#done",
+        ],
+        review_1_conv_name: [
+            "#suggest <<\nFeedback from review 1.\n#end\n#done",
+        ],
+        review_2_conv_name: [
+            "#suggest <<\nFeedback from review 2.\n#end\n#done",
+        ],
+    }
+    with patch('glob.glob') as mock_glob, \
+         patch('review_utils.ReadReviewPromptFile') as mock_read_prompt, \
+         patch('review_utils.GetGitDiffContent') as mock_get_diff:
+
+      mock_glob.return_value = [
+          'agent/review/review_0.txt', 'agent/review/review_1.txt',
+          'agent/review/review_2.txt'
+      ]
+      mock_read_prompt.side_effect = [
+          ["Review prompt 0."],
+          ["Review prompt 1."],
+          ["Review prompt 2."],
+      ]
+      mock_get_diff.side_effect = [
+          ['--- a/a.py'],  # Main agent's change, triggers reviews
+          [],  # After feedback, agent issues #done, no new changes
+      ]
+
+      messages = self._run_agent_loop_for_test(
+          scripted_responses=scripted_responses, do_review=True)
+
+    self.assertEqual(mock_get_diff.call_count, 2)
+    mock_glob.assert_called_once_with('agent/review/*.txt')
+    self.assertEqual(mock_read_prompt.call_count, 3)
+    self.assertEqual(len(messages), 4)
+
+    feedback_message = messages[2]
+    self.assertEqual(feedback_message.role, 'user')
+    sections = feedback_message.GetContentSections()
+    self.assertEqual(len(sections), 4)
+
+    instruction_sections = [
+        s for s in sections
+        if s.summary == "Instructions after review suggestions"
+    ]
+    suggestion_sections = [
+        s for s in sections
+        if s.summary != "Instructions after review suggestions"
+    ]
+
+    self.assertEqual(len(instruction_sections), 1)
+    self.assertEqual(len(suggestion_sections), 3)
+
+    summaries = [s.summary for s in suggestion_sections]
+    self.assertTrue(any("from review_0" in s for s in summaries))
+    self.assertTrue(any("from review_1" in s for s in summaries))
+    self.assertTrue(any("from review_2" in s for s in summaries))
+    self.assertTrue(any("Suggestion 1" in s for s in summaries))
+    self.assertTrue(any("Suggestion 2" in s for s in summaries))
+    self.assertTrue(any("Suggestion 3" in s for s in summaries))
+
+    contents = [s.content[1] for s in suggestion_sections]
+    self.assertIn("Feedback from review 0.", contents)
+    self.assertIn("Feedback from review 1.", contents)
+    self.assertIn("Feedback from review 2.", contents)
 
 
 if __name__ == '__main__':
