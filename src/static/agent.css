@@ -57,8 +57,21 @@ h1 {
   background-color: #f9f9f9;
 }
 
-.message .role {
+.message-header {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 5px;
+}
+
+.role {
   font-weight: bold;
+  font-size: 1.1em;
+  margin-right: 10px;
+}
+
+.timestamp {
+  font-size: 0.9em;
+  color: #666;
 }
 
 pre {
@@ -138,6 +151,10 @@ pre {
   .message {
     border: 1px solid #555;
     background-color: #2a2a2a;
+  }
+
+  .timestamp {
+    color: #aaa;
   }
 
   .toggle-link {
