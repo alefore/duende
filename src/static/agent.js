@@ -239,6 +239,7 @@ function handleListConversations(socket, conversations) {
   conversations.forEach(conversation => {
     const conversationId = conversation.id;
     const conversationName = conversation.name;
+    // TODO: Handle `conversation.state`
 
     updateConversationSelectorOption(conversationId, conversationName);
 
