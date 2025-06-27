@@ -1,0 +1,5 @@
+Can you add a few unit tests for CommandRegistry?
+
+Please start by making a list (in English) of conditions that you think should be tested. Make it relatively exhaustive, adding border-cases.
+
+#read_file src/command_registry.py
