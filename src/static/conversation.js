@@ -148,7 +148,7 @@ class ConversationData {
       const prettyState = this.state.replace(/_/g, ' ').toLowerCase();
       $stateDisplay
           .text(
-              this.state_emoji + ' ' + prettyState.charAt(0).toUpperCase() +
+              this.stateEmoji + ' ' + prettyState.charAt(0).toUpperCase() +
               prettyState.slice(1))
           .show();
     }

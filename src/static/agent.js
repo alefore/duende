@@ -12,11 +12,11 @@ function getShownConversation() {
   return conversationsById[shownConversationId];
 }
 
-function createOrUpdateConversation(id, name, state, state_emoji) {
+function createOrUpdateConversation(id, name, state, stateEmoji) {
   if (conversationsById[id])
-    conversationsById[id].updateData(name, state, state_emoji);
+    conversationsById[id].updateData(name, state, stateEmoji);
   else
-    conversationsById[id] = new ConversationData(id, name, state, state_emoji);
+    conversationsById[id] = new ConversationData(id, name, state, stateEmoji);
   return conversationsById[id].updateView();
 }
 
