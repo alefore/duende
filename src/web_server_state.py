@@ -63,6 +63,8 @@ class WebServerState:
         'conversation_id': conversation_id,
         'conversation_name': conversation.GetName(),
         'conversation_state': f"{state.to_emoji()} {state.name}",
+        'last_state_change_time':
+            conversation.last_state_change_time.isoformat(),
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
         'message_count': len(messages_list),
@@ -90,5 +92,7 @@ class WebServerState:
           'name': conversation.GetName(),
           'message_count': len(conversation.GetMessagesList()),
           'state': f"{state.to_emoji()} {state.name}",
+          'last_state_change_time':
+              conversation.last_state_change_time.isoformat(),
       })
     self.socketio.emit('list_conversations', conversations_data)
