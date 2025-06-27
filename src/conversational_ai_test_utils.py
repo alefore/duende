@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List
 
 from conversation import Conversation, Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -7,7 +7,7 @@ from conversational_ai import ConversationalAI, ConversationalAIConversation
 class FakeConversationalAIConversation(ConversationalAIConversation):
   """A fake implementation of ConversationalAIConversation for testing."""
 
-  def __init__(self, conversation: Conversation, scripted_responses: list[str]):
+  def __init__(self, conversation: Conversation, scripted_responses: List[str]):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
 
@@ -18,10 +18,11 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
     if not self.scripted_responses:
       raise StopIteration("No more scripted responses.")
 
-    response_text = self.scripted_responses.pop(0)
     response_message = Message(
         role='assistant',
-        content_sections=[ContentSection(content=[response_text])])
+        content_sections=[
+            ContentSection(content=self.scripted_responses.pop(0).splitlines())
+        ])
 
     # Add the assistant's response to the conversation history.
     self.conversation.AddMessage(response_message)
@@ -31,7 +32,7 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
 class FakeConversationalAI(ConversationalAI):
   """A fake implementation of ConversationalAI for testing."""
 
-  def __init__(self, scripted_responses: list[str]):
+  def __init__(self, scripted_responses: List[str]):
     self.scripted_responses = scripted_responses
 
   def StartConversation(
