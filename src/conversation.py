@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional, Callable, NamedTuple
 import json
 import logging
 from datetime import datetime, timezone
+from conversation_state import ConversationState
 
 # Avoid strings with newline characters; to break lines, just add more entries.
 MultilineContent = List[str]
@@ -72,6 +73,7 @@ class Conversation:
     self._name = name
     self.messages: List[Message] = []
     self._on_message_added_callback = on_message_added_callback
+    self.state: ConversationState = ConversationState.STARTING
 
   @staticmethod
   def Load(

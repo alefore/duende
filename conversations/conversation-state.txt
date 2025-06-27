@@ -1,0 +1,16 @@
+Can you add to Conversatoin a field current_state?
+
+It should take a value from an enum of valid states you'll add in src/conversation_state.py, representing what the Conversation is currently doing.
+
+Values should include:
+
+* Starting (has been created but nothing else has happened).
+* Waiting for a response from AI
+* Waiting for review feedback (from a nested conversations)
+* Running commands received from AI
+* Parsing commands received from AI
+* Executing implicit validation (between commands)
+
+We may extend it in the future.
+
+#read_file src/conversation.py
