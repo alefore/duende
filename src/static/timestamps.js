@@ -51,8 +51,6 @@ function createTimestampView(timestamp) {
         }
       }, nextUpdateInMs);
     }
-      }, nextUpdateInMs);
-    }
   }
 
   updateText();
