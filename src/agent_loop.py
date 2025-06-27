@@ -46,7 +46,6 @@ class AgentLoop:
         logging.info(
             f"Found {len(review_feedback_content)} review suggestions. Adding to prompt."
         )
-        # The role of the start_message is 'system'.
         all_sections = review_feedback_content + next_message.GetContentSections(
         )
         next_message = Message(role='system', content_sections=all_sections)
@@ -93,7 +92,8 @@ class AgentLoop:
       for content_section in command_outputs:
         next_message.PushSection(content_section)
 
-      if done_command_received and self._HandleDoneCommand(next_message):
+      if done_command_received and not has_human_guidance and self._HandleDoneCommand(
+          next_message):
         break
 
       if not self.options.skip_implicit_validation:
