@@ -6,3 +6,4 @@ Examples of BAD comments:
 
     # Iterate the list of elements
     for i in elements:
+      ...
