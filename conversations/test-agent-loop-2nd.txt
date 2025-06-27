@@ -1,0 +1,8 @@
+TASK: Can you describe another test for AgentLoop that you think would add a lot of value?
+
+Try to identify a good ROI: A test that gives a lot of value, but a test that isn't too complicated.
+
+There is already one test, so don't duplicate that one. Just explain (in English) what the next test should be.
+
+#read_file src/test_agent_loop.py
+#read_file src/agent_loop.py
