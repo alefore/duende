@@ -1,0 +1,15 @@
+We've extended the socketio messages that the server sends to the client (function WebServerState.SendUpdate) to include a `conversation_state` field with a string describing what the conversation is waiting for.
+
+Can you extend the method in JS that receives those updates (handleUpdate) to somehow display the state? You'll need to tweak the HTML as well.
+
+Maybe the best way to display the state is:
+
+- If the state is as WAITING_FOR_CONFIRMATION, don't display anything.
+  This means the human is looking at it, most likely.
+  (Or will realize it through the changes to the confirmation textarea.
+
+- Otherwise: hide the confirmation <Textarea> (instead of what we do currently, which is to disable it) and, instead, display a label with the state.
+
+#read_file src/web_server_state.py
+#read_file src/static/agent.js
+#read_file src/conversation_state.py

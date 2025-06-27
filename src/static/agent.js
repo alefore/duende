@@ -207,6 +207,23 @@ function handleUpdate(socket, data) {
       });
 
   showConversation(conversationId);
+
+  const conversationState = data.conversation_state;
+  if (conversationState) {
+    const $confirmationForm = $('#confirmation_form');
+    const $stateDisplay = $('#conversation_state_display');
+    if (conversationState === 'WAITING_FOR_CONFIRMATION') {
+      $stateDisplay.hide();
+      $confirmationForm.show();
+    } else {
+      $confirmationForm.hide();
+      const prettyState = conversationState.replace(/_/g, ' ').toLowerCase();
+      $stateDisplay
+          .text(prettyState.charAt(0).toUpperCase() + prettyState.slice(1))
+          .show();
+    }
+  }
+
   isConfirmationRequired = data.confirmation_required;
   console.log(`Confirmation: Signal from server: ${conversationId}: ${
       isConfirmationRequired}`)
