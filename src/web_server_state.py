@@ -61,7 +61,7 @@ class WebServerState:
     data = {
         'conversation_id': conversation_id,
         'conversation_name': conversation.GetName(),
-        'state': conversation.GetState().name,
+        'conversation_state': conversation.GetState().name,
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
         'message_count': len(messages_list),
