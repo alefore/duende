@@ -1,5 +1,5 @@
 from typing import Dict, Optional, Callable, List
-from agent_command import AgentCommand
+from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
 
 from command_registry import CommandRegistry
@@ -13,12 +13,12 @@ from search_file_command import SearchFileCommand
 from select_commands import (
     SelectCommand,
     SelectOverwriteCommand,
-    SelectionManager,
 )
+from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
-from task_command import TaskCommand, CommandOutput, TaskInformation
+from task_command import TaskCommand, TaskInformation
 from help_command import HelpCommand
 import sys
 
