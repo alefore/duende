@@ -55,22 +55,15 @@ function requestMessages(socket, conversationId) {
   });
 }
 
-function autoResize($element) {
-  $element.css('height', 'auto');
-  $element.height($element[0].scrollHeight);
-}
-
 function updateConfirmationUI() {
   const $confirmationInput = $('#confirmation_input');
   $confirmationInput.prop('disabled', !isConfirmationRequired);
   if (isConfirmationRequired) {
     $confirmationInput.attr('placeholder', 'Confirmation…');
     $confirmationInput.focus();
-    setTimeout(() => autoResize($confirmationInput), 0);
   } else {
     $confirmationInput.val('');
     $confirmationInput.attr('placeholder', '');
-    autoResize($confirmationInput);
   }
 }
 
@@ -257,10 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     maybeAutoConfirm(socket);
   });
 
-  $(confirmationInput).on('input', function() {
-    autoResize($(this));
-    scrollToBottom();
-  });
+  $(confirmationInput).on('input', scrollToBottom);
 
   $(confirmationInput).on('keydown', function(event) {
     if (event.key === 'Enter') {

@@ -100,7 +100,8 @@ pre {
 
 #confirmation_input {
   width: calc(100%); /* Full width minus padding/border consideration */
-  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+  box-sizing: border-box;
+  field-sizing: content;
   padding: 8px 10px;
   margin-top: 10px;
   border: 1px solid #ccc;
