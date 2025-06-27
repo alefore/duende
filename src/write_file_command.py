@@ -1,6 +1,7 @@
 from typing import List, Optional
 import logging
 import os
+import difflib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
 from validation import ValidationManager
@@ -38,6 +39,7 @@ class WriteFileCommand(AgentCommand):
 
     path = command_input.arguments[0]
     assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
+    new_content_lines = command_input.multiline_content
     logging.info(f"Write: {path}")
 
     selection_invalidated = False
@@ -47,23 +49,46 @@ class WriteFileCommand(AgentCommand):
       selection_invalidated = True
 
     try:
+      original_content_lines = []
+      if os.path.exists(path):
+        with open(path, "r") as f:
+          original_content_lines = f.read().splitlines()
+
       directory = os.path.dirname(path)
       if directory:
         os.makedirs(directory, exist_ok=True)
 
       with open(path, "w") as f:
-        for line in command_input.multiline_content:
+        for line in new_content_lines:
           f.write(f"{line}\n")
       if self.validation_manager:
         self.validation_manager.RegisterChange()
 
-      line_count = len(command_input.multiline_content)
-      output_msg = f"#{self.Name()} {path}: Success with {line_count} lines written."
+      line_count = len(new_content_lines)
+      output_messages = [f"#{self.Name()} {path}: Success with {line_count} lines written."]
       if selection_invalidated:
-        output_msg += " Selection invalidated due to write operation on the same file."
+        output_messages[0] += " Selection invalidated due to write operation on the same file."
+
+      diff = list(
+          difflib.unified_diff(
+              original_content_lines,
+              new_content_lines,
+              fromfile=f"a/{path}",
+              tofile=f"b/{path}",
+              lineterm="",
+          ))
+
+      if 0 < len(diff) < 25:
+        output_messages.append("```diff")
+        output_messages.extend(diff)
+        output_messages.append("```")
+      elif len(diff) >= 25:
+        added = sum(1 for line in diff if line.startswith('+') and not line.startswith('++'))
+        removed = sum(1 for line in diff if line.startswith('-') and not line.startswith('--'))
+        output_messages.append(f"Diff is too large. Summary: {added} lines added, {removed} lines removed.")
 
       return CommandOutput(
-          output=[output_msg],
+          output=output_messages,
           errors=[],
           summary=f"Wrote to file {path} with {line_count} lines.")
     except Exception as e:

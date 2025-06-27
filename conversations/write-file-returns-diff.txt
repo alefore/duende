@@ -1,0 +1,7 @@
+Can you improve the implementation of WriteFileCommand so that the output includes a diff of the file before and after?
+
+The diff should only be returned is it's less than 25 lines. Otherwise, include a summary of the diff (e.g. count of lines added, removed). Use whatever diff format you think is most useful for the AI applying changes.
+
+Can you add two unit tests that validate this?
+
+#read_file src/write_file_command.py
