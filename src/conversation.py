@@ -77,6 +77,7 @@ class Conversation:
     self._on_message_added_callback = on_message_added_callback
     self._on_state_changed_callback = on_state_changed_callback
     self._state: ConversationState = ConversationState.STARTING
+    self.last_state_change_time: datetime = datetime.now(timezone.utc)
 
   @staticmethod
   def Load(
@@ -133,6 +134,7 @@ class Conversation:
     if self._state == state:
       return
     self._state = state
+    self.last_state_change_time = datetime.now(timezone.utc)
     if self._on_state_changed_callback:
       self._on_state_changed_callback(self._unique_id)
 
