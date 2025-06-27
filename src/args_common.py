@@ -23,7 +23,10 @@ from validate_command_input import ValidateCommandInput
 def CreateCommonParser() -> argparse.ArgumentParser:
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      '--api_key', type=str, default=os.path.expanduser('~/.openai/api_key'))
+      '--api-key',
+      dest='api_key',
+      type=str,
+      default=os.path.expanduser('~/.openai/api_key'))
   parser.add_argument(
       '--task',
       type=str,
@@ -36,12 +39,14 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default='gpt-4o',
       help="The model name to use for OpenAI API requests.")
   parser.add_argument(
-      '--file_access_regex',
+      '--file-access-regex',
+      dest='file_access_regex',
       type=str,
       help="Regex to match allowed file paths. Defaults to allowing all paths. Match is based on relative path to current directory."
   )
   parser.add_argument(
-      '--test_file_access',
+      '--test-file-access',
+      dest='test_file_access',
       action='store_true',
       help="Test the file access policy by listing all matched files and exit.")
   parser.add_argument(
@@ -50,17 +55,20 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default='',
       help="Regex to match commands requiring confirmation before execution.")
   parser.add_argument(
-      '--confirm_every',
+      '--confirm-every',
+      dest='confirm_every',
       type=int,
       help="Require confirmation after every N interactions.")
   parser.add_argument(
-      '--skip_implicit_validation',
+      '--skip-implicit-validation',
+      dest='skip_implicit_validation',
       action='store_true',
       default=False,
       help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI)."
   )
   parser.add_argument(
       '--git-dirty-accept',
+      dest='git_dirty_accept',
       action='store_true',
       default=False,
       help="Allow the program to proceed even if the Git repository has uncommitted changes."
