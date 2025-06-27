@@ -4,14 +4,14 @@ import os
 import re
 import sys
 from typing import Optional, Pattern, List, Tuple, Callable
-from agent_loop import AgentLoopOptions
+from agent_loop_options import AgentLoopOptions
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry
 from command_registry_factory import CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
-from task_command import CommandOutput, TaskInformation
+from agent_command import CommandOutput
 from chatgpt import ChatGPT
 from conversation import Conversation, ConversationFactory, Message, MultilineContent, ContentSection
 from conversational_ai import ConversationalAI
