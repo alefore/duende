@@ -52,6 +52,7 @@ class AgentLoop:
       if (self.options.confirm_regex and any(
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
+        self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
         guidance = self.options.confirmation_state.RequireConfirmation(
             self.conversation.GetId(), "Accept input?")
         if guidance:
@@ -161,6 +162,7 @@ class AgentLoop:
         return False
 
     if self.options.confirm_done:
+      self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
       guidance = self.options.confirmation_state.RequireConfirmation(
           self.conversation.GetId(), "Confirm #done command? " +
           "Enter an empty string to accept and terminate, " +

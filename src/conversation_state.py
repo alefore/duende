@@ -8,3 +8,4 @@ class ConversationState(Enum):
   RUNNING_COMMANDS = auto()
   PARSING_COMMANDS = auto()
   EXECUTING_IMPLICIT_VALIDATION = auto()
+  WAITING_FOR_CONFIRMATION = auto()
