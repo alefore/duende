@@ -17,6 +17,9 @@ class TaskCommand(AgentCommand):
   def Name(self) -> str:
     return "task"
 
+  def Aliases(self) -> List[str]:
+    return ["subtask", "fork"]
+
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
 

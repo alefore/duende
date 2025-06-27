@@ -1,5 +1,6 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 import logging
+from typing import List
 
 from file_access_policy import FileAccessPolicy
 
@@ -11,6 +12,9 @@ class ReadFileCommand(AgentCommand):
 
   def Name(self) -> str:
     return "read_file"
+
+  def Aliases(self) -> List[str]:
+    return ["read", "cat", "show", "show_file"]
 
   @classmethod
   def Syntax(self) -> CommandSyntax:

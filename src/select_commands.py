@@ -21,6 +21,9 @@ class SelectCommand(AgentCommand):
   def Name(self) -> str:
     return "select_regex" if self.use_regex else "select"
 
+  def Aliases(self) -> List[str]:
+    return []
+
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -95,6 +98,9 @@ class SelectOverwriteCommand(AgentCommand):
 
   def Name(self) -> str:
     return "select_overwrite"
+
+  def Aliases(self) -> List[str]:
+    return ["overwrite"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:

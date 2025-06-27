@@ -15,6 +15,9 @@ class HelpCommand(AgentCommand):
   def Name(self) -> str:
     return "help"
 
+  def Aliases(self) -> List[str]:
+    return ["?"]
+
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(

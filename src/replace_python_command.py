@@ -17,6 +17,9 @@ class ReplacePythonCommand(AgentCommand):
   def Name(self) -> str:
     return "replace_python"
 
+  def Aliases(self) -> List[str]:
+    return []
+
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(

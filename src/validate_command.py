@@ -1,6 +1,7 @@
 import subprocess
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax
 from validation import ValidationManager
+from typing import List
 
 
 class ValidateCommand(AgentCommand):
@@ -10,6 +11,9 @@ class ValidateCommand(AgentCommand):
 
   def Name(self) -> str:
     return "validate"
+
+  def Aliases(self) -> List[str]:
+    return ["test", "check"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:

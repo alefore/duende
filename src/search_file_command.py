@@ -14,6 +14,9 @@ class SearchFileCommand(AgentCommand):
   def Name(self) -> str:
     return "search"
 
+  def Aliases(self) -> List[str]:
+    return ["find", "grep"]
+
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(

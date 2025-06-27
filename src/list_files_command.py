@@ -32,6 +32,9 @@ class ListFilesCommand(AgentCommand):
   def Name(self) -> str:
     return "list_files"
 
+  def Aliases(self) -> List[str]:
+    return ["list", "ls"]
+
   def _process_single_directory(
       self, directory: str) -> Tuple[List[str], List[str], str, Optional[str]]:
     """

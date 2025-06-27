@@ -68,6 +68,11 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
+  def Aliases(self) -> List[str]:
+    """Returns a list of aliases for the command."""
+    pass
+
+  @abstractmethod
   def Execute(self, command_input: CommandInput) -> CommandOutput:
     """Executes the command with the given CommandInput."""
     pass

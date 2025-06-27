@@ -13,6 +13,9 @@ class SuggestCommand(AgentCommand):
   def Name(self) -> str:
     return "suggest"
 
+  def Aliases(self) -> List[str]:
+    return []
+
   def Execute(self, cmd_input: CommandInput) -> CommandOutput:
     if not cmd_input.multiline_content:
       return CommandOutput(
@@ -22,7 +25,7 @@ class SuggestCommand(AgentCommand):
 
     self._add_suggestion_callback(cmd_input.multiline_content)
     logging.info(
-        f"Suggestion recorded (first 50 chars): '{'\n'.join(cmd_input.multiline_content)[:50]}...'"
+        f"Suggestion recorded (first 50 chars): '{'\\n'.join(cmd_input.multiline_content)[:50]}...'"
     )
     return CommandOutput(
         output=["Suggestion recorded successfully."],
