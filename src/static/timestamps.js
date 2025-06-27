@@ -1,5 +1,5 @@
 function createTimestampView(timestamp) {
-  const $element = $('<span>');
+  const $element = $('<span>').addClass('timestamp');
 
   function formatTime(value, unit) {
     if (value === 1) {

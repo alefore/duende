@@ -73,7 +73,6 @@ class ConversationData {
 
     const creationTimestamp = new Date(message.creation_time).getTime();
     const $timestampView = createTimestampView(creationTimestamp);
-    $timestampView.addClass('timestamp');
 
     const $messageHeader = $('<div>').addClass('message-header');
     $messageHeader.append($role, $timestampView);
