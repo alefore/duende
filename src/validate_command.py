@@ -13,7 +13,7 @@ class ValidateCommand(AgentCommand):
     return "validate"
 
   def Aliases(self) -> List[str]:
-    return ["test", "check"]
+    return ["test", "check", "verify"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
