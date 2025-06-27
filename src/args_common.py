@@ -154,7 +154,6 @@ def CreateAgentLoopOptions(
       task_prompt_content=task_file_content,
       conversation_factory=conversation_factory,
       conversation_path=conversation_path,
-      model=args.model,
       conversation=conversation,
       start_message=start_message,
       commands_registry=registry,

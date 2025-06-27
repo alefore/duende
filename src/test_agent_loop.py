@@ -94,7 +94,6 @@ class TestAgentLoop(unittest.TestCase):
         task_prompt_content=["Test task"],
         conversation_factory=self.conv_factory,
         conversation_path="/tmp/test_conversation.json",
-        model="test-model",
         conversation=conversation,
         start_message=Message(
             role='user',

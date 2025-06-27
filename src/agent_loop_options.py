@@ -12,7 +12,6 @@ class AgentLoopOptions(NamedTuple):
   task_prompt_content: List[str]
   conversation_factory: ConversationFactory
   conversation_path: str
-  model: str
   conversation: Conversation
   start_message: Message
   commands_registry: CommandRegistry
