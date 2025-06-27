@@ -1,0 +1,11 @@
+Can you add to each message a timestamp with the instant in which it was generated? Call this field `creation_time`.
+
+Feel free to break reading of previously saved conversations (that's not important). In other words, do not extend the code to deal with loading messages without this timestamp.
+
+Store it (in Serialize) in the most standard way you can think of.
+Note that we will attempt to send the output of Serialize through socketio to the browser.
+
+Make sure it is stored in UTC format, without local timezone information.
+
+#read_file src/conversation.py
+#read_file src/web_server_state.py

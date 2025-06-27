@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Callable, NamedTuple
 import json
 import logging
+from datetime import datetime, timezone
 
 # Avoid strings with newline characters; to break lines, just add more entries.
 MultilineContent = List[str]
@@ -15,9 +16,12 @@ class Message:
 
   def __init__(self,
                role: str,
-               content_sections: Optional[List[ContentSection]] = None):
+               content_sections: Optional[List[ContentSection]] = None,
+               creation_time: Optional[datetime] = None):
     self.role = role
-    self._content_sections: List[ContentSection] = content_sections if content_sections is not None else []
+    self._content_sections: List[
+        ContentSection] = content_sections if content_sections is not None else []
+    self.creation_time = creation_time or datetime.now(timezone.utc)
 
   def Serialize(self) -> Dict[str, Any]:
     serialized_sections = []
@@ -26,18 +30,25 @@ class Message:
       if section.summary is not None:
         section_dict['summary'] = section.summary
       serialized_sections.append(section_dict)
-    return {'role': self.role, 'content_sections': serialized_sections}
+    return {
+        'role': self.role,
+        'content_sections': serialized_sections,
+        'creation_time': self.creation_time.isoformat()
+    }
 
   @staticmethod
   def Deserialize(data: Dict[str, Any]) -> 'Message':
-    message = Message(role=data['role'])
+    content_sections: List[ContentSection] = []
     raw_sections = data.get('content_sections', [])
     for section_data in raw_sections:
-      content = section_data.get('content', [])
-      summary = section_data.get('summary')
-      message._content_sections.append(
-          ContentSection(content=content, summary=summary))
-    return message
+      content_sections.append(
+          ContentSection(
+              content=section_data.get('content', []),
+              summary=section_data.get('summary')))
+    return Message(
+        role=data['role'],
+        content_sections=content_sections,
+        creation_time=datetime.fromisoformat(data['creation_time']))
 
   def GetContentSections(self) -> List[ContentSection]:
     return self._content_sections
@@ -75,7 +86,7 @@ class Conversation:
       with open(path, 'r') as f:
         conversation.messages.extend(
             Message.Deserialize(message_data) for message_data in json.load(f))
-    except (FileNotFoundError, json.JSONDecodeError):
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
       logging.info("Invalid or missing data. Starting new conversation.")
     return conversation
 

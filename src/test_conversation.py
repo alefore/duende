@@ -2,6 +2,7 @@ import unittest
 import os
 import json
 from conversation import Conversation, ConversationFactory, Message, MultilineContent, ContentSection
+from datetime import datetime, timezone
 
 
 class TestConversation(unittest.TestCase):
@@ -73,47 +74,6 @@ class TestConversation(unittest.TestCase):
     loaded_conversation = ConversationFactory().Load(
         self.test_file, name="Invalid JSON Conversation")
     self.assertEqual(len(loaded_conversation.messages), 0)
-
-  def test_deserialize(self) -> None:
-    new_format_data = {
-        'role':
-            'assistant',
-        'content_sections': [{
-            'content': ["New section A"],
-            'summary': 'Summary A'
-        }, {
-            'content': ["New section B"],
-            'summary': None
-        }]
-    }
-    message = Message.Deserialize(new_format_data)
-    self.assertEqual(message.role, "assistant")
-    sections = message.GetContentSections()
-    self.assertEqual(len(sections), 2)
-    self.assertEqual(sections[0].content, ["New section A"])
-    self.assertEqual(sections[0].summary, "Summary A")
-    self.assertEqual(sections[1].content, ["New section B"])
-    self.assertIsNone(sections[1].summary)
-
-  def test_serialize(self) -> None:
-    message = Message(
-        role="user",
-        content_sections=[
-            ContentSection(content=["Hello"], summary="Greeting"),
-            ContentSection(content=["World"])
-        ])
-    serialized_data = message.Serialize()
-    expected_data = {
-        'role':
-            'user',
-        'content_sections': [{
-            'content': ["Hello"],
-            'summary': "Greeting"
-        }, {
-            'content': ["World"]
-        }]
-    }
-    self.assertEqual(serialized_data, expected_data)
 
 
 if __name__ == '__main__':

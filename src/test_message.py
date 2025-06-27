@@ -1,5 +1,6 @@
 import unittest
 from conversation import Message, MultilineContent, ContentSection
+from datetime import datetime, timezone
 
 
 class TestMessage(unittest.TestCase):
@@ -29,44 +30,49 @@ class TestMessage(unittest.TestCase):
     self.assertEqual(message.role, "system")
     self.assertEqual(message.GetContentSections(), [])
 
-  def test_serialize(self):
+  def test_deserialize(self) -> None:
+    now = datetime.now(timezone.utc)
+    format_data = {
+        'role': 'assistant',
+        'content_sections': [{
+            'content': ["New section A"],
+            'summary': 'Summary A'
+        }, {
+            'content': ["New section B"],
+            'summary': None
+        }],
+        'creation_time': now.isoformat(),
+    }
+    message = Message.Deserialize(format_data)
+    self.assertEqual(message.role, "assistant")
+    self.assertEqual(message.creation_time, now)
+    sections = message.GetContentSections()
+    self.assertEqual(len(sections), 2)
+    self.assertEqual(sections[0].content, ["New section A"])
+    self.assertEqual(sections[0].summary, "Summary A")
+    self.assertEqual(sections[1].content, ["New section B"])
+    self.assertIsNone(sections[1].summary)
+
+  def test_serialize(self) -> None:
+    now = datetime.now(timezone.utc)
     message = Message(
         role="user",
         content_sections=[
-            ContentSection(content=["Hello, world!"], summary="Section 1"),
-            ContentSection(content=["Second line."])
-        ])
-    expected = {
-        'role':
-            'user',
+            ContentSection(content=["Hello"], summary="Greeting"),
+            ContentSection(content=["World"])
+        ],
+        creation_time=now)
+    expected_data = {
+        'role': 'user',
         'content_sections': [{
-            'content': ["Hello, world!"],
-            'summary': "Section 1"
+            'content': ["Hello"],
+            'summary': "Greeting"
         }, {
-            'content': ["Second line."]
-        }]
+            'content': ["World"]
+        }],
+        'creation_time': now.isoformat(),
     }
-    self.assertEqual(message.Serialize(), expected)
-
-  def test_deserialize(self):
-    data = {
-        'role':
-            'user',
-        'content_sections': [{
-            'content': ["Hello, world!"],
-            'summary': "Intro"
-        }, {
-            'content': ["Second line."]
-        }]
-    }
-    message = Message.Deserialize(data)
-    self.assertEqual(message.role, "user")
-    sections = message.GetContentSections()
-    self.assertEqual(len(sections), 2)
-    self.assertEqual(sections[0].content, ["Hello, world!"])
-    self.assertEqual(sections[0].summary, "Intro")
-    self.assertEqual(sections[1].content, ["Second line."])
-    self.assertIsNone(sections[1].summary)
+    self.assertEqual(message.Serialize(), expected_data)
 
   def test_get_content_sections(self):
     section1 = ContentSection(
