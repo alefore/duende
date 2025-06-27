@@ -73,16 +73,11 @@ class AgentLoop:
       if (self.options.confirm_regex and any(
           self.options.confirm_regex.match(ci.command_name)
           for ci in commands)) or non_command_lines:
-        self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
-        guidance = self.options.confirmation_state.RequireConfirmation(
-            self.conversation.GetId(), "Accept input?")
-        if guidance:
-          print("Your guidance will be sent to the AI.")
-          next_message.PushSection(
-              ContentSection(
-                  content=[f"Message from human: {guidance}"],
-                  summary="Human guidance for AI"))
-          has_human_guidance = True
+        has_human_guidance = self._get_human_guidance(
+            prompt="Accept input?",
+            summary="Human guidance for AI",
+            content_prefix="Message from human",
+            next_message=next_message)
 
       self.options.confirmation_state.RegisterInteraction(
           self.conversation.GetId())
@@ -112,6 +107,19 @@ class AgentLoop:
                       "To see the failures, use: #validate"
                   ],
                   summary="Validation status (failures detected)"))
+
+  def _get_human_guidance(self, prompt: str, summary: str, content_prefix: str,
+                          next_message: Message) -> bool:
+    self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
+    guidance = self.options.confirmation_state.RequireConfirmation(
+        self.conversation.GetId(), prompt)
+    if guidance:
+      logging.info("Your guidance will be sent to the AI.")
+      next_message.PushSection(
+          ContentSection(
+              content=[f"{content_prefix}: {guidance}"], summary=summary))
+      return True
+    return False
 
   # Return value indicates whether #done was received.
   def _ExecuteCommands(
@@ -192,17 +200,16 @@ class AgentLoop:
           return False
 
     if self.options.confirm_done:
-      self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
-      guidance = self.options.confirmation_state.RequireConfirmation(
-          self.conversation.GetId(), "Confirm #done command? " +
-          "Enter an empty string to accept and terminate, " +
+      prompt = (
+          "Confirm #done command? "
+          "Enter an empty string to accept and terminate, "
           "or some message to be sent to the AI asking it to continue.")
-      if guidance:
-        logging.info("Your guidance will be sent to the AI.")
-        next_message.PushSection(
-            ContentSection(
-                content=[f"Notice from human: {guidance}"],
-                summary="Human decision to continue"))
+      guidance_provided = self._get_human_guidance(
+          prompt=prompt,
+          summary="Human decision to continue",
+          content_prefix="Notice from human",
+          next_message=next_message)
+      if guidance_provided:
         return False
 
     return True
