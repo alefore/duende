@@ -10,11 +10,8 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
   def __init__(self, conversation: Conversation, scripted_responses: list[str]):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
-    self.send_message_calls = 0
 
   def SendMessage(self, message: Message) -> Message:
-    self.send_message_calls += 1
-
     # Add the incoming message to the conversation history.
     self.conversation.AddMessage(message)
 
@@ -36,11 +33,8 @@ class FakeConversationalAI(ConversationalAI):
 
   def __init__(self, scripted_responses: list[str]):
     self.scripted_responses = scripted_responses
-    self.last_conversation: Optional[FakeConversationalAIConversation] = None
 
   def StartConversation(
       self, conversation: Conversation) -> ConversationalAIConversation:
-    output = FakeConversationalAIConversation(conversation,
-                                              self.scripted_responses)
-    self.last_conversation = output
-    return output
+    return FakeConversationalAIConversation(conversation,
+                                            self.scripted_responses)

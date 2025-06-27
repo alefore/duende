@@ -1,0 +1,10 @@
+A very amateur programmer implemented some tests for class AgentLoop. They are relying too much on mock objects, whereas they could just use real objects.
+
+Can you take a look at the TODO comments I've added and try to apply them?
+
+Please apply them ONE BY ONE and use #validate to test that the tests still pass.
+
+Feel free to use #read_file to read any files you may need for additional context.
+
+#list_files
+#read_file src/test_agent_loop.py
