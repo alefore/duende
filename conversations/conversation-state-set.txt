@@ -1,0 +1,5 @@
+Extend AgentLoop so that it starts setting the `state` field of its conversation as it executes.
+
+#read_file src/agent_loop.py
+#read_file src/conversation.py
+#read_file src/conversation_state.py

@@ -2,6 +2,7 @@ import json
 import openai
 import logging
 from conversation import Conversation, ConversationFactory, Message, ContentSection
+from conversation_state import ConversationState
 from typing import cast, Generator, List, Optional, Tuple, Union
 
 from validation import ValidationManager
@@ -33,12 +34,15 @@ class AgentLoop:
     next_message: Message = self.options.start_message
     while True:
       logging.info("Querying AI...")
+      self.conversation.SetState(ConversationState.WAITING_FOR_AI_RESPONSE)
       response_message: Message = self.ai_conversation.SendMessage(next_message)
       self.conversation.Save(self.options.conversation_path)
 
       response_lines: List[str] = []
       for s in response_message.GetContentSections():
         response_lines.extend(s.content)
+
+      self.conversation.SetState(ConversationState.PARSING_COMMANDS)
       commands, non_command_lines = ExtractCommands(response_lines)
 
       next_message = Message(role='user')
@@ -61,6 +65,7 @@ class AgentLoop:
       self.options.confirmation_state.RegisterInteraction(
           self.conversation.GetId())
 
+      self.conversation.SetState(ConversationState.RUNNING_COMMANDS)
       command_outputs, done_command_received = self._ExecuteCommands(commands)
       for content_section in command_outputs:
         next_message.PushSection(content_section)
@@ -69,6 +74,8 @@ class AgentLoop:
         break
 
       if not self.options.skip_implicit_validation:
+        self.conversation.SetState(
+            ConversationState.EXECUTING_IMPLICIT_VALIDATION)
         assert self.options.validation_manager
         validation_result = self.options.validation_manager.Validate()
         if not validation_result.success:
@@ -142,6 +149,7 @@ class AgentLoop:
       def agent_loop_runner(options: AgentLoopOptions) -> None:
         AgentLoop(options).run()
 
+      self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
       review_feedback_content: Optional[
           List[ContentSection]] = review_utils.run_parallel_reviews(
               parent_options=self.options,

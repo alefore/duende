@@ -20,7 +20,8 @@ class WebServerState:
     self.session_key = GenerateRandomKey()
 
     self.conversation_factory = ConversationFactory(
-        lambda id: self.SendUpdate(id, None, confirmation_required=None))
+        on_message_added_callback=self._on_conversation_updated,
+        on_state_changed_callback=self._on_conversation_updated)
     try:
       options = CreateAgentLoopOptions(args, self.confirmation_manager,
                                        self.conversation_factory)
@@ -29,6 +30,10 @@ class WebServerState:
       raise e
 
     Thread(target=AgentLoop(options).run).start()
+
+  def _on_conversation_updated(self, conversation_id: ConversationId) -> None:
+    logging.info(f"Conversation {conversation_id} updated.")
+    self.SendUpdate(conversation_id, None, confirmation_required=None)
 
   def SendUpdate(self, conversation_id: ConversationId,
                  client_message_count: Optional[int],
@@ -56,6 +61,7 @@ class WebServerState:
     data = {
         'conversation_id': conversation_id,
         'conversation_name': conversation.GetName(),
+        'state': conversation.GetState().name,
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
         'message_count': len(messages_list),
@@ -81,5 +87,6 @@ class WebServerState:
           'id': conversation.GetId(),
           'name': conversation.GetName(),
           'message_count': len(conversation.GetMessagesList()),
+          'state': conversation.GetState().name,
       })
     self.socketio.emit('list_conversations', conversations_data)

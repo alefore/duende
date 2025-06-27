@@ -68,12 +68,15 @@ class Conversation:
       unique_id: int,
       name: str,
       on_message_added_callback: Optional[Callable[[int],
+                                                   None]] = None,
+      on_state_changed_callback: Optional[Callable[[ConversationId],
                                                    None]] = None) -> None:
     self._unique_id = unique_id
     self._name = name
     self.messages: List[Message] = []
     self._on_message_added_callback = on_message_added_callback
-    self.state: ConversationState = ConversationState.STARTING
+    self._on_state_changed_callback = on_state_changed_callback
+    self._state: ConversationState = ConversationState.STARTING
 
   @staticmethod
   def Load(
@@ -81,9 +84,12 @@ class Conversation:
       path: str,
       name: str,
       on_message_added_callback: Optional[Callable[[ConversationId],
+                                                   None]] = None,
+      on_state_changed_callback: Optional[Callable[[ConversationId],
                                                    None]] = None
   ) -> 'Conversation':
-    conversation = Conversation(unique_id, name, on_message_added_callback)
+    conversation = Conversation(unique_id, name, on_message_added_callback,
+                                on_state_changed_callback)
     try:
       with open(path, 'r') as f:
         conversation.messages.extend(
@@ -120,27 +126,42 @@ class Conversation:
   def GetName(self) -> str:
     return self._name
 
+  def GetState(self) -> ConversationState:
+    return self._state
+
+  def SetState(self, state: ConversationState) -> None:
+    if self._state == state:
+      return
+    self._state = state
+    if self._on_state_changed_callback:
+      self._on_state_changed_callback(self._unique_id)
+
 
 class ConversationFactory:
 
   def __init__(
       self,
       on_message_added_callback: Optional[Callable[[ConversationId],
+                                                   None]] = None,
+      on_state_changed_callback: Optional[Callable[[ConversationId],
                                                    None]] = None
   ) -> None:
     self._next_id: ConversationId = 0
     self._conversations: Dict[ConversationId, Conversation] = {}
     self.on_message_added_callback = on_message_added_callback
+    self.on_state_changed_callback = on_state_changed_callback
 
   def New(self, name: str) -> Conversation:
-    output = Conversation(self._next_id, name, self.on_message_added_callback)
+    output = Conversation(self._next_id, name, self.on_message_added_callback,
+                          self.on_state_changed_callback)
     self._conversations[self._next_id] = output
     self._next_id += 1
     return output
 
   def Load(self, path: str, name: str) -> Conversation:
     output = Conversation.Load(self._next_id, path, name,
-                               self.on_message_added_callback)
+                               self.on_message_added_callback,
+                               self.on_state_changed_callback)
     self._conversations[self._next_id] = output
     self._next_id += 1
     return output
