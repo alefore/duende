@@ -1,5 +1,4 @@
 import json
-import openai
 import logging
 from conversation import Conversation, ConversationFactory, Message, ContentSection
 from conversation_state import ConversationState
@@ -29,8 +28,7 @@ class AgentLoop:
     self.ai_conversation = options.conversational_ai.StartConversation(
         self.conversation)
 
-  def _handle_initial_review(
-      self, start_message: Message) -> Optional[Message]:
+  def _handle_initial_review(self, start_message: Message) -> Optional[Message]:
     logging.info("Running --review-first...")
     git_diff_output = review_utils.GetGitDiffContent()
     if not git_diff_output:
@@ -50,8 +48,8 @@ class AgentLoop:
       logging.info("No review suggestions found. Exiting.")
       return None
 
-  def _process_ai_response(
-      self, response_message: Message) -> Optional[Message]:
+  def _process_ai_response(self,
+                           response_message: Message) -> Optional[Message]:
     response_lines: List[str] = []
     for s in response_message.GetContentSections():
       response_lines.extend(s.content)
@@ -129,8 +127,7 @@ class AgentLoop:
       return True
     return False
 
-  def _ExecuteOneCommand(self,
-                         cmd_input: CommandInput) -> List[ContentSection]:
+  def _ExecuteOneCommand(self, cmd_input: CommandInput) -> List[ContentSection]:
     command_name = cmd_input.command_name
     command = self.options.commands_registry.Get(command_name)
     if not command:
@@ -213,10 +210,9 @@ class AgentLoop:
           return False
 
     if self.options.confirm_done:
-      prompt = (
-          "Confirm #done command? "
-          "Enter an empty string to accept and terminate, "
-          "or some message to be sent to the AI asking it to continue.")
+      prompt = ("Confirm #done command? "
+                "Enter an empty string to accept and terminate, "
+                "or some message to be sent to the AI asking it to continue.")
       guidance_provided = self._get_human_guidance(
           prompt=prompt,
           summary="Human decision to continue",
