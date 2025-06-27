@@ -67,10 +67,10 @@ class Conversation:
       self,
       unique_id: int,
       name: str,
-      on_message_added_callback: Optional[Callable[[int],
-                                                   None]] = None,
+      on_message_added_callback: Optional[Callable[[int], None]] = None,
       on_state_changed_callback: Optional[Callable[[ConversationId],
-                                                   None]] = None) -> None:
+                                                   None]] = None
+  ) -> None:
     self._unique_id = unique_id
     self._name = name
     self.messages: List[Message] = []
