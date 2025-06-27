@@ -83,7 +83,7 @@ class Gemini(ConversationalAI):
       self, conversation: Conversation) -> ConversationalAIConversation:
     return GeminiConversation(model=self.model, conversation=conversation)
 
-  def _ListModels(self):
+  def _ListModels(self) -> None:
     for m in genai.list_models():
       if "generateContent" in m.supported_generation_methods:
         print(f"Name: {m.name}")
