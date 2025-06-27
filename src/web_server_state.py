@@ -58,10 +58,11 @@ class WebServerState:
 
     if confirmation_required is None:
       confirmation_required = self.confirmation_manager.get_pending_message()
+    state = conversation.GetState()
     data = {
         'conversation_id': conversation_id,
         'conversation_name': conversation.GetName(),
-        'conversation_state': conversation.GetState().name,
+        'conversation_state': f"{state.to_emoji()} {state.name}",
         'confirmation_required': confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
         'message_count': len(messages_list),
@@ -83,10 +84,11 @@ class WebServerState:
     logging.info("Listing conversations.")
     conversations_data = []
     for conversation in self.conversation_factory.GetAll():
+      state = conversation.GetState()
       conversations_data.append({
           'id': conversation.GetId(),
           'name': conversation.GetName(),
           'message_count': len(conversation.GetMessagesList()),
-          'state': conversation.GetState().name,
+          'state': f"{state.to_emoji()} {state.name}",
       })
     self.socketio.emit('list_conversations', conversations_data)
