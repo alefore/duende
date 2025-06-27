@@ -1,11 +1,16 @@
 let shownConversationId = null;
 
 class ConversationData {
-  constructor(id, name, state, stateEmoji) {
+  constructor(id, name, state, stateEmoji, lastStateChangeTime) {
     this.id = id;
     this.name = name;
     this.state = state;
     this.stateEmoji = stateEmoji;
+    this.lastStateChangeTime = lastStateChangeTime;
+    // This is not the time at which it was sent; rather, it is the value of
+    // lastStateChangeTime when the confirmation was sent (which is good enough
+    // to make sure we don't send multiple confirmations for the same request).
+    this.lastConfirmationSentTime = null;
 
     console.log(`Creating container for conversation ${this.id}`);
     this.div = $('<div>')
@@ -30,10 +35,11 @@ class ConversationData {
     scrollToBottom();
   }
 
-  updateData(name, state, stateEmoji) {
+  updateData(name, state, stateEmoji, lastStateChangeTime) {
     this.name = name;
     this.state = state;
     this.stateEmoji = stateEmoji;
+    this.lastStateChangeTime = lastStateChangeTime;
   }
 
   updateView() {
@@ -46,7 +52,14 @@ class ConversationData {
   }
 
   isWaitingForConfirmation() {
-    return this.state === 'WAITING_FOR_CONFIRMATION';
+    return this.state === 'WAITING_FOR_CONFIRMATION' &&
+        (this.lastConfirmationSentTime === null ||
+         this.lastConfirmationSentTime < this.lastStateChangeTime);
+  }
+
+  notifyConfirmationSent() {
+    this.lastConfirmationSentTime = this.lastStateChangeTime;
+    return this;
   }
 
   countMessages() {

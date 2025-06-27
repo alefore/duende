@@ -12,11 +12,14 @@ function getShownConversation() {
   return conversationsById[shownConversationId];
 }
 
-function createOrUpdateConversation(id, name, state, stateEmoji) {
+function createOrUpdateConversation(
+    id, name, state, stateEmoji, lastStateChangeTime) {
   if (conversationsById[id])
-    conversationsById[id].updateData(name, state, stateEmoji);
+    conversationsById[id].updateData(
+        name, state, stateEmoji, lastStateChangeTime);
   else
-    conversationsById[id] = new ConversationData(id, name, state, stateEmoji);
+    conversationsById[id] =
+        new ConversationData(id, name, state, stateEmoji, lastStateChangeTime);
   return conversationsById[id].updateView();
 }
 
@@ -40,7 +43,7 @@ function sendConfirmation(socket, confirmationMessage) {
     message_count: getShownConversation().countMessages(),
     conversation_id: shownConversationId
   });
-  console.log('Confirmation: Send confirmation.')
+  getShownConversation().notifyConfirmationSent().updateView();
 }
 
 function loadAutoConfirmState() {
@@ -89,7 +92,7 @@ function handleUpdate(socket, data) {
 
   const conversation = createOrUpdateConversation(
       data.conversation_id, data.conversation_name, data.conversation_state,
-      data.conversation_state_emoji);
+      data.conversation_state_emoji, data.last_state_change_time);
 
   data.conversation
       .slice(
@@ -107,7 +110,8 @@ function handleListConversations(socket, conversations) {
   console.log('Received conversation list:', conversations);
   conversations.forEach(data => {
     const conversation = createOrUpdateConversation(
-        data.id, data.name, data.state, data.state_emoji);
+        data.id, data.name, data.state, data.state_emoji,
+        data.last_state_change_time);
     conversation.updateView();
     maybeRequestMessages(socket, data.message_count, conversation);
   });
@@ -148,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
     sendConfirmation(socket, confirmationInput.value);
-    showConverstaionState(getShownConversation());
+    showConversationState(getShownConversation());
   });
 
   $conversationSelector.on('change', function() {
