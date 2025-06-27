@@ -65,12 +65,10 @@ h1 {
 
 .role {
   font-weight: bold;
-  font-size: 1.1em;
   margin-right: 10px;
 }
 
 .timestamp {
-  font-size: 0.9em;
   color: #666;
 }
 
@@ -93,7 +91,6 @@ pre {
 }
 
 .toggle-link {
-  font-size: 0.9em;
   cursor: pointer;
   color: blue;
   text-decoration: underline;
@@ -102,7 +99,6 @@ pre {
 }
 
 .line-count {
-  font-size: 0.9em;
   color: #666; /* Softer color for line count */
   float: right; /* Float the line count to the right as well */
 }

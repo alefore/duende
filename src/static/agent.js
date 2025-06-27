@@ -112,6 +112,74 @@ function showConversation(conversationId) {
   scrollToBottom();
 }
 
+function addMessage($conversationDiv, message) {
+  const $messageDiv = $('<div>').addClass('message');
+  const $role = $('<p>').addClass('role').text(`${message.role}:`);
+
+  const creationTimestamp = new Date(message.creation_time).getTime();
+  const $timestampView = createTimestampView(creationTimestamp);
+  $timestampView.addClass('timestamp');
+
+  const $messageHeader = $('<div>').addClass('message-header');
+  $messageHeader.append($role, $timestampView);
+
+  const $contentContainer = $('<div>').addClass('content-container');
+  (message.content_sections || []).forEach(section => {
+    const $sectionDiv = $('<div>').addClass('messageSection');
+    const lineCount = section.content.length;
+    const $fullContentPre = $('<pre>')
+                                .addClass('full-content-pre')
+                                .text(section.content.join('\n'));
+
+    if (lineCount <= 5) {
+      $sectionDiv.append($fullContentPre);
+    } else {
+      const firstLineContent = section.summary || section.content[0] || '';
+      const $firstLinePre =
+          $('<pre>')
+              .addClass('first-line-pre')
+              .text(
+                  firstLineContent.length > 100 ?
+                      firstLineContent.substring(0, 100) + '...' :
+                      firstLineContent);
+
+      const $sectionHeader = $('<div>').addClass('section-header');
+      const $expandLink =
+          $('<span>').addClass('toggle-link expand').text('[expand]');
+      const $collapseLink = $('<span>')
+                                .addClass('toggle-link collapse')
+                                .text('[collapse]')
+                                .hide();
+      const $lineCountSpan =
+          $('<span>').addClass('line-count').text(` (${lineCount} lines)`);
+
+      $sectionHeader.append($expandLink, $collapseLink, $lineCountSpan);
+      $sectionDiv.append($sectionHeader, $firstLinePre, $fullContentPre);
+
+      $expandLink.on('click', () => {
+        $fullContentPre.show();
+        $firstLinePre.hide();
+        $expandLink.hide();
+        $lineCountSpan.hide();
+        $collapseLink.show();
+      });
+
+      $collapseLink.on('click', () => {
+        $fullContentPre.hide();
+        $firstLinePre.show();
+        $expandLink.show();
+        $lineCountSpan.show();
+        $collapseLink.hide();
+      });
+      $collapseLink.click();
+    }
+    $contentContainer.append($sectionDiv);
+  });
+
+  $messageDiv.append($messageHeader, $contentContainer);
+  $conversationDiv.append($messageDiv);
+}
+
 function handleUpdate(socket, data) {
   console.log('Starting update');
   console.log(data);
@@ -129,72 +197,13 @@ function handleUpdate(socket, data) {
     currentSessionKey = data.session_key;
   }
 
-  let $conversationDiv = getOrCreateConversationDiv(conversationId);
+  const $conversationDiv = getOrCreateConversationDiv(conversationId);
 
   const currentMessagesInDiv = countMessages(conversationId);
   data.conversation
       .slice(Math.max(0, currentMessagesInDiv - data.first_message_index))
       .forEach(message => {
-        const $messageDiv = $('<div>').addClass('message');
-        const $role = $('<p>').addClass('role').text(`${message.role}:`);
-
-        const $contentContainer = $('<div>').addClass('content-container');
-        (message.content_sections || []).forEach(section => {
-          const $sectionDiv = $('<div>').addClass('messageSection');
-          const lineCount = section.content.length;
-          const $fullContentPre = $('<pre>')
-                                      .addClass('full-content-pre')
-                                      .text(section.content.join('\n'));
-
-          if (lineCount <= 5) {
-            $sectionDiv.append($fullContentPre);
-          } else {
-            const firstLineContent =
-                section.summary || section.content[0] || '';
-            const $firstLinePre =
-                $('<pre>')
-                    .addClass('first-line-pre')
-                    .text(
-                        firstLineContent.length > 100 ?
-                            firstLineContent.substring(0, 100) + '...' :
-                            firstLineContent);
-
-            const $sectionHeader = $('<div>').addClass('section-header');
-            const $expandLink =
-                $('<span>').addClass('toggle-link expand').text('[expand]');
-            const $collapseLink = $('<span>')
-                                      .addClass('toggle-link collapse')
-                                      .text('[collapse]')
-                                      .hide();
-            const $lineCountSpan = $('<span>')
-                                       .addClass('line-count')
-                                       .text(` (${lineCount} lines)`);
-
-            $sectionHeader.append($expandLink, $collapseLink, $lineCountSpan);
-            $sectionDiv.append($sectionHeader, $firstLinePre, $fullContentPre);
-
-            $expandLink.on('click', () => {
-              $fullContentPre.show();
-              $firstLinePre.hide();
-              $expandLink.hide();
-              $lineCountSpan.hide();
-              $collapseLink.show();
-            });
-
-            $collapseLink.on('click', () => {
-              $fullContentPre.hide();
-              $firstLinePre.show();
-              $expandLink.show();
-              $lineCountSpan.show();
-              $collapseLink.hide();
-            });
-            $collapseLink.click();
-          }
-          $contentContainer.append($sectionDiv);
-        });
-
-        $messageDiv.append($role, $contentContainer);
-        $conversationDiv.append($messageDiv);
+        addMessage($conversationDiv, message);
       });
 
   showConversation(conversationId);
