@@ -1,0 +1,8 @@
+When the frontend JS code receives new data from a conversation, it should NOT switch to it. It should keep a conversationIdToState dictionary registering the states of each conversation (indexed by ConversationId, contents are the data.conversation_state received by handleListConversations and handleUpdate. These two functions should call an updateConversationState method that with the conversationId and conversation state. That method should:
+
+1. Update the conversationIdToState.
+2. If the conversationId received is the one currently shown, then update the HTML view.
+
+The code that updates the view should be moved to its own function (displayConversationState(conversationState)). That code should be called both from updateConversationState and from showConversation.
+
+#read_file src/static/agent.js

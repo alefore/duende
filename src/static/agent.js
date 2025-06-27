@@ -1,7 +1,9 @@
 let activeConversationId = null;
+let conversationIdToState = {};
 let currentSessionKey = null;
 let isConfirmationRequired = false;
 let isAutoConfirmationEnabled = false;
+const waitingForConfirmationState = '❓ WAITING_FOR_CONFIRMATION';
 
 function getConversationDiv(conversationId) {
   return $(`#conversation-${conversationId}`);
@@ -35,7 +37,6 @@ function getActiveConversationDiv() {
 }
 
 function scrollToBottom() {
-  // Only scroll if the active conversation is visible
   if (activeConversationId !== null &&
       getActiveConversationDiv().is(':visible'))
     window.scrollTo(0, document.body.scrollHeight);
@@ -49,10 +50,12 @@ function countMessages(conversationId) {
 }
 
 function requestMessages(socket, conversationId) {
-  socket.emit('request_update', {
+  const data = {
     message_count: countMessages(conversationId),
     conversation_id: conversationId
-  });
+  };
+  console.log(data);
+  socket.emit('request_update', data);
 }
 
 function updateConfirmationUI() {
@@ -97,6 +100,31 @@ function maybeAutoConfirm(socket) {
   updateConfirmationUI();
 }
 
+function updateConversationState(conversationId, conversationState) {
+  conversationIdToState[conversationId] = conversationState;
+  if (conversationId === activeConversationId) {
+    showConversationState(conversationState);
+  }
+}
+
+function showConversationState(conversationState) {
+  const $confirmationForm = $('#confirmation_form');
+  const $stateDisplay = $('#conversation_state_display');
+
+  // Default to hiding both elements
+  $confirmationForm.hide();
+  $stateDisplay.hide();
+
+  if (conversationState === waitingForConfirmationState) {
+    $confirmationForm.show();
+  } else if (conversationState) {
+    const prettyState = conversationState.replace(/_/g, ' ').toLowerCase();
+    $stateDisplay
+        .text(prettyState.charAt(0).toUpperCase() + prettyState.slice(1))
+        .show();
+  }
+}
+
 function showConversation(conversationId) {
   $('.conversation').hide();  // Hide all.
   activeConversationId = conversationId;
@@ -109,6 +137,12 @@ function showConversation(conversationId) {
   const $conversationSelector = $('#conversation_selector');
   if (parseInt($conversationSelector.val()) !== conversationId)
     $conversationSelector.val(conversationId);
+
+  const conversationState = conversationIdToState[conversationId];
+  showConversationState(conversationState);
+  isConfirmationRequired = (conversationState === waitingForConfirmationState);
+  updateConfirmationUI();
+
   scrollToBottom();
 }
 
@@ -189,11 +223,11 @@ function handleUpdate(socket, data) {
       data.conversation_name || `Conversation ${conversationId}`;
 
   updateConversationSelectorOption(conversationId, conversationName);
-  $('#conversation_selector').val(conversationId);
 
   if (currentSessionKey !== data.session_key) {
     console.log('Session key changed. Clearing conversation.');
     $('#conversation_container').empty();
+    conversationIdToState = {};
     currentSessionKey = data.session_key;
   }
 
@@ -203,31 +237,19 @@ function handleUpdate(socket, data) {
   data.conversation
       .slice(Math.max(0, currentMessagesInDiv - data.first_message_index))
       .forEach(message => {
+        console.log(message);
         addMessage($conversationDiv, message);
       });
 
-  showConversation(conversationId);
+  if (activeConversationId === null) showConversation(conversationId);
+  updateConversationState(conversationId, data.conversation_state);
 
-  const conversationState = data.conversation_state;
-  if (conversationState) {
-    const $confirmationForm = $('#confirmation_form');
-    const $stateDisplay = $('#conversation_state_display');
-    if (conversationState === 'WAITING_FOR_CONFIRMATION') {
-      $stateDisplay.hide();
-      $confirmationForm.show();
-    } else {
-      $confirmationForm.hide();
-      const prettyState = conversationState.replace(/_/g, ' ').toLowerCase();
-      $stateDisplay
-          .text(prettyState.charAt(0).toUpperCase() + prettyState.slice(1))
-          .show();
-    }
+  if (conversationId === activeConversationId) {
+    isConfirmationRequired = data.confirmation_required;
+    console.log(`Confirmation: Signal from server: ${conversationId}: ${
+        isConfirmationRequired}`)
+    maybeAutoConfirm(socket);
   }
-
-  isConfirmationRequired = data.confirmation_required;
-  console.log(`Confirmation: Signal from server: ${conversationId}: ${
-      isConfirmationRequired}`)
-  maybeAutoConfirm(socket);
 
   if (data.message_count > countMessages(conversationId))
     requestMessages(socket, conversationId);
@@ -239,10 +261,9 @@ function handleListConversations(socket, conversations) {
   conversations.forEach(conversation => {
     const conversationId = conversation.id;
     const conversationName = conversation.name;
-    // TODO: Handle `conversation.state`
 
+    updateConversationState(conversationId, conversation.state);
     updateConversationSelectorOption(conversationId, conversationName);
-
     getOrCreateConversationDiv(conversationId);
 
     const clientMessageCount = countMessages(conversationId);
@@ -297,7 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   $conversationSelector.on('change', function() {
-    // When user changes selection, show that conversation
     showConversation(parseInt($(this).val()));
   });
 
