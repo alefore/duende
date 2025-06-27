@@ -1,0 +1,8 @@
+Can you extend CommandRegistry to ensure that `Get` will find methods by alias? In other words, it should not only find commands given their Name, but also any of their aliases.
+
+The keys in `commands` should continue to be ONLY the names (otherwise `list_all` will contain repetitions). So probably worth creating a separate table mapping aliases to real names.
+
+Please also throw a custom exception on Register if there's a clash (of either aliases/names).
+
+#read_file src/command_registry.py
+#read_file src/agent_command.py
