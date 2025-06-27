@@ -153,7 +153,6 @@ document.addEventListener('DOMContentLoaded', function() {
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
     sendConfirmation(socket, confirmationInput.value);
-    showConversationState(getShownConversation());
   });
 
   $conversationSelector.on('change', function() {
