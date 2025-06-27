@@ -143,8 +143,8 @@ def _run_single_review(review_prompt_path: str,
 
 def run_parallel_reviews(
     parent_options: AgentLoopOptions,
-    agent_loop_runner: Callable[[AgentLoopOptions], None],
-    original_task_prompt_content: List[str],
+    agent_loop_runner: Callable[[AgentLoopOptions],
+                                None], original_task_prompt_content: List[str],
     git_diff_output: List[str]) -> Optional[List[ContentSection]]:
   """Runs reviews in parallel based on files in agent/review/*.txt.
 
