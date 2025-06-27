@@ -1,9 +1,11 @@
 let activeConversationId = null;
 let conversationIdToState = {};
+let conversationIdToStateEmoji = {};
+let conversationIdToName = {};
 let currentSessionKey = null;
 let isConfirmationRequired = false;
 let isAutoConfirmationEnabled = false;
-const waitingForConfirmationState = '❓ WAITING_FOR_CONFIRMATION';
+const waitingForConfirmationState = 'WAITING_FOR_CONFIRMATION';
 
 function getConversationDiv(conversationId) {
   return $(`#conversation-${conversationId}`);
@@ -22,14 +24,19 @@ function getOrCreateConversationDiv(conversationId) {
   return $conversationDiv;
 }
 
-function updateConversationSelectorOption(conversationId, conversationName) {
+function updateConversationSelectorOption(conversationId) {
   const $conversationSelector = $('#conversation_selector');
   let $option = $conversationSelector.find(`option[value="${conversationId}"]`);
   if ($option.length === 0) {
     $option = $('<option>').val(conversationId);
     $conversationSelector.append($option);
   }
-  $option.text(conversationName);
+  const conversationName =
+      conversationIdToName[conversationId] || `Conversation ${conversationId}`;
+  const conversationStateEmoji =
+      conversationIdToStateEmoji[conversationId] || '';
+  $option.text(`${conversationName} (${countMessages(conversationId)}, ${
+      conversationStateEmoji})`);
 }
 
 function getActiveConversationDiv() {
@@ -218,18 +225,21 @@ function handleUpdate(socket, data) {
   console.log('Starting update');
   console.log(data);
 
-  const conversationId = data.conversation_id;
-  const conversationName =
-      data.conversation_name || `Conversation ${conversationId}`;
-
-  updateConversationSelectorOption(conversationId, conversationName);
-
   if (currentSessionKey !== data.session_key) {
     console.log('Session key changed. Clearing conversation.');
     $('#conversation_container').empty();
     conversationIdToState = {};
+    conversationIdToName = {};
+    conversationIdToStateEmoji = {};
     currentSessionKey = data.session_key;
   }
+
+  const conversationId = data.conversation_id;
+  conversationIdToName[conversationId] =
+      data.conversation_name || `Conversation ${conversationId}`;
+  conversationIdToStateEmoji[conversationId] = data.conversation_state_emoji;
+
+  updateConversationSelectorOption(conversationId, data.message_count);
 
   const $conversationDiv = getOrCreateConversationDiv(conversationId);
 
@@ -260,10 +270,11 @@ function handleListConversations(socket, conversations) {
 
   conversations.forEach(conversation => {
     const conversationId = conversation.id;
-    const conversationName = conversation.name;
+    conversationIdToName[conversationId] = conversation.name;
+    conversationIdToStateEmoji[conversationId] = conversation.state_emoji;
 
     updateConversationState(conversationId, conversation.state);
-    updateConversationSelectorOption(conversationId, conversationName);
+    updateConversationSelectorOption(conversationId);
     getOrCreateConversationDiv(conversationId);
 
     const clientMessageCount = countMessages(conversationId);

@@ -60,16 +60,25 @@ class WebServerState:
       confirmation_required = self.confirmation_manager.get_pending_message()
     state = conversation.GetState()
     data = {
-        'conversation_id': conversation_id,
-        'conversation_name': conversation.GetName(),
-        'conversation_state': f"{state.to_emoji()} {state.name}",
+        'conversation_id':
+            conversation_id,
+        'conversation_name':
+            conversation.GetName(),
+        'conversation_state':
+            state.name,
+        'conversation_state_emoji':
+            state.to_emoji(),
         'last_state_change_time':
             conversation.last_state_change_time.isoformat(),
-        'confirmation_required': confirmation_required,
+        'confirmation_required':
+            confirmation_required,
         'conversation': [m.Serialize() for m in new_messages],
-        'message_count': len(messages_list),
-        'session_key': self.session_key,
-        'first_message_index': client_message_count or 0
+        'message_count':
+            len(messages_list),
+        'session_key':
+            self.session_key,
+        'first_message_index':
+            client_message_count or 0
     }
     self.socketio.emit('update', data)
 
@@ -88,11 +97,17 @@ class WebServerState:
     for conversation in self.conversation_factory.GetAll():
       state = conversation.GetState()
       conversations_data.append({
-          'id': conversation.GetId(),
-          'name': conversation.GetName(),
-          'message_count': len(conversation.GetMessagesList()),
-          'state': f"{state.to_emoji()} {state.name}",
+          'id':
+              conversation.GetId(),
+          'name':
+              conversation.GetName(),
+          'message_count':
+              len(conversation.GetMessagesList()),
+          'state':
+              state.name,
+          'state_emoji':
+              state.to_emoji(),
           'last_state_change_time':
-              conversation.last_state_change_time.isoformat(),
+              conversation.last_state_change_time.isoformat()
       })
     self.socketio.emit('list_conversations', conversations_data)
