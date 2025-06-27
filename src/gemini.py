@@ -71,11 +71,11 @@ class Gemini(ConversationalAI):
   def __init__(self, api_key_path: str, model_name: str = "gemini-pro"):
     with open(api_key_path, 'r') as f:
       api_key = f.read().strip()
-    genai.configure(api_key=api_key)
+    genai.configure(api_key=api_key)  # type: ignore[attr-defined]
     if model_name == "gemini-LIST":
       self._ListModels()
       sys.exit(0)
-    self.model = genai.GenerativeModel(model_name)
+    self.model = GenerativeModel(model_name)
     self.model_name = model_name
     logging.info(f"Initialized Gemini AI with model: {self.model_name}")
 
@@ -84,7 +84,7 @@ class Gemini(ConversationalAI):
     return GeminiConversation(model=self.model, conversation=conversation)
 
   def _ListModels(self) -> None:
-    for m in genai.list_models():
+    for m in genai.list_models():  # type: ignore[attr-defined]
       if "generateContent" in m.supported_generation_methods:
         print(f"Name: {m.name}")
         print(f"  Display Name: {m.display_name}")
