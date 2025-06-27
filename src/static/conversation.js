@@ -32,7 +32,6 @@ class ConversationData {
     if (parseInt($conversationSelector.val()) !== this.id)
       $conversationSelector.val(this.id);
     this._updateShownConversationState();
-    scrollToBottom();
   }
 
   updateData(name, state, stateEmoji, lastStateChangeTime) {
@@ -158,14 +157,14 @@ class ConversationData {
     } else if (this.state) {
       $confirmationInput.val('');
       const prettyState = this.state.replace(/_/g, ' ').toLowerCase();
-      const stateText =
-          this.stateEmoji + ' ' + prettyState.charAt(0).toUpperCase() +
-          prettyState.slice(1);
+      const stateText = this.stateEmoji + ' ' +
+          prettyState.charAt(0).toUpperCase() + prettyState.slice(1);
       $stateDisplay.empty()
           .append(stateText)
           .append(' ')
           .append(createTimestampView(this.lastStateChangeTime))
           .show();
     }
+    scrollToBottom();
   }
 }
