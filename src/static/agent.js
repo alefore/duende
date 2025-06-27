@@ -92,7 +92,8 @@ function handleUpdate(socket, data) {
 
   const conversation = createOrUpdateConversation(
       data.conversation_id, data.conversation_name, data.conversation_state,
-      data.conversation_state_emoji, data.last_state_change_time);
+      data.conversation_state_emoji,
+      new Date(data.last_state_change_time).getTime());
 
   data.conversation
       .slice(
@@ -111,7 +112,7 @@ function handleListConversations(socket, conversations) {
   conversations.forEach(data => {
     const conversation = createOrUpdateConversation(
         data.id, data.name, data.state, data.state_emoji,
-        data.last_state_change_time);
+        new Date(data.last_state_change_time).getTime());
     conversation.updateView();
     maybeRequestMessages(socket, data.message_count, conversation);
   });

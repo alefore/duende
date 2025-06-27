@@ -158,10 +158,13 @@ class ConversationData {
     } else if (this.state) {
       $confirmationInput.val('');
       const prettyState = this.state.replace(/_/g, ' ').toLowerCase();
-      $stateDisplay
-          .text(
-              this.stateEmoji + ' ' + prettyState.charAt(0).toUpperCase() +
-              prettyState.slice(1))
+      const stateText =
+          this.stateEmoji + ' ' + prettyState.charAt(0).toUpperCase() +
+          prettyState.slice(1);
+      $stateDisplay.empty()
+          .append(stateText)
+          .append(' ')
+          .append(createTimestampView(this.lastStateChangeTime))
           .show();
     }
   }
