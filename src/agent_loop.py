@@ -32,6 +32,28 @@ class AgentLoop:
   def run(self) -> None:
     logging.info("Starting AgentLoop run method...")
     next_message: Message = self.options.start_message
+
+    if self.options.review_first:
+      logging.info("Running --review-first...")
+      git_diff_output = review_utils.GetGitDiffContent()
+      if not git_diff_output:
+        logging.error(
+            "Cannot run --review-first with no uncommitted changes. Aborting.")
+        return
+
+      review_feedback_content = self._RunReviews(git_diff_output)
+      if review_feedback_content:
+        logging.info(
+            f"Found {len(review_feedback_content)} review suggestions. Adding to prompt."
+        )
+        # The role of the start_message is 'system'.
+        all_sections = review_feedback_content + next_message.GetContentSections(
+        )
+        next_message = Message(role='system', content_sections=all_sections)
+      else:
+        logging.info("No review suggestions found. Exiting.")
+        return
+
     while True:
       logging.info("Querying AI...")
       self.conversation.SetState(ConversationState.WAITING_FOR_AI_RESPONSE)
@@ -144,22 +166,30 @@ class AgentLoop:
 
     return outputs, False
 
+  def _RunReviews(self,
+                  git_diff_output: List[str]) -> Optional[List[ContentSection]]:
+    self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
+
+    def agent_loop_runner(options: AgentLoopOptions) -> None:
+      AgentLoop(options).run()
+
+    return review_utils.run_parallel_reviews(
+        parent_options=self.options,
+        agent_loop_runner=agent_loop_runner,
+        original_task_prompt_content=self.options.task_prompt_content,
+        git_diff_output=git_diff_output)
+
   def _HandleDoneCommand(self, next_message: Message) -> bool:
     if self.options.do_review:
-
-      def agent_loop_runner(options: AgentLoopOptions) -> None:
-        AgentLoop(options).run()
-
-      self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
-      review_feedback_content: Optional[
-          List[ContentSection]] = review_utils.run_parallel_reviews(
-              parent_options=self.options,
-              agent_loop_runner=agent_loop_runner,
-              original_task_prompt_content=self.options.task_prompt_content)
-      if review_feedback_content:
-        for section in review_feedback_content:
-          next_message.PushSection(section)
-        return False
+      git_diff_output = review_utils.GetGitDiffContent()
+      if not git_diff_output:
+        logging.info("No uncommitted changes to review. Proceeding with #done.")
+      else:
+        review_feedback_content = self._RunReviews(git_diff_output)
+        if review_feedback_content:
+          for section in review_feedback_content:
+            next_message.PushSection(section)
+          return False
 
     if self.options.confirm_done:
       self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)

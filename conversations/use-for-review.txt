@@ -1,0 +1,13 @@
+Look at how AgentLoop triggers code reviews after the AI claims to be done implementing a task (in function _HandleDoneCommand).
+
+Can you add a command-line flag (to CreateCommonParser) which, if given, assumes that the code repository has implemented the feature (as given by --task) and we just want to trigger code review? Look at the existing flags and make a proposal for what you think is the best semantics. Bear in mind that we'll need to support three use cases:
+
+1. Ask the AI to implement something (and don't do code reviews).
+2. Ask the AI to implement something; and do code reviews.
+3. Don't ask the AI to implement anything; just do code reviews (for existing change).
+
+Before you start implementing this, can you tell me in plain English what you think would be the best possible implementation? Which function would you modify to hook this functionality? I will confirm explicitly.
+
+#read_file src/agent_loop.py
+#read_file src/args_common.py
+#read_file src/review_utils.py

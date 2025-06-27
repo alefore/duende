@@ -24,3 +24,4 @@ class AgentLoopOptions(NamedTuple):
   skip_implicit_validation: bool = False
   validation_manager: Optional[ValidationManager] = None
   do_review: bool = False
+  review_first: bool = False

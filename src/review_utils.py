@@ -32,10 +32,7 @@ def GetGitDiffContent() -> List[str]:
                             capture_output=True,
                             text=True,
                             check=True)
-    if result.stdout.strip():
-      return result.stdout.splitlines()
-    else:
-      return ["No uncommitted changes (git diff is empty)."]
+    return result.stdout.splitlines()
   except subprocess.CalledProcessError as e:
     logging.error(f"Failed to get git diff: {e}\nStderr: {e.stderr}")
     return [f"Error getting git diff: {e.stderr}"]
@@ -137,6 +134,7 @@ def _run_single_review(review_prompt_path: str,
       skip_implicit_validation=True,
       validation_manager=None,
       do_review=False,
+      review_first=False,
   )
 
   agent_loop_runner(review_options)
@@ -146,13 +144,15 @@ def _run_single_review(review_prompt_path: str,
 def run_parallel_reviews(
     parent_options: AgentLoopOptions,
     agent_loop_runner: Callable[[AgentLoopOptions], None],
-    original_task_prompt_content: List[str]) -> Optional[List[ContentSection]]:
+    original_task_prompt_content: List[str],
+    git_diff_output: List[str]) -> Optional[List[ContentSection]]:
   """Runs reviews in parallel based on files in agent/review/*.txt.
 
   Args:
     parent_options: The options of the parent AgentLoop.
     agent_loop_runner: A callable that creates and runs a new AgentLoop.
     original_task_prompt_content: The content of the original task prompt.
+    git_diff_output: The git diff content to be reviewed.
 
   Returns:
     A list of content sections with review suggestions, or None if no
@@ -165,8 +165,6 @@ def run_parallel_reviews(
     logging.info(
         "No review files found in agent/review/*.txt. Skipping review.")
     return None
-
-  git_diff_output = GetGitDiffContent()
 
   review_suggestions: List[ContentSection] = []
   lock = threading.Lock()

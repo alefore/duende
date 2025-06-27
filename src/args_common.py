@@ -78,6 +78,11 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       action='store_true',
       help="Trigger an AI review of changes when the agent loop issues the #done command. The review happens in a new conversation."
   )
+  parser.add_argument(
+      '--review-first',
+      action='store_true',
+      help="Trigger an AI review of changes *before* the agent loop starts. If there are review comments, they are added to the initial prompt."
+  )
   return parser
 
 
@@ -161,6 +166,7 @@ def CreateAgentLoopOptions(
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
       do_review=args.review,
+      review_first=args.review_first,
   )
 
 
