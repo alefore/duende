@@ -9,8 +9,8 @@ class TestConversation(unittest.TestCase):
 
   def setUp(self) -> None:
     self.test_file = 'test_conversation.json'
-    self.conversation = ConversationFactory().New(name="Test Conversation",
-                                                  path=self.test_file)
+    self.conversation = ConversationFactory().New(
+        name="Test Conversation", path=self.test_file)
 
   def tearDown(self) -> None:
     if os.path.exists(self.test_file):
@@ -52,7 +52,6 @@ class TestConversation(unittest.TestCase):
             ContentSection(content=["Hello, world!"], summary="Greeting")
         ])
     self.conversation.AddMessage(message)
-    self.conversation.Save(self.test_file)
 
     loaded_conversation = ConversationFactory().New(
         name="Loaded Conversation", path=self.test_file)

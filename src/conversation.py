@@ -79,6 +79,7 @@ class Conversation:
     self._on_state_changed_callback = on_state_changed_callback
     self._state: ConversationState = ConversationState.STARTING
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
+    self.path = path
     try:
       with open(path, 'r') as f:
         self.messages.extend(
@@ -86,24 +87,24 @@ class Conversation:
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
       logging.info("Invalid or missing data. Starting new conversation.")
 
-  def Save(self, path: str) -> None:
-    with open(path, 'w') as f:
+  def _Save(self) -> None:
+    with open(self.path, 'w') as f:
       json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
   def AddMessage(self, message: Message) -> None:
-    content_sections = message.GetContentSections()
-    num_sections = len(content_sections)
-    first_section_content_log = "''"
-    if content_sections:
-      content_list = content_sections[0].content
-      if content_list:
-        first_section_content_log = f"'{content_list[0][:50]}...'"
-    logging.info(
-        f"Add message: {message.role}: {num_sections} sections, first: {first_section_content_log}"
-    )
+    logging.info(self._DebugString(message))
     self.messages.append(message)
+    self._Save()
     if self._on_message_added_callback:
       self._on_message_added_callback(self._unique_id)
+
+  def _DebugString(self, message: Message) -> str:
+    content_sections: List[ContentSection] = message.GetContentSections()
+    content: MultilineContent = []
+    for section in content_sections:
+      content.extend(section.content)
+    return (f"Add message: {message.role}: {len(content_sections)} sections: "
+            f"{'\n'.join(content)[:50]}...")
 
   def GetMessagesList(self) -> List[Message]:
     return self.messages
