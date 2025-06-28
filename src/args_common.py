@@ -153,7 +153,6 @@ def CreateAgentLoopOptions(
   return AgentLoopOptions(
       task_prompt_content=task_file_content,
       conversation_factory=conversation_factory,
-      conversation_path=conversation_path,
       conversation=conversation,
       start_message=start_message,
       commands_registry=registry,
@@ -181,8 +180,8 @@ def LoadOrCreateConversation(
     conversation_name: str,
 ) -> Tuple[Conversation, Message]:
 
-  conversation = conversation_factory.New(name=conversation_name,
-                                          path=conversation_path)
+  conversation = conversation_factory.New(
+      name=conversation_name, path=conversation_path)
   if conversation.messages:
     next_message = Message(
         'system',

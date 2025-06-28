@@ -104,7 +104,6 @@ class TestAgentLoop(unittest.TestCase):
     options = AgentLoopOptions(
         task_prompt_content=["Test task"],
         conversation_factory=self.conv_factory,
-        conversation_path="/tmp/test_conversation.json",
         conversation=conversation,
         start_message=Message(
             role='user',

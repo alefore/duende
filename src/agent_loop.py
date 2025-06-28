@@ -192,6 +192,7 @@ class AgentLoop:
 
     return review_utils.run_parallel_reviews(
         parent_options=self.options,
+        original_conversation_path=self.conversation.path,
         agent_loop_runner=agent_loop_runner,
         original_task_prompt_content=self.options.task_prompt_content,
         git_diff_output=git_diff_output)

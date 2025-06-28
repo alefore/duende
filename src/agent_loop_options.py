@@ -11,7 +11,6 @@ from validation import ValidationManager
 class AgentLoopOptions(NamedTuple):
   task_prompt_content: List[str]
   conversation_factory: ConversationFactory
-  conversation_path: str
   conversation: Conversation
   start_message: Message
   commands_registry: CommandRegistry

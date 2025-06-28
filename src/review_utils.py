@@ -50,7 +50,7 @@ def ReadReviewPromptFile(file_path: str) -> List[str]:
     return [l.rstrip() for l in f.readlines()]
 
 
-def _run_single_review(review_prompt_path: str,
+def _run_single_review(review_prompt_path: str, original_conversation_path: str,
                        parent_options: AgentLoopOptions,
                        agent_loop_runner: Callable[[AgentLoopOptions], None],
                        review_suggestions: List[ContentSection],
@@ -61,8 +61,9 @@ def _run_single_review(review_prompt_path: str,
   review_prompt_content = ReadReviewPromptFile(review_prompt_path)
   review_file_name = os.path.basename(review_prompt_path).replace('.txt', '')
 
-  review_conversation_path = parent_options.conversation_path.replace(
+  review_conversation_path = original_conversation_path.replace(
       '.json', f'.{review_file_name}.review.json')
+
   review_conversation = parent_options.conversation_factory.New(
       name=f"AI Review ({review_file_name}): {parent_options.conversation.GetName()}",
       path=review_conversation_path)
@@ -139,7 +140,6 @@ def _run_single_review(review_prompt_path: str,
   review_options = AgentLoopOptions(
       task_prompt_content=original_task_prompt_content,
       conversation_factory=parent_options.conversation_factory,
-      conversation_path=review_conversation_path,
       conversation=review_conversation,
       start_message=review_start_message,
       commands_registry=review_registry,
@@ -159,7 +159,7 @@ def _run_single_review(review_prompt_path: str,
 
 
 def run_parallel_reviews(
-    parent_options: AgentLoopOptions,
+    parent_options: AgentLoopOptions, original_conversation_path: str,
     agent_loop_runner: Callable[[AgentLoopOptions],
                                 None], original_task_prompt_content: List[str],
     git_diff_output: List[str]) -> Optional[List[ContentSection]]:
@@ -192,6 +192,7 @@ def run_parallel_reviews(
         target=_run_single_review,
         args=(
             review_file,
+            original_conversation_path,
             parent_options,
             agent_loop_runner,
             review_suggestions,
