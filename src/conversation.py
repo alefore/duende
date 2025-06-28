@@ -67,6 +67,7 @@ class Conversation:
       self,
       unique_id: int,
       name: str,
+      path: str,
       on_message_added_callback: Optional[Callable[[int], None]] = None,
       on_state_changed_callback: Optional[Callable[[ConversationId],
                                                    None]] = None
@@ -78,26 +79,13 @@ class Conversation:
     self._on_state_changed_callback = on_state_changed_callback
     self._state: ConversationState = ConversationState.STARTING
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
-
-  @staticmethod
-  def Load(
-      unique_id: int,
-      path: str,
-      name: str,
-      on_message_added_callback: Optional[Callable[[ConversationId],
-                                                   None]] = None,
-      on_state_changed_callback: Optional[Callable[[ConversationId],
-                                                   None]] = None
-  ) -> 'Conversation':
-    conversation = Conversation(unique_id, name, on_message_added_callback,
-                                on_state_changed_callback)
     try:
       with open(path, 'r') as f:
-        conversation.messages.extend(
-            Message.Deserialize(message_data) for message_data in json.load(f))
+        self.messages.extend(
+            Message.Deserialize(message_data)
+            for message_data in json.load(f))
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
       logging.info("Invalid or missing data. Starting new conversation.")
-    return conversation
 
   def Save(self, path: str) -> None:
     with open(path, 'w') as f:
@@ -153,17 +141,10 @@ class ConversationFactory:
     self.on_message_added_callback = on_message_added_callback
     self.on_state_changed_callback = on_state_changed_callback
 
-  def New(self, name: str) -> Conversation:
-    output = Conversation(self._next_id, name, self.on_message_added_callback,
+  def New(self, name: str, path: str) -> Conversation:
+    output = Conversation(self._next_id, name, path,
+                          self.on_message_added_callback,
                           self.on_state_changed_callback)
-    self._conversations[self._next_id] = output
-    self._next_id += 1
-    return output
-
-  def Load(self, path: str, name: str) -> Conversation:
-    output = Conversation.Load(self._next_id, path, name,
-                               self.on_message_added_callback,
-                               self.on_state_changed_callback)
     self._conversations[self._next_id] = output
     self._next_id += 1
     return output

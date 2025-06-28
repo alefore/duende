@@ -181,7 +181,8 @@ def LoadOrCreateConversation(
     conversation_name: str,
 ) -> Tuple[Conversation, Message]:
 
-  conversation = conversation_factory.Load(conversation_path, conversation_name)
+  conversation = conversation_factory.New(name=conversation_name,
+                                          path=conversation_path)
   if conversation.messages:
     next_message = Message(
         'system',

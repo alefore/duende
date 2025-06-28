@@ -82,13 +82,24 @@ class TestAgentLoop(unittest.TestCase):
 
     self.file_access_policy = CurrentDirectoryFileAccessPolicy()
 
+  def tearDown(self):
+    """Clean up any created files after each test."""
+    conv_path = "/tmp/test_conversation.json"
+    if os.path.exists(conv_path):
+      os.remove(conv_path)
+
+    for review_file in glob.glob('/tmp/test_conversation.*.review.json'):
+      if os.path.exists(review_file):
+        os.remove(review_file)
+
   def _run_agent_loop_for_test(self,
                                scripted_responses: Dict[str, List[str]],
                                confirm_done: bool = False,
                                do_review: bool = False) -> List[Message]:
     """Creates and runs an AgentLoop instance, returning the conversation."""
     self.fake_ai = FakeConversationalAI(scripted_responses=scripted_responses)
-    conversation = Conversation(unique_id=0, name="test-name")
+    conversation = Conversation(
+        unique_id=0, name="test-name", path="/tmp/test_conversation.json")
 
     options = AgentLoopOptions(
         task_prompt_content=["Test task"],

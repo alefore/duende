@@ -64,8 +64,8 @@ def _run_single_review(review_prompt_path: str,
   review_conversation_path = parent_options.conversation_path.replace(
       '.json', f'.{review_file_name}.review.json')
   review_conversation = parent_options.conversation_factory.New(
-      name=f"AI Review ({review_file_name}): {parent_options.conversation.GetName()}"
-  )
+      name=f"AI Review ({review_file_name}): {parent_options.conversation.GetName()}",
+      path=review_conversation_path)
 
   def add_suggestion_callback(text: MultilineContent) -> None:
     with lock:

@@ -9,7 +9,8 @@ class TestConversation(unittest.TestCase):
 
   def setUp(self) -> None:
     self.test_file = 'test_conversation.json'
-    self.conversation = ConversationFactory().New(name="Test Conversation")
+    self.conversation = ConversationFactory().New(name="Test Conversation",
+                                                  path=self.test_file)
 
   def tearDown(self) -> None:
     if os.path.exists(self.test_file):
@@ -53,8 +54,8 @@ class TestConversation(unittest.TestCase):
     self.conversation.AddMessage(message)
     self.conversation.Save(self.test_file)
 
-    loaded_conversation = ConversationFactory().Load(
-        self.test_file, name="Loaded Conversation")
+    loaded_conversation = ConversationFactory().New(
+        name="Loaded Conversation", path=self.test_file)
     loaded_messages = loaded_conversation.GetMessagesList()
     self.assertEqual(len(loaded_messages), 1)
     self.assertEqual(loaded_messages[0].GetContentSections()[0].content,
@@ -63,16 +64,16 @@ class TestConversation(unittest.TestCase):
                      "Greeting")
 
   def test_load_nonexistent_file(self) -> None:
-    loaded_conversation = ConversationFactory().Load(
-        "nonexistent_file.json", name="Non-existent Conversation")
+    loaded_conversation = ConversationFactory().New(
+        name="Non-existent Conversation", path="nonexistent_file.json")
     self.assertEqual(len(loaded_conversation.messages), 0)
 
   def test_load_invalid_json(self) -> None:
     with open(self.test_file, 'w') as f:
       f.write("Invalid JSON")
 
-    loaded_conversation = ConversationFactory().Load(
-        self.test_file, name="Invalid JSON Conversation")
+    loaded_conversation = ConversationFactory().New(
+        name="Invalid JSON Conversation", path=self.test_file)
     self.assertEqual(len(loaded_conversation.messages), 0)
 
 
