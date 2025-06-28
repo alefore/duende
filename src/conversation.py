@@ -82,8 +82,7 @@ class Conversation:
     try:
       with open(path, 'r') as f:
         self.messages.extend(
-            Message.Deserialize(message_data)
-            for message_data in json.load(f))
+            Message.Deserialize(message_data) for message_data in json.load(f))
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
       logging.info("Invalid or missing data. Starting new conversation.")
 
