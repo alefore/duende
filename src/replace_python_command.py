@@ -43,9 +43,6 @@ class ReplacePythonCommand(AgentCommand):
                 required=True)
         ])
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     identifier: str = inputs['identifier']
     new_content: str = inputs['content']

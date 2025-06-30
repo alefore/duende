@@ -20,9 +20,6 @@ class TaskCommand(AgentCommand):
   def Aliases(self) -> List[str]:
     return ["subtask", "fork"]
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False, "Execute should not be called."
-
   def run(self, params: Dict[str, Any]) -> CommandOutput:
     task_name = params.get("task_name")
     task_spec = params["task_spec"]

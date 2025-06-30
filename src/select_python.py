@@ -38,9 +38,6 @@ class SelectPythonCommand(AgentCommand):
                 required=False)
         ])
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 

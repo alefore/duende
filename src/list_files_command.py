@@ -72,9 +72,6 @@ class ListFilesCommand(AgentCommand):
       summary = f"{self.Name()} command encountered an error for '{directory}'."
       return [], [error_msg], summary
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     directory = inputs.get('directory', ["."])
 

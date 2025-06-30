@@ -204,47 +204,11 @@ def LoadOrCreateConversation(
                 content=list(l.rstrip() for l in f.readlines()),
                 summary=f"Constant prompt guidance: {agent_prompt_path}"))
 
-    commands_from_task, non_command_lines = ExtractCommands(task_file_content)
+    content_sections.append(
+        ContentSection(
+            content=task_file_contents,
+            summary=f"Contents from --task file ({task_file_path})"))
 
-    if non_command_lines:
-      content_sections.append(
-          ContentSection(
-              content=non_command_lines,
-              summary=f"Non-command lines from --task file ({task_file_path})"))
-
-    if commands_from_task:
-      for cmd_input in commands_from_task:
-        if cmd_input.command_name == "done":
-          logging.error(f"Task file: #done command found in initial task file.")
-          sys.exit(1)
-
-        command = registry.Get(cmd_input.command_name)
-        if not command:
-          logging.error(
-              f"Task file: Error: Unknown command '{cmd_input.command_name}' found in task file. Aborting execution."
-          )
-          sys.exit(1)
-
-        warnings = ValidateCommandInput(command.Syntax(), cmd_input,
-                                        file_access_policy)
-        if warnings:
-          for warning in warnings:
-            logging.error(
-                f"Task file: Error validating command '{cmd_input.command_name}' from task file: {warning}. Aborting execution."
-            )
-            sys.exit(1)
-
-        command_output = command.Execute(cmd_input)
-        if command_output.errors:
-          for error in command_output.errors:
-            logging.error(
-                f"Task file: Error '#{cmd_input.command_name}': {error}.")
-            sys.exit(1)
-        if command_output.output:
-          content_sections.append(
-              ContentSection(
-                  content=command_output.output,
-                  summary=command_output.summary))
     next_message = Message('system', content_sections=content_sections)
 
   return conversation, next_message

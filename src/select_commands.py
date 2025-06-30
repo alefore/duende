@@ -46,9 +46,6 @@ class SelectCommand(AgentCommand):
                 required=False)
         ])
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
@@ -123,9 +120,6 @@ class SelectOverwriteCommand(AgentCommand):
                 description="New contents to overwrite the current selection.",
                 required=True)
         ])
-
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     content = inputs['content']

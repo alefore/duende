@@ -29,9 +29,6 @@ class ReadFileCommand(AgentCommand):
                 required=True)
         ])
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path = inputs['path']
     logging.info(f"Read: {path}")

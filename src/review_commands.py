@@ -14,9 +14,6 @@ class SuggestCommand(AgentCommand):
   def Aliases(self) -> List[str]:
     return []
 
-  def Execute(self, cmd_input: CommandInput) -> CommandOutput:
-    assert False, "Execute should not be called."
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     suggestion_content = inputs["suggestion_content"]
 

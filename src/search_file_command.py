@@ -35,9 +35,6 @@ class SearchFileCommand(AgentCommand):
                 required=False)
         ])
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     search_term: str = inputs['content']
     input_path: Optional[str] = inputs.get('path')

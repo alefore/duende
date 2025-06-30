@@ -22,9 +22,6 @@ class ValidateCommand(AgentCommand):
         description="Executes validation script to verify code integrity. Recommended to run this command after making changes."
     )
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     result = self.validation_manager.Validate()
 

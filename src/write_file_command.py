@@ -42,9 +42,6 @@ class WriteFileCommand(AgentCommand):
         output_description='A string describing the result of the operation, possibly including a diff.'
     )
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert False
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path = inputs['path']
     new_content = inputs['content']

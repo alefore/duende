@@ -24,9 +24,6 @@ class FakeCommand(AgentCommand):
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(description="A fake command for testing.")
 
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    raise NotImplementedError()
-
 
 class CommandRegistryTest(unittest.TestCase):
 

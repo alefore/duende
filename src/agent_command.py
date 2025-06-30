@@ -84,11 +84,6 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  def Execute(self, command_input: CommandInput) -> CommandOutput:
-    """Executes the command with the given CommandInput."""
-    pass
-
-  @abstractmethod
   def Syntax(self) -> CommandSyntax:
     """
     Returns a CommandSyntax object describing the syntax of the command. 
