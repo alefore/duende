@@ -80,11 +80,18 @@ class ConversationData {
     (message.content_sections || []).forEach(section => {
       const $sectionDiv = $('<div>').addClass('messageSection');
       const lineCount = section.content.length;
-      const $fullContentPre = $('<pre>')
-                                  .addClass('full-content-pre')
-                                  .text(
-                                      section.content.join('\n') +
-                                      section.command + section.command_output);
+
+
+      const $fullContentPre = $('<pre>').addClass('full-content-pre');
+      const fullContentParts = [];
+
+      if (section.content && section.content.length > 0)
+        fullContentParts.push('📝' + section.content.join('\\n'));
+      if (section.command) fullContentParts.push('➡️ ' + section.command);
+      if (section.command_output)
+        fullContentParts.push('⬅️ ' + section.command_output);
+
+      $fullContentPre.text(fullContentParts.join('\\n'));
 
       if (lineCount <= 5) {
         $sectionDiv.append($fullContentPre);
