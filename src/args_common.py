@@ -196,17 +196,6 @@ def LoadOrCreateConversation(
   else:
     content_sections: List[ContentSection] = []
 
-    content_sections.append(
-        ContentSection(
-            content=[
-                "You are a coding assistant operating in a command loop environment. "
-                "Send in your response commands prefixed with `#`. "
-                "I will execute those commands and tell you the results. "
-                "Do not hallucinate results on your own. "
-                "Anything that is not a command will be relayed to the human."
-            ],
-            summary='Hard-coded opening instructions.'))
-
     agent_prompt_path = 'agent/prompt.txt'
     if os.path.exists(agent_prompt_path):
       with open(agent_prompt_path, 'r') as f:
