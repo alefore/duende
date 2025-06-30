@@ -1,5 +1,5 @@
-from typing import List, Optional
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
+from typing import List, Optional, Dict, Any
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from select_python import FindPythonDefinition
@@ -15,7 +15,7 @@ class ReplacePythonCommand(AgentCommand):
     self.validation_manager = validation_manager
 
   def Name(self) -> str:
-    return "replace_python"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return []
@@ -23,56 +23,66 @@ class ReplacePythonCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
-        description="Replaces the definition of the identifier in the specified Python file. Searches in all Python files if no path is provided. The identifier can be the name of a (top-level) function, class, or method.",
-        required=[
+        name="replace_python",
+        description="Replaces the definition of the identifier in the specified Python file. Searches in all Python files if no path is provided. The identifier can be the name of a (top-level) function, class (example: `MyClass`), or method (example: `MyClass.__init__`).",
+        arguments=[
             Argument(
                 name="identifier",
                 arg_type=ArgumentContentType.IDENTIFIER,
-                description="The identifier of the Python element to replace."),
-        ],
-        optional=[
+                description="The identifier of the Python element to replace.",
+                required=True),
             Argument(
                 name="path",
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
-                description="Path to a Python file."),
-        ],
-        multiline=ArgumentMultiline(
-            required=True,
-            description="The new definition of the Python element."))
+                description="Path to a Python file.",
+                required=False),
+            Argument(
+                name="content",
+                arg_type=ArgumentContentType.STRING,
+                description="The new definition of the Python element.",
+                required=True)
+        ])
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    identifier: str = command_input.arguments[0]
-    # Multiline content presence is guaranteed by validation layer.
-    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
+    assert False
 
-    # 'path' here is already validated by the framework due to ArgumentContentType.PATH_INPUT_OUTPUT
-    validated_path: Optional[str] = command_input.arguments[1] if len(
-        command_input.arguments) == 2 else None
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+    identifier: str = inputs['identifier']
+    new_content: str = inputs['content']
+    validated_path: Optional[str] = inputs.get('path')
+
     try:
-      selections: List[Selection] = FindPythonDefinition(self.file_access_policy,
-                                                      validated_path, identifier)
+      selections: List[Selection] = FindPythonDefinition(
+          self.file_access_policy, validated_path, identifier)
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"{self.Name()} error: {str(e)}"],
-          summary=f"{self.Name()} error: {str(e)}")
+          summary=f"{self.Name()} error: {str(e)}",
+          command_name=self.Name())
 
     if len(selections) == 0:
       return CommandOutput([],
                            [f"No matches found for identifier '{identifier}'."],
-                           "No matches found.")
+                           "No matches found.",
+                           command_name=self.Name())
     if len(selections) > 1:
       locations = [
-          f"{s.path}:{s.start_index + 1} to {s.end_index + 1}" for s in selections
+          f"{s.path}:{s.start_index + 1} to {s.end_index + 1}"
+          for s in selections
       ]
       return CommandOutput(
           [], [f"Multiple matches found for identifier '{identifier}':"] +
-          locations + ["#end (matches)"], "Multiple matches found.")
+          locations + ["#end (matches)"],
+          "Multiple matches found.",
+          command_name=self.Name())
 
-    selections[0].Overwrite(command_input.multiline_content)
+    # TODO: Change Overwrite to take a `str` rather than a `list[str]`.
+    selections[0].Overwrite(new_content.splitlines())
 
     if self.validation_manager:
       self.validation_manager.RegisterChange()
 
     return CommandOutput(["The definition was successfully replaced."], [],
-                         "Replacement successful.")
+                         "Replacement successful.",
+                         command_name=self.Name())

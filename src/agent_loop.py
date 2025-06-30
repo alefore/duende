@@ -51,11 +51,15 @@ class AgentLoop:
   def _process_ai_response(self,
                            response_message: Message) -> Optional[Message]:
     response_lines: List[str] = []
-    for s in response_message.GetContentSections():
-      response_lines.extend(s.content)
+    commands: List[CommandInput] = []
 
     self.conversation.SetState(ConversationState.PARSING_COMMANDS)
     commands, non_command_lines = ExtractCommands(response_lines)
+
+    for section in response_message.GetContentSections():
+      response_lines.extend(section.content)
+      if section.command:
+        commands.append(section.command)
 
     next_message = Message(role='user')
 
@@ -77,9 +81,10 @@ class AgentLoop:
     for content_section in command_outputs:
       next_message.PushSection(content_section)
 
-    if done_command_received and not has_human_guidance and self._HandleDoneCommand(
-        next_message):
-      return None  # Terminate loop.
+    if not has_human_guidance and (done_command_received or
+                                   (not commands and not non_command_lines)
+                                  ) and self._HandleDoneCommand(next_message):
+      return None
 
     if not self.options.skip_implicit_validation:
       self.conversation.SetState(
@@ -146,7 +151,8 @@ class AgentLoop:
               summary=f"Command '{command_name}' validation warnings")
       ]
 
-    command_output = command.Execute(cmd_input)
+    command_output = command.run(cmd_input.args)
+
     outputs: List[ContentSection] = []
     if command_output.output:
       outputs.append(

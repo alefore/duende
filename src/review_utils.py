@@ -82,7 +82,8 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
 
   review_registry = CreateReviewCommandRegistry(
       file_access_policy=parent_options.file_access_policy)
-  review_registry.Register(SuggestCommand(add_suggestion_callback))
+  # TODO: Enable this.
+  # review_registry.Register(SuggestCommand(add_suggestion_callback))
 
   review_start_sections: List[ContentSection] = [
       ContentSection(

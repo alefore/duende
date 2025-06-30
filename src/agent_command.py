@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple, Optional
 from collections import namedtuple
 from enum import Enum, auto
 
@@ -8,11 +8,14 @@ class CommandOutput(NamedTuple):
   output: List[str]
   errors: List[str]
   summary: str
+  # TODO: This shouldn't be Optional.
+  command_name: Optional[str] = None
 
 
 class CommandInput(NamedTuple):
   command_name: str
-  arguments: List[str]
+  arguments: List[str] = []
+  args: Dict[str, Any] = {}
   # multiline_content does not include newline characters.
   multiline_content: Optional[List[str]] = None
 
@@ -33,6 +36,7 @@ class Argument(NamedTuple):
   name: str
   arg_type: ArgumentContentType
   description: str
+  required: bool = True
 
 
 class ArgumentMultiline(NamedTuple):
@@ -43,9 +47,13 @@ class ArgumentMultiline(NamedTuple):
 
 class CommandSyntax(NamedTuple):
   """Defines the syntax structure for an AgentCommand."""
+  name: str = ''
 
   # A brief (one to three sentences) general description of the command.
   description: str = ''
+
+  # MCP arguments
+  arguments: List[Argument] = []
 
   # A list of required arguments for the command.
   required: List[Argument] = []
@@ -58,6 +66,9 @@ class CommandSyntax(NamedTuple):
 
   # An optional multiline argument for the command, if applicable.
   multiline: Optional[ArgumentMultiline] = None
+
+  output_type: ArgumentContentType = ArgumentContentType.STRING
+  output_description: Optional[str] = None
 
 
 class AgentCommand(ABC):
@@ -83,4 +94,8 @@ class AgentCommand(ABC):
     Returns a CommandSyntax object describing the syntax of the command. 
     This provides an overview of how the command should be structured for proper usage.
     """
+    pass
+
+  @abstractmethod
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     pass

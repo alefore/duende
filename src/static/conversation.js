@@ -82,7 +82,9 @@ class ConversationData {
       const lineCount = section.content.length;
       const $fullContentPre = $('<pre>')
                                   .addClass('full-content-pre')
-                                  .text(section.content.join('\n'));
+                                  .text(
+                                      section.content.join('\n') +
+                                      section.command + section.command_output);
 
       if (lineCount <= 5) {
         $sectionDiv.append($fullContentPre);

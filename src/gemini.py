@@ -1,45 +1,79 @@
-import google.generativeai as genai
-import google.generativeai.types as genai_types
-from google.generativeai.generative_models import GenerativeModel
+from google import genai
 import logging
 import asyncio
 import sys
 from typing import cast, Any, Coroutine, Dict, List, Optional
 
+from command_registry import CommandRegistry
+from read_file_command import ReadFileCommand
+from write_file_command import WriteFileCommand
+from validate_command import ValidateCommand
+from agent_command import CommandInput, CommandSyntax
 from conversation import Conversation, Message, MultilineContent, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 
 
+def _parse_syntax(syntax: CommandSyntax) -> genai.types.FunctionDeclaration:
+  return genai.types.FunctionDeclaration(
+      description=syntax.description,
+      name=syntax.name,
+      parameters=genai.types.Schema(
+          type=genai.types.Type.OBJECT,
+          properties={
+              arg.name:
+                  genai.types.Schema(
+                      type=genai.types.Type.STRING, description=arg.description)
+              for arg in syntax.arguments
+          },
+          required=[arg.name for arg in syntax.arguments if arg.required]),
+      response=genai.types.Schema(
+          type=genai.types.Type.STRING,
+          description=syntax.output_description or ''))
+
+
+def _get_config(registry: CommandRegistry) -> genai.types.GenerateContentConfig:
+
+  return genai.types.GenerateContentConfig(
+      automatic_function_calling=genai.types.AutomaticFunctionCallingConfig(
+          disable=True),
+      tools=[
+          genai.types.Tool(function_declarations=[
+              _parse_syntax(c.Syntax()) for c in registry.commands.values()
+          ])
+      ])
+
+
 class GeminiConversation(ConversationalAIConversation):
 
-  def __init__(self, model: GenerativeModel,
-               conversation: Conversation) -> None:
-    self.model = model
+  def __init__(self, client: genai.Client, registry: CommandRegistry,
+               model_name: str, conversation: Conversation) -> None:
+    self.client = client
     self.conversation = conversation
 
-    gemini_initial_history: List[genai_types.ContentDict] = []
-    for msg in self.conversation.GetMessagesList():
-      gemini_role = "model" if msg.role == "assistant" else msg.role
-      parts = [{"text": "\n".join(s.content)} for s in msg.GetContentSections()]
-      gemini_initial_history.append(
-          cast(genai_types.ContentDict, {
-              "role": gemini_role,
-              "parts": parts
-          }))
-
-    self.chat = self.model.start_chat(history=gemini_initial_history)
-
-    logging.info(
-        f"Starting Gemini conversation with {len(gemini_initial_history)} "
-        f"initial messages.")
+    logging.info(f"Starting Gemini conversation")
+    config = _get_config(registry)
+    logging.info(config)
+    self.chat = self.client.chats.create(model=model_name, config=config)
 
   def SendMessage(self, message: Message) -> Message:
     self.conversation.AddMessage(message)
 
-    # Prepare message content for Gemini by transforming sections into parts
-    gemini_parts = []
+    gemini_parts: List[str | genai.types.Content] = []
     for section in message.GetContentSections():
-      gemini_parts.append({"text": "\n".join(section.content)})
+      if section.content:
+        gemini_parts.append("\n".join(section.content))
+      if section.command_output:
+        assert section.command_output.command_name
+        gemini_parts.append(
+            genai.types.Content(
+                role="user",
+                parts=[
+                    genai.types.Part.from_function_response(
+                        name=section.command_output.command_name,
+                        response={
+                            "result": '\n'.join(section.command_output.output)
+                        })
+                ]))
 
     log_content = '\n'.join(
         ['\n'.join(s.content) for s in message.GetContentSections()])
@@ -48,40 +82,62 @@ class GeminiConversation(ConversationalAIConversation):
     )
 
     try:
-      response = self.chat.send_message(gemini_parts)
-      reply_content = response.text
+      response = self.chat.send_message(gemini_parts)  # type: ignore[arg-type]
 
     except Exception as e:
       logging.exception("Failed to communicate with Gemini API.")
       raise e
 
-    logging.info(f"Received response from Gemini: '{reply_content[:50]}...'")
+    reply_message = Message(role="assistant")
+    if response.text:
+      logging.info(f"Text received from Gemini: '{response.text[:50]}...'")
+      reply_message.PushSection(
+          ContentSection(content=response.text.splitlines(), summary=None))
+    if response.candidates:
+      logging.info(f"Commands received from Gemini")
+      if response.candidates[0].content and response.candidates[0].content.parts:
+        for part in response.candidates[0].content.parts:
+          if part.function_call:
+            function_call: genai.types.FunctionCall = part.function_call
+            logging.info(function_call)
+            logging.info(function_call.args)
+            reply_message.PushSection(
+                ContentSection(
+                    content=[],
+                    summary=f'MCP call: {function_call}',
+                    command=CommandInput(
+                        command_name=(function_call.name or "unknown"),
+                        arguments=[],
+                        args=(function_call.args or {}))))
+    else:
+      logging.fatal(f'Invalid response: {response}')
 
-    reply_message = Message(
-        role="assistant",
-        content_sections=[
-            ContentSection(content=reply_content.splitlines(), summary=None)
-        ])
     self.conversation.AddMessage(reply_message)
     return reply_message
 
 
 class Gemini(ConversationalAI):
 
-  def __init__(self, api_key_path: str, model_name: str = "gemini-pro"):
+  def __init__(self, api_key_path: str, model_name: str,
+               registry: CommandRegistry) -> None:
     with open(api_key_path, 'r') as f:
       api_key = f.read().strip()
-    genai.configure(api_key=api_key)  # type: ignore[attr-defined]
+    self.client = genai.Client(api_key=api_key)
+    # genai.configure(api_key=api_key)  # type: ignore[attr-defined]
     if model_name == "gemini-LIST":
       self._ListModels()
       sys.exit(0)
-    self.model = GenerativeModel(model_name)
     self.model_name = model_name
+    self.command_registry = registry
     logging.info(f"Initialized Gemini AI with model: {self.model_name}")
 
   def StartConversation(
       self, conversation: Conversation) -> ConversationalAIConversation:
-    return GeminiConversation(model=self.model, conversation=conversation)
+    return GeminiConversation(
+        self.client,
+        self.command_registry,
+        self.model_name,
+        conversation=conversation)
 
   def _ListModels(self) -> None:
     for m in genai.list_models():  # type: ignore[attr-defined]

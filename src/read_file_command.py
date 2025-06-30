@@ -1,6 +1,6 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 import logging
-from typing import List
+from typing import Any, Dict, List
 
 from file_access_policy import FileAccessPolicy
 
@@ -11,7 +11,7 @@ class ReadFileCommand(AgentCommand):
     self.file_access_policy = file_access_policy
 
   def Name(self) -> str:
-    return "read_file"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return ["read", "cat", "show", "show_file"]
@@ -19,33 +19,39 @@ class ReadFileCommand(AgentCommand):
   @classmethod
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
+        name="read_file",
         description="Outputs the contents of a file.",
-        required=[
+        arguments=[
             Argument(
                 name="path",
                 arg_type=ArgumentContentType.PATH_INPUT,
-                description="The path of the file to be read.")
+                description="The path of the file to be read.",
+                required=True)
         ])
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    path = command_input.arguments[0]
+    assert False
+
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+    path = inputs['path']
     logging.info(f"Read: {path}")
 
     try:
       with open(path, "r") as f:
         contents = f.readlines()
-        line_count = len(contents)
-
-        output_lines = [f"#{self.Name()} {path} <<"]
-        output_lines.extend([line.rstrip('\n') for line in contents]) # Use extend for readability
-        output_lines.append(f"#end ({path})")
-
-        return CommandOutput(
-            output=output_lines,
-            errors=[],
-            summary=f"Read file {path} with {line_count} lines.")
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"#{self.Name()} {path}: {e}"],
           summary=f"{self.Name()} command error: {path}: {e}")
+
+    line_count = len(contents)
+
+    output_lines = [f"#{self.Name()} {path} <<"]
+    output_lines.extend(line.rstrip('\n') for line in contents)
+    output_lines.append(f"#end ({path})")
+
+    return CommandOutput(
+        output=output_lines,
+        errors=[],
+        summary=f"Read file {path} with {line_count} lines.")

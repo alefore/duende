@@ -86,11 +86,12 @@ def CreateCommonParser() -> argparse.ArgumentParser:
   return parser
 
 
-def GetConversationalAI(args: argparse.Namespace) -> ConversationalAI:
+def GetConversationalAI(args: argparse.Namespace,
+                        command_registry: CommandRegistry) -> ConversationalAI:
   if args.model.startswith('gpt'):
     return ChatGPT(args.api_key, args.model)
   if args.model.startswith('gemini'):
-    return Gemini(args.api_key, args.model)
+    return Gemini(args.api_key, args.model, command_registry)
   raise Exception(f"Unknown AI: {args.model}")
 
 
@@ -158,7 +159,7 @@ def CreateAgentLoopOptions(
       commands_registry=registry,
       confirmation_state=confirmation_state,
       file_access_policy=file_access_policy,
-      conversational_ai=GetConversationalAI(args),
+      conversational_ai=GetConversationalAI(args, registry),
       confirm_regex=confirm_regex,
       confirm_done=args.confirm,
       skip_implicit_validation=args.skip_implicit_validation,
@@ -255,28 +256,6 @@ def LoadOrCreateConversation(
               ContentSection(
                   content=command_output.output,
                   summary=command_output.summary))
-
-    content_sections.append(
-        ContentSection(
-            content=[
-                'Some commands accept multi-line information, like this:',
-                '',
-                '#write_file foo.py <<',
-                'line0',
-                'line1',
-                '…',
-                '#end',
-                'When you\'re done (or if you get stuck), '
-                'issue #done to notify the human and stop this conversation.',
-                '',
-                'Anything sent outside of commands will be treated as plain text.',
-                'You can send many commands per message. '
-                'For example, if you want to read 5 files, '
-                'you can issue 5 #read_file commands at once.',
-                '',
-                'Available commands:',
-            ] + registry.HelpText(),
-            summary='Commands overview.'))
     next_message = Message('system', content_sections=content_sections)
 
   return conversation, next_message

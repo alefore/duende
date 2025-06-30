@@ -1,5 +1,5 @@
 import ast
-from typing import List, Optional, Tuple, Sequence
+from typing import List, Optional, Tuple, Sequence, Any, Dict
 from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from file_access_policy import FileAccessPolicy
@@ -15,7 +15,7 @@ class SelectPythonCommand(AgentCommand):
     self.selection_manager = selection_manager
 
   def Name(self) -> str:
-    return "select_python"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return []
@@ -23,29 +23,29 @@ class SelectPythonCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
-        description=(
-            "Selects the definition of an identifier in a Python file. "
-            "Searches all Python files if no path is given."),
-        required=[
+        name="select_python",
+        description=("Selects the definition of an identifier."),
+        arguments=[
             Argument(
                 name="identifier",
                 arg_type=ArgumentContentType.IDENTIFIER,
-                description="The name of the identifier to be selected.")
-        ],
-        optional=[
+                description="The name of the identifier to be selected.",
+                required=True),
             Argument(
                 name="path",
                 arg_type=ArgumentContentType.PATH_INPUT,
-                description="Path to a specific Python file to search within.")
+                description="Path to a Python file to search within. Omit this to search in all Python files.",
+                required=False)
         ])
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
+    assert False
+
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    identifier: str = command_input.arguments[0]
-    # 'path' here is already validated by the framework due to ArgumentContentType.PATH_INPUT
-    validated_path: Optional[str] = command_input.arguments[1] if len(
-        command_input.arguments) > 1 else None
+    identifier: str = inputs['identifier']
+    validated_path: Optional[str] = inputs.get('path')
 
     try:
       selections = FindPythonDefinition(self.file_access_policy, validated_path,
@@ -55,26 +55,30 @@ class SelectPythonCommand(AgentCommand):
         return CommandOutput(
             output=[],
             errors=[f"Could not find a definition for '{identifier}'."],
-            summary=f"Definition for '{identifier}' not found.")
+            summary=f"Definition for '{identifier}' not found.",
+            command_name=self.Name())
 
       if len(selections) > 1:
         return CommandOutput(
             output=[],
             errors=[f"Multiple definitions found for '{identifier}'."],
-            summary="Multiple matches found, unable to select.")
+            summary="Multiple matches found, unable to select.",
+            command_name=self.Name())
 
       self.selection_manager.set_selection(selections[0])
       return CommandOutput(
           output=[f"select <<"] + selections[0].Read() +
           [f"#end (selection in {selections[0].path})"],
           errors=[],
-          summary=selections[0].ProvideSummary())
+          summary=selections[0].ProvideSummary(),
+          command_name=self.Name())
 
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"select_python error: {str(e)}"],
-          summary=f"Select python command encountered an error: {str(e)}")
+          summary=f"Select python command encountered an error: {str(e)}",
+          command_name=self.Name())
 
 
 def _find_nested_definition_nodes(

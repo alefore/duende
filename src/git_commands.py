@@ -3,7 +3,7 @@ import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from validation import ValidationManager
 
 
@@ -21,42 +21,51 @@ class ResetFileCommand(AgentCommand):
     self.validation_manager = validation_manager
 
   def Name(self) -> str:
-    return "reset_file"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return ["revert", "undo"]
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    paths = command_input.arguments
+    assert False
+
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+    path: str = inputs['path']
     errors: List[str] = []
-    successful_resets = 0
 
-    for path in paths:
-      try:
-        subprocess.run(["git", "checkout", path], check=True)
-        successful_resets += 1
-      except subprocess.CalledProcessError as e:
-        errors.append(str(e))
-
-    if successful_resets > 0 and self.validation_manager:
-      self.validation_manager.RegisterChange()
+    try:
+      subprocess.run(["git", "checkout", path], check=True)
+      if self.validation_manager:
+        self.validation_manager.RegisterChange()
+    except subprocess.CalledProcessError as e:
+      errors.append(str(e))
 
     if errors:
       return CommandOutput(
-          output=[], errors=errors, summary="Error while resetting files")
+          output=[],
+          errors=errors,
+          summary="Error while resetting files",
+          command_name=self.Syntax().name)
 
-    success_message = f"Reset files: {', '.join(paths)}"
+    success_message = f"Reset file: {path}"
     return CommandOutput(
-        output=[success_message], errors=[], summary=success_message)
+        output=[success_message],
+        errors=[],
+        summary=success_message,
+        command_name=self.Syntax().name)
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
-        description="Resets files to their original state. AI can use this to reset files it accidentally broke.",
-        repeatable_final=Argument(
-            name="path",
-            arg_type=ArgumentContentType.PATH_OUTPUT,
-            description="Path to reset to original state."))
+        name="reset_file",
+        description="Resets file to its original state. Use this if you accidentally broke a file.",
+        arguments=[
+            Argument(
+                name="path",
+                arg_type=ArgumentContentType.PATH_OUTPUT,
+                description="Path to reset to original state.",
+                required=True)
+        ])
 
 
 def CheckGitRepositoryState() -> GitRepositoryState:

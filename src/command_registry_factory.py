@@ -19,14 +19,12 @@ from select_python import SelectPythonCommand
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskCommand, TaskInformation
-from help_command import HelpCommand
 import sys
 
 
 def _create_base_registry(
     file_access_policy: FileAccessPolicy) -> CommandRegistry:
   registry = CommandRegistry()
-  registry.Register(HelpCommand(registry))
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
   registry.Register(SearchFileCommand(file_access_policy))
@@ -76,8 +74,8 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
     registry.Register(
         ReplacePythonCommand(file_access_policy, validation_manager))
 
-  if can_start_tasks:
-    registry.Register(TaskCommand(start_new_task))
+  #if can_start_tasks:
+  #  registry.Register(TaskCommand(start_new_task))
 
   return registry
 

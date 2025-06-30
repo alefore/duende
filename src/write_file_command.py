@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 import logging
 import os
 import difflib
@@ -19,7 +19,7 @@ class WriteFileCommand(AgentCommand):
     self.selection_manager = selection_manager
 
   def Name(self) -> str:
-    return "write_file"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return ["write", "edit", "edit_file", "replace", "replace_file"]
@@ -27,22 +27,27 @@ class WriteFileCommand(AgentCommand):
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
+        name="write_file",
         description="Writes the given content to a specified file.",
-        required=[
+        arguments=[
             Argument(
                 name="path",
                 arg_type=ArgumentContentType.PATH_OUTPUT,
-                description="The file path to write the content to.")
+                description="The file path to write the content to."),
+            Argument(
+                name="content",
+                arg_type=ArgumentContentType.STRING,
+                description="The content to write.")
         ],
-        multiline=ArgumentMultiline(
-            required=True,
-            description="The content to write into the specified file."))
+        output_description='A string describing the result of the operation, possibly including a diff.'
+    )
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
+    assert False
 
-    path = command_input.arguments[0]
-    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
-    new_content_lines = command_input.multiline_content
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+    path = inputs['path']
+    new_content = inputs['content']
     logging.info(f"Write: {path}")
 
     selection_invalidated = False
@@ -62,15 +67,17 @@ class WriteFileCommand(AgentCommand):
         os.makedirs(directory, exist_ok=True)
 
       with open(path, "w") as f:
-        for line in new_content_lines:
-          f.write(f"{line}\n")
+        f.write(new_content)
       if self.validation_manager:
         self.validation_manager.RegisterChange()
 
-      line_count = len(new_content_lines)
-      output_messages = [f"#{self.Name()} {path}: Success with {line_count} lines written."]
+      new_content_lines = new_content.splitlines()
+      output_messages = [
+          f"#{self.Name()} {path}: Success with {len(new_content_lines)} lines written."
+      ]
       if selection_invalidated:
-        output_messages[0] += " Selection invalidated due to write operation on the same file."
+        output_messages[
+            0] += " Selection invalidated due to write operation on the same file."
 
       diff = list(
           difflib.unified_diff(
@@ -86,16 +93,22 @@ class WriteFileCommand(AgentCommand):
         output_messages.extend(diff)
         output_messages.append("```")
       elif len(diff) >= 25:
-        added = sum(1 for line in diff if line.startswith('+') and not line.startswith('++'))
-        removed = sum(1 for line in diff if line.startswith('-') and not line.startswith('--'))
-        output_messages.append(f"Diff is too large. Summary: {added} lines added, {removed} lines removed.")
+        added = sum(1 for line in diff
+                    if line.startswith('+') and not line.startswith('++'))
+        removed = sum(1 for line in diff
+                      if line.startswith('-') and not line.startswith('--'))
+        output_messages.append(
+            f"Diff is too large. Summary: {added} lines added, {removed} lines removed."
+        )
 
       return CommandOutput(
           output=output_messages,
           errors=[],
-          summary=f"Wrote to file {path} with {line_count} lines.")
+          summary=f"Wrote to file {path} with {len(new_content_lines)} lines.",
+          command_name=self.Name())
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"Error writing to {path}: {str(e)}"],
-          summary=f"{self.Name()} command encountered an error.")
+          summary=f"{self.Name()} command encountered an error.",
+          command_name=self.Name())

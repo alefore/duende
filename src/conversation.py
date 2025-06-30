@@ -2,7 +2,9 @@ from typing import List, Dict, Any, Optional, Callable, NamedTuple
 import json
 import logging
 from datetime import datetime, timezone
+
 from conversation_state import ConversationState
+from agent_command import CommandInput, CommandOutput
 
 # Avoid strings with newline characters; to break lines, just add more entries.
 MultilineContent = List[str]
@@ -10,6 +12,8 @@ MultilineContent = List[str]
 
 class ContentSection(NamedTuple):
   content: MultilineContent
+  command: Optional[CommandInput] = None
+  command_output: Optional[CommandOutput] = None
   summary: Optional[str] = None
 
 
@@ -30,6 +34,10 @@ class Message:
       section_dict: Dict[str, Any] = {'content': section.content}
       if section.summary is not None:
         section_dict['summary'] = section.summary
+      if section.command is not None:
+        section_dict['command'] = str(section.command)
+      if section.command_output is not None:
+        section_dict['command_output'] = str(section.command_output)
       serialized_sections.append(section_dict)
     return {
         'role': self.role,

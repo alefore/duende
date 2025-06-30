@@ -1,40 +1,48 @@
 import logging
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, ArgumentMultiline
-from conversation import MultilineContent
-from typing import Callable, List, Optional
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from typing import Callable, List, Optional, Dict, Any
 
 
 class SuggestCommand(AgentCommand):
 
-  def __init__(self, add_suggestion_callback: Callable[[MultilineContent],
-                                                       None]):
+  def __init__(self, add_suggestion_callback: Callable[[str], None]):
     self._add_suggestion_callback = add_suggestion_callback
 
   def Name(self) -> str:
-    return "suggest"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return []
 
   def Execute(self, cmd_input: CommandInput) -> CommandOutput:
-    if not cmd_input.multiline_content:
+    assert False, "Execute should not be called."
+
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+    suggestion_content = inputs["suggestion_content"]
+
+    if not suggestion_content:
       return CommandOutput(
           output=[],
-          errors=["#suggest requires non-empty multiline content."],
-          summary="Suggestion failed: no content.")
+          errors=["#suggest requires non-empty content."],
+          summary="Suggestion failed: no content.",
+          command_name=self.Syntax().name)
 
-    self._add_suggestion_callback(cmd_input.multiline_content)
-    logging.info(
-        f"Suggestion recorded (first 50 chars): '{'\\n'.join(cmd_input.multiline_content)[:50]}...'"
-    )
+    self._add_suggestion_callback(suggestion_content)
+    logging.info(f"Suggestion recorded: '{suggestion_content[:50]}…'")
     return CommandOutput(
         output=["Suggestion recorded successfully."],
         errors=[],
-        summary="Suggestion recorded.")
+        summary="Suggestion recorded.",
+        command_name=self.Syntax().name)
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
+        name="suggest",
         description="Records a suggestion for the code changes. Use with multi-line content to provide detailed suggestions.",
-        multiline=ArgumentMultiline(
-            required=True,
-            description="The detailed suggestion for the code changes."))
+        arguments=[
+            Argument(
+                name="suggestion_content",
+                arg_type=ArgumentContentType.STRING,
+                description="The detailed suggestion for the code changes.",
+                required=True)
+        ])

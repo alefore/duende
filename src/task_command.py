@@ -1,11 +1,11 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentMultiline, ArgumentContentType
-from typing import NamedTuple, Callable, Optional, List
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from typing import NamedTuple, Callable, Optional, List, Dict, Any
 import logging
 
 
 class TaskInformation(NamedTuple):
   task_name: Optional[str]
-  task_spec: List[str]
+  task_spec: str
 
 
 class TaskCommand(AgentCommand):
@@ -15,37 +15,49 @@ class TaskCommand(AgentCommand):
     self.start_new_task = start_new_task
 
   def Name(self) -> str:
-    return "task"
+    return self.Syntax().name
 
   def Aliases(self) -> List[str]:
     return ["subtask", "fork"]
 
   def Execute(self, command_input: CommandInput) -> CommandOutput:
-    assert command_input.multiline_content is not None, "Multiline content is required by CommandSyntax but was not provided."
+    assert False, "Execute should not be called."
 
-    task_info = TaskInformation(
-        task_name=command_input.arguments[0]
-        if len(command_input.arguments) == 1 else None,
-        task_spec=command_input.multiline_content)
+  def run(self, params: Dict[str, Any]) -> CommandOutput:
+    task_name = params.get("task_name")
+    task_spec = params["task_spec"]
+
+    task_info = TaskInformation(task_name=task_name, task_spec=task_spec)
     logging.info(
         f"Forking sub-task: {task_info.task_name}: {task_info.task_spec}")
 
     try:
-      return self.start_new_task(task_info)
+      result = self.start_new_task(task_info)
+      return CommandOutput(
+          output=result.output,
+          errors=result.errors,
+          summary=result.summary,
+          command_name=self.Syntax().name)
     except Exception as e:
       return CommandOutput(
           output=[],
           errors=[f"Error forking sub-task '{task_info.task_name}': {e}"],
-          summary=f"Error executing {self.Name()} command: {e}")
+          summary=f"Error executing {self.Syntax().name} command: {e}",
+          command_name=self.Syntax().name)
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
+        name="task",
         description="Starts a new conversation with the AI asking it to implement a sub-task. Use this for complex commands, where you would like an agent to implement a specific smaller change. In the specification, include all information you think the AI may need. Some additional information (about the environment) will be included.",
-        optional=[
+        arguments=[
             Argument(
                 name="task_name",
                 arg_type=ArgumentContentType.STRING,
-                description="The name of the task")
-        ],
-        multiline=ArgumentMultiline(
-            required=True, description="The specification for the task."))
+                description="The name of the task",
+                required=False),
+            Argument(
+                name="task_spec",
+                arg_type=ArgumentContentType.STRING,
+                description="The full specification for the task.",
+                required=True)
+        ])
