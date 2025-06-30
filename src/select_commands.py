@@ -143,8 +143,7 @@ class SelectOverwriteCommand(AgentCommand):
       current_selection.Overwrite(content)
       if self.validation_manager:
         self.validation_manager.RegisterChange()
-      line_count = len(content.splitlines(
-      ))  # multiline_content had lines as a list, now content is a string
+      line_count = len(content.splitlines())
       return CommandOutput(
           output=["The selection was successfully overwritten."],
           errors=[],

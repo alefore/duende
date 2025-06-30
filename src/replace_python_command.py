@@ -77,8 +77,7 @@ class ReplacePythonCommand(AgentCommand):
           "Multiple matches found.",
           command_name=self.Name())
 
-    # TODO: Change Overwrite to take a `str` rather than a `list[str]`.
-    selections[0].Overwrite(new_content.splitlines())
+    selections[0].Overwrite(new_content)
 
     if self.validation_manager:
       self.validation_manager.RegisterChange()
