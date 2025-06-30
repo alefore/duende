@@ -44,3 +44,6 @@ class CommandRegistry:
 
   def HelpText(self) -> MultilineContent:
     return FormatHelp([self.commands[name] for name in self.list_all()])
+
+  def GetCommands(self) -> List[AgentCommand]:
+    return [self.commands[c] for c in self.canonical_names]
