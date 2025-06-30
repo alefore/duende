@@ -5,9 +5,6 @@ import sys
 from typing import cast, Any, Coroutine, Dict, List, Optional
 
 from command_registry import CommandRegistry
-from read_file_command import ReadFileCommand
-from write_file_command import WriteFileCommand
-from validate_command import ValidateCommand
 from agent_command import CommandInput, CommandSyntax
 from conversation import Conversation, Message, MultilineContent, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -38,7 +35,7 @@ def _get_config(registry: CommandRegistry) -> genai.types.GenerateContentConfig:
           disable=True),
       tools=[
           genai.types.Tool(function_declarations=[
-              _parse_syntax(c.Syntax()) for c in registry.commands.values()
+              _parse_syntax(c.Syntax()) for c in registry.GetCommands()
           ])
       ])
 
@@ -83,7 +80,7 @@ class GeminiConversation(ConversationalAIConversation):
 
     try:
       response = self.chat.send_message(gemini_parts)  # type: ignore[arg-type]
-
+      logging.info(f"XXX Response: {response}")
     except Exception as e:
       logging.exception("Failed to communicate with Gemini API.")
       raise e
@@ -94,10 +91,11 @@ class GeminiConversation(ConversationalAIConversation):
       reply_message.PushSection(
           ContentSection(content=response.text.splitlines(), summary=None))
     if response.candidates:
-      logging.info(f"Commands received from Gemini")
       if response.candidates[0].content and response.candidates[0].content.parts:
         for part in response.candidates[0].content.parts:
+          logging.info(part)
           if part.function_call:
+            logging.info(f"Commands received from Gemini")
             function_call: genai.types.FunctionCall = part.function_call
             logging.info(function_call)
             logging.info(function_call.args)
