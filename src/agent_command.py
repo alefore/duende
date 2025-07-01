@@ -9,6 +9,7 @@ class CommandOutput(NamedTuple):
   output: List[str]
   errors: List[str]
   summary: str
+  task_done: bool = False
 
 
 class CommandInput(NamedTuple):

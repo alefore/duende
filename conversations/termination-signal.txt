@@ -1,0 +1,10 @@
+Can you add to ComandOutput (see src/agent_command.py) a boolean `task_done` default to False and implement a command that simply sets it?
+
+See src/read_file_command.py for an example of a command.
+
+The new command should be called `done` and should be stored in src/done_command.py.
+
+Don't forget to hook it in src/command_registry_factory.py
+.
+
+AgentLoop should now use that as the signal that it should terminate the loop. It has some obsolete logic (that checked if there's a command called "done" in the input). Please remove that logic. The single signal for termination should be this.

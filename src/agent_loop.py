@@ -80,10 +80,9 @@ class AgentLoop:
     for content_section in command_outputs:
       next_message.PushSection(content_section)
 
-    if not has_human_guidance and (done_command_received or
-                                   (not commands and not non_command_lines)
-                                  ) and self._HandleDoneCommand(next_message):
-      return None
+    if done_command_received and not has_human_guidance:
+      if self._HandleDoneCommand(next_message):
+        return None
 
     if not self.options.skip_implicit_validation:
       self.conversation.SetState(
@@ -170,24 +169,16 @@ class AgentLoop:
   # Return value indicates whether #done was received.
   def _ExecuteCommands(
       self, commands: List[CommandInput]) -> Tuple[List[ContentSection], bool]:
-    if not commands:
-      return ([
-          ContentSection(
-              content=[
-                  "Error: No commands found in response! Use #done if you are done with your task."
-              ],
-              summary="Error: No commands received")
-      ], False)
-
     outputs: List[ContentSection] = []
+    task_done = False
     for cmd_input in commands:
-      if cmd_input.command_name == "done":
-        return outputs, True
+      command_outputs = self._ExecuteOneCommand(cmd_input)
+      outputs.extend(command_outputs)
+      for output in command_outputs:
+        if output.command_output and output.command_output.task_done:
+          task_done = True
 
-      outputs.extend(self._ExecuteOneCommand(cmd_input))
-
-    return outputs, False
-
+    return outputs, task_done
   def _RunReviews(self,
                   git_diff_output: List[str]) -> Optional[List[ContentSection]]:
     self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)

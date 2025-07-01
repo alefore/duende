@@ -19,6 +19,7 @@ from select_python import SelectPythonCommand
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskCommand, TaskInformation
+from done_command import DoneCommand
 import sys
 
 
@@ -76,6 +77,8 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
 
   #if can_start_tasks:
   #  registry.Register(TaskCommand(start_new_task))
+
+  registry.Register(DoneCommand())
 
   return registry
 
