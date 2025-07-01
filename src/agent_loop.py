@@ -53,7 +53,7 @@ class AgentLoop:
     non_command_lines: List[str] = []
 
     self.conversation.SetState(ConversationState.PARSING_COMMANDS)
-    
+
     for section in response_message.GetContentSections():
       if section.command:
         commands.append(section.command)
@@ -91,8 +91,7 @@ class AgentLoop:
       assert self.options.validation_manager
       validation_result = self.options.validation_manager.Validate()
       if not validation_result.success:
-        logging.info(
-            f"Validation failed: {'\n'.join(validation_result.error)}")
+        logging.info(f"Validation failed: {'\n'.join(validation_result.error)}")
         next_message.PushSection(
             ContentSection(
                 content=[
