@@ -34,7 +34,6 @@ class Selection:
   def Overwrite(self, new_contents: str) -> None:
     """
     Replaces the selection with new contents (deleting previous contents).
-    'new_contents' should not include newline characters at the end of each line.
     The file (self.path) will be updated on disk.
     """
     if not os.path.exists(self.path):
@@ -47,9 +46,8 @@ class Selection:
       raise ValueError("Start or end index out of range.")
 
     # Replace lines between start_index and end_index
-    new_contents_with_newlines = [f"{line}\n" for line in new_contents]
-    lines = lines[:self.start_index] + new_contents_with_newlines + lines[
-        self.end_index + 1:]
+    lines = lines[:self.start_index] + [new_contents
+                                       ] + lines[self.end_index + 1:]
 
     with open(self.path, "w") as file:
       file.writelines(lines)
