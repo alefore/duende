@@ -157,7 +157,8 @@ class AgentLoop:
     if command_output.output:
       outputs.append(
           ContentSection(
-              content=command_output.output,
+              content=[],
+              command_output=command_output,
               summary=command_output.summary or
               f"Output for command '{command_name}'"))
     if command_output.errors:
