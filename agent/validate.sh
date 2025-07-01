@@ -20,6 +20,8 @@ function run_command {
 run_command "~/bin/mypy --strict src/agent_cli.py"
 run_command "~/bin/mypy --strict src/agent_server.py"
 
+run_command "${VALIDATE_PYTHON:-python3} src/test_validate_command_input.py"
+
 exit $exit_status
 
 for file in src/test_*.py; do
