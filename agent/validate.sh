@@ -22,9 +22,7 @@ run_command "~/bin/mypy --strict src/agent_server.py"
 
 run_command "${VALIDATE_PYTHON:-python3} src/test_validate_command_input.py"
 
-exit $exit_status
-
-for file in src/test_*.py; do
+for file in src/test_{validate_command_input,write_file_command}.py; do
   run_command "${VALIDATE_PYTHON:-python3} $file"
 done
 
