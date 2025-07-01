@@ -6,8 +6,7 @@ import glob
 
 import review_utils
 from agent_command import (AgentCommand, CommandInput, CommandOutput,
-                           CommandSyntax, Argument, ArgumentContentType,
-                           ArgumentMultiline)
+                           CommandSyntax, Argument, ArgumentContentType)
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
@@ -24,48 +23,61 @@ class TestAgentLoop(unittest.TestCase):
     self.mock_list_files_command = MagicMock(spec=AgentCommand)
     self.mock_list_files_command.Name.return_value = "list_files"
     self.mock_list_files_command.Syntax.return_value = CommandSyntax(
-        multiline=None,
-        required=[],
-        optional=[],
-        repeatable_final=None,
+        name="list_files",
+        description="Lists all files in the given directories.",
+        arguments=[],
     )
-    self.mock_list_files_command.Execute.return_value = CommandOutput(
-        output=["src/agent_loop.py"], errors=[], summary="Listed 1 file.")
+    self.mock_list_files_command.run.return_value = CommandOutput(
+        command_name="list_files",
+        output=["src/agent_loop.py"],
+        errors=[],
+        summary="Listed 1 file.")
 
     self.mock_read_file_command = MagicMock(spec=AgentCommand)
     self.mock_read_file_command.Name.return_value = "read_file"
     self.mock_read_file_command.Syntax.return_value = CommandSyntax(
-        multiline=None,
-        required=[
+        name="read_file",
+        description="Reads the contents of a file.",
+        arguments=[
             Argument(
                 name='path',
                 # Technically, it would be more correct to use PATH_INPUT; but
                 # then we'd have to create the file (or else AgentLoop will
                 # register an error).
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
-                description='Path to the file to read.')
+                description='The path of the file to be read.',
+                required=True)
         ],
-        optional=[],
-        repeatable_final=None,
     )
-    self.mock_read_file_command.Execute.return_value = CommandOutput(
-        output=["file content"], errors=[], summary="Read 1 file.")
+    self.mock_read_file_command.run.return_value = CommandOutput(
+        command_name="read_file",
+        output=["file content"],
+        errors=[],
+        summary="Read 1 file.")
 
     self.mock_write_file_command = MagicMock(spec=AgentCommand)
     self.mock_write_file_command.Name.return_value = "write_file"
     self.mock_write_file_command.Syntax.return_value = CommandSyntax(
-        multiline=ArgumentMultiline(description="The content to write."),
-        required=[
+        name="write_file",
+        description="Writes the given content to a specified file.",
+        arguments=[
             Argument(
                 name='path',
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
-                description='Path to the file to write.')
+                description='The file path to write the content to.',
+                required=True),
+            Argument(
+                name='content',
+                arg_type=ArgumentContentType.STRING,
+                description='The content to write.',
+                required=True),
         ],
-        optional=[],
-        repeatable_final=None,
     )
-    self.mock_write_file_command.Execute.return_value = CommandOutput(
-        output=[], errors=[], summary="Wrote to file.")
+    self.mock_write_file_command.run.return_value = CommandOutput(
+        command_name="write_file",
+        output=[],
+        errors=[],
+        summary="Wrote to file.")
 
     self.registry = CommandRegistry()
     self.registry.Register(self.mock_list_files_command)
@@ -141,8 +153,8 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(sections[0].summary, "Listed 1 file.")
     self.assertEqual(sections[0].content, ["src/agent_loop.py"])
 
-    self.mock_list_files_command.Execute.assert_called_once()
-    called_with_input = self.mock_list_files_command.Execute.call_args[0][0]
+    self.mock_list_files_command.run.assert_called_once()
+    called_with_input = self.mock_list_files_command.run.call_args[0][0]
     self.assertIsInstance(called_with_input, CommandInput)
     self.assertEqual(called_with_input.command_name, "list_files")
 
@@ -192,8 +204,8 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(len(sections), 1)
     self.assertEqual(sections[0].summary,
                      "Error: Unknown command: unknown_command")
-    self.mock_list_files_command.Execute.assert_not_called()
-    self.mock_read_file_command.Execute.assert_not_called()
+    self.mock_list_files_command.run.assert_not_called()
+    self.mock_read_file_command.run.assert_not_called()
 
   def test_run_loop_with_multiple_commands(self):
     """
@@ -205,8 +217,8 @@ class TestAgentLoop(unittest.TestCase):
         {"test-name": ["#list_files\n#read_file foo.py", "#done"]})
 
     # 2. Assertions
-    self.mock_list_files_command.Execute.assert_called_once()
-    self.mock_read_file_command.Execute.assert_called_once()
+    self.mock_list_files_command.run.assert_called_once()
+    self.mock_read_file_command.run.assert_called_once()
 
     # The conversation should have 4 messages:
     # 1. User: Initial task
@@ -256,7 +268,7 @@ class TestAgentLoop(unittest.TestCase):
     self.assertIn("You are not done", sections[0].content[0])
 
     # Check that the next command was executed after guidance
-    self.mock_list_files_command.Execute.assert_called_once()
+    self.mock_list_files_command.run.assert_called_once()
 
   def test_do_review_parallel(self):
     """Tests that do_review can trigger three parallel reviews."""
@@ -267,17 +279,17 @@ class TestAgentLoop(unittest.TestCase):
 
     scripted_responses = {
         main_conv_name: [
-            "#write_file a.py <<\n'a'\n#end\n#done",
+            "#write_file path:a.py content:'a'\n#done",
             "#done",
         ],
         review_0_conv_name: [
-            "#suggest <<\nFeedback from review 0.\n#end\n#done",
+            "#suggest content:'Feedback from review 0.'\n#done",
         ],
         review_1_conv_name: [
-            "#suggest <<\nFeedback from review 1.\n#end\n#done",
+            "#suggest content:'Feedback from review 1.'\n#done",
         ],
         review_2_conv_name: [
-            "#suggest <<\nFeedback from review 2.\n#end\n#done",
+            "#suggest content:'Feedback from review 2.'\n#done",
         ],
     }
     with patch('glob.glob') as mock_glob, \
