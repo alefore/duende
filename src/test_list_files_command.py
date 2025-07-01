@@ -62,8 +62,8 @@ class TestListFilesCommand(unittest.TestCase):
     empty_dir = tempfile.mkdtemp()  # Use a separate empty dir for this test
     try:
       command_input = CommandInput(
-          command_name="list_files", arguments=[empty_dir])
-      output = self.command.Execute(command_input)
+          command_name="list_files", args={'directory': empty_dir})
+      output = self.command.run(command_input)
       self.assertEqual([f"Files in '{empty_dir}' <<", f"#end ({empty_dir})"],
                        output.output)
       self.assertIn("Matches: 0", output.summary)
@@ -73,8 +73,8 @@ class TestListFilesCommand(unittest.TestCase):
 
   def test_list_files_with_all_files_allowed(self):
     command_input = CommandInput(
-        command_name="list_files", arguments=[self.temp_dir])
-    output = self.command.Execute(command_input)
+        command_name="list_files", args={'directory': self.temp_dir})
+    output = self.command.run(command_input)
 
     actual_output_content = output.output[1:-1]  # Strip header/footer.
     actual_output_content = [
@@ -102,8 +102,8 @@ class TestListFilesCommand(unittest.TestCase):
   def test_list_files_non_existent_directory(self):
     non_existent_dir = os.path.join(self.temp_dir, "definitely_not_here")
     command_input = CommandInput(
-        command_name="list_files", arguments=[non_existent_dir])
-    output = self.command.Execute(command_input)
+        command_name="list_files", args={'directory': non_existent_dir})
+    output = self.command.run(command_input)
     self.assertEqual(output.output, [])
     self.assertIn("Directory not found or is not accessible:", output.errors[0])
     self.assertIn("failed due to inaccessible directory.", output.summary)
@@ -112,8 +112,8 @@ class TestListFilesCommand(unittest.TestCase):
     self.file_access_policy.add_denied_path(self.denied_file_path)
 
     command_input = CommandInput(
-        command_name="list_files", arguments=[self.temp_dir])
-    output = self.command.Execute(command_input)
+        command_name="list_files", args={'directory': self.temp_dir})
+    output = self.command.run(command_input)
 
     for output_line in output.output:  # Denied file should NOT be in output
       self.assertNotIn(
@@ -147,8 +147,8 @@ class TestListFilesCommand(unittest.TestCase):
     self.file_access_policy.add_denied_path(self.denied_file_path)
 
     command_input = CommandInput(
-        command_name="list_files", arguments=[self.temp_dir])
-    output = self.command.Execute(command_input)
+        command_name="list_files", args={'directory': self.temp_dir})
+    output = self.command.run(command_input)
 
     self.assertIn(
         self._get_expected_output_line(self.file1_path, 2,
