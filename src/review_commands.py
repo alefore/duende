@@ -45,6 +45,6 @@ class SuggestCommand(AgentCommand):
             Argument(
                 name="justification",
                 arg_type=ArgumentContentType.STRING,
-                description="The AI *must* justify why this suggestion is being issued (why is it related to the goal of the review).",
+                description="The AI *must* justify why this suggestion is being issued (why is it related to the goal of the review). You should only issue suggestions directly related to the specific review task.",
                 required=True)
         ])
