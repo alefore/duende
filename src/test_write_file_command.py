@@ -111,3 +111,7 @@ class TestWriteFileCommand(unittest.TestCase):
           result.output[1])
       mock_file.assert_any_call(path, "r")
       mock_file.assert_any_call(path, "w")
+
+
+if __name__ == '__main__':
+  unittest.main()
