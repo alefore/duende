@@ -42,7 +42,6 @@ class ArgumentMultiline(NamedTuple):
   description: str = ""
 
 
-
 class CommandSyntax(NamedTuple):
   """Defines the syntax structure for an AgentCommand."""
   name: str = ''
@@ -63,8 +62,6 @@ class AgentCommand(ABC):
   def Name(self) -> str:
     """Returns the name of the command."""
     pass
-
-  @abstractmethod
 
   @abstractmethod
   def Syntax(self) -> CommandSyntax:
