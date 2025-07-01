@@ -11,8 +11,6 @@ class SuggestCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return []
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     suggestion_content = inputs["suggestion_content"]

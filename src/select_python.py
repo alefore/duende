@@ -17,8 +17,6 @@ class SelectPythonCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return []
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:

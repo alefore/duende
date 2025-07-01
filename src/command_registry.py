@@ -21,29 +21,23 @@ class CommandRegistry:
 
   def __init__(self) -> None:
     self.commands: Dict[str, AgentCommand] = {}
-    self.canonical_names: Set[str] = set()
 
   def Register(self, command: AgentCommand) -> None:
     name = command.Name()
-    all_new_names = {name}.union(command.Aliases())
-
-    clashes = all_new_names.intersection(self.commands)
-    if clashes:
+    if name in self.commands:
       raise CommandRegistrationError(
-          f"Name/alias clash for: {', '.join(sorted(clashes))}")
+          f"Command with name {name} already registered.")
 
-    self.canonical_names.add(name)
-    for n in all_new_names:
-      self.commands[n] = command
+    self.commands[name] = command
 
   def Get(self, name: str) -> Optional[AgentCommand]:
     return self.commands.get(name)
 
   def list_all(self) -> List[str]:
-    return sorted(self.canonical_names)
+    return sorted(self.commands.keys())
 
   def HelpText(self) -> MultilineContent:
     return FormatHelp([self.commands[name] for name in self.list_all()])
 
   def GetCommands(self) -> List[AgentCommand]:
-    return [self.commands[c] for c in self.canonical_names]
+    return list(self.commands.values())

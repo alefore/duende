@@ -32,8 +32,6 @@ class ListFilesCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["list", "ls"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:

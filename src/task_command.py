@@ -17,8 +17,6 @@ class TaskCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["subtask", "fork"]
 
   def run(self, params: Dict[str, Any]) -> CommandOutput:
     task_name = params.get("task_name")

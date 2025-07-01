@@ -17,8 +17,6 @@ class ReplacePythonCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return []
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
@@ -59,26 +57,30 @@ class ReplacePythonCommand(AgentCommand):
           command_name=self.Name())
 
     if len(selections) == 0:
-      return CommandOutput([],
-                           [f"No matches found for identifier '{identifier}'."],
-                           "No matches found.",
-                           command_name=self.Name())
+      return CommandOutput(
+          command_name=self.Name(),
+          output=[],
+          errors=[f"No matches found for identifier '{identifier}'."],
+          summary="No matches found.")
     if len(selections) > 1:
       locations = [
           f"{s.path}:{s.start_index + 1} to {s.end_index + 1}"
           for s in selections
       ]
       return CommandOutput(
-          [], [f"Multiple matches found for identifier '{identifier}':"] +
+          command_name=self.Name(),
+          output=[],
+          errors=[f"Multiple matches found for identifier '{identifier}':"] +
           locations + ["#end (matches)"],
-          "Multiple matches found.",
-          command_name=self.Name())
+          summary="Multiple matches found.")
 
     selections[0].Overwrite(new_content)
 
     if self.validation_manager:
       self.validation_manager.RegisterChange()
 
-    return CommandOutput(["The definition was successfully replaced."], [],
-                         "Replacement successful.",
-                         command_name=self.Name())
+    return CommandOutput(
+        command_name=self.Name(),
+        output=["The definition was successfully replaced."],
+        errors=[],
+        summary="Replacement successful.")

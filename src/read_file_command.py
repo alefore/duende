@@ -13,8 +13,6 @@ class ReadFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["read", "cat", "show", "show_file"]
 
   @classmethod
   def Syntax(self) -> CommandSyntax:
@@ -38,6 +36,7 @@ class ReadFileCommand(AgentCommand):
         contents = f.readlines()
     except Exception as e:
       return CommandOutput(
+          command_name=self.Syntax().name,
           output=[],
           errors=[f"#{self.Name()} {path}: {e}"],
           summary=f"{self.Name()} command error: {path}: {e}")
@@ -49,6 +48,7 @@ class ReadFileCommand(AgentCommand):
     output_lines.append(f"#end ({path})")
 
     return CommandOutput(
+        command_name=self.Syntax().name,
         output=output_lines,
         errors=[],
         summary=f"Read file {path} with {line_count} lines.")

@@ -15,16 +15,6 @@ from review_commands import SuggestCommand
 from task_command import TaskInformation
 
 
-def _dummy_start_new_task(task_info: TaskInformation) -> CommandOutput:
-  logging.error(
-      f"Attempted to start a task within a review loop, but tasks are disabled. Task: {task_info.task_name}"
-  )
-  return CommandOutput(
-      output=[],
-      errors=["Task command is disabled in review mode."],
-      summary="Task disabled in review mode.")
-
-
 def GetGitDiffContent() -> List[str]:
   """Retrieves the git diff output for uncommitted changes."""
   try:

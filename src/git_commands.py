@@ -23,8 +23,6 @@ class ResetFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["revert", "undo"]
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path: str = inputs['path']

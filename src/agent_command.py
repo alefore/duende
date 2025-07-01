@@ -5,11 +5,10 @@ from enum import Enum, auto
 
 
 class CommandOutput(NamedTuple):
+  command_name: str
   output: List[str]
   errors: List[str]
   summary: str
-  # TODO: This shouldn't be Optional.
-  command_name: Optional[str] = None
 
 
 class CommandInput(NamedTuple):
@@ -79,9 +78,6 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  def Aliases(self) -> List[str]:
-    """Returns a list of aliases for the command."""
-    pass
 
   @abstractmethod
   def Syntax(self) -> CommandSyntax:

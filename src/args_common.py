@@ -130,6 +130,7 @@ def CreateAgentLoopOptions(
       file_access_policy,
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
+          command_name="task",
           output=[],
           errors=["TaskCommand execution not implemented"],
           summary="Not implemented"),
