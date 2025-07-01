@@ -13,7 +13,6 @@ from command_registry_factory import CreateCommandRegistry
 from confirmation import ConfirmationState
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
-from parsing import ExtractCommands
 import review_utils
 from validate_command_input import ValidateCommandInput
 
@@ -50,16 +49,16 @@ class AgentLoop:
 
   def _process_ai_response(self,
                            response_message: Message) -> Optional[Message]:
-    response_lines: List[str] = []
     commands: List[CommandInput] = []
+    non_command_lines: List[str] = []
 
     self.conversation.SetState(ConversationState.PARSING_COMMANDS)
-    commands, non_command_lines = ExtractCommands(response_lines)
-
+    
     for section in response_message.GetContentSections():
-      response_lines.extend(section.content)
       if section.command:
         commands.append(section.command)
+      else:
+        non_command_lines.extend(section.content)
 
     next_message = Message(role='user')
 
@@ -93,7 +92,7 @@ class AgentLoop:
       validation_result = self.options.validation_manager.Validate()
       if not validation_result.success:
         logging.info(
-            f"Validation failed: {'\\n'.join(validation_result.error)}")
+            f"Validation failed: {'\n'.join(validation_result.error)}")
         next_message.PushSection(
             ContentSection(
                 content=[
