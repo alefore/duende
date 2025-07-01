@@ -206,7 +206,7 @@ def LoadOrCreateConversation(
 
     content_sections.append(
         ContentSection(
-            content=task_file_contents,
+            content=task_file_content,
             summary=f"Contents from --task file ({task_file_path})"))
 
     next_message = Message('system', content_sections=content_sections)
