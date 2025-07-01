@@ -58,7 +58,7 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
       name=f"AI Review ({review_file_name}): {parent_options.conversation.GetName()}",
       path=review_conversation_path)
 
-  def add_suggestion_callback(text: MultilineContent) -> None:
+  def add_suggestion_callback(text: str) -> None:
     with lock:
       index = len(review_suggestions) + 1
       logging.info(
@@ -66,14 +66,13 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
       review_suggestions.append(
           ContentSection(
               content=[
-                  f"Suggestion {index} (from {review_file_name}): <<",
-              ] + text + ["#end"],
+                  f"Suggestion {index} (from {review_file_name}):",
+              ] + [text],
               summary=f"Review Suggestion {index} from {review_file_name}"))
 
   review_registry = CreateReviewCommandRegistry(
       file_access_policy=parent_options.file_access_policy)
-  # TODO: Enable this.
-  # review_registry.Register(SuggestCommand(add_suggestion_callback))
+  review_registry.Register(SuggestCommand(add_suggestion_callback))
 
   review_start_sections: List[ContentSection] = [
       ContentSection(
