@@ -55,27 +55,21 @@ class GeminiConversation(ConversationalAIConversation):
   def SendMessage(self, message: Message) -> Message:
     self.conversation.AddMessage(message)
 
-    gemini_parts: List[str | genai.types.Content] = []
+    gemini_parts: List[str | genai.types.Part] = []
     for section in message.GetContentSections():
       if section.content:
         gemini_parts.append("\n".join(section.content))
       if section.command_output:
         assert section.command_output.command_name
         gemini_parts.append(
-            genai.types.Content(
-                role="user",
-                parts=[
-                    genai.types.Part.from_function_response(
-                        name=section.command_output.command_name,
-                        response={
-                            "result": '\n'.join(section.command_output.output)
-                        })
-                ]))
+            genai.types.Part.from_function_response(
+                name=section.command_output.command_name,
+                response={"result": '\n'.join(section.command_output.output)}))
 
     log_content = '\n'.join(
         ['\n'.join(s.content) for s in message.GetContentSections()])
     logging.info(
-        f"Sending message to Gemini: '{log_content[:50]}...' (with {len(gemini_parts)} parts)"
+        f"Sending message to Gemini: '{gemini_parts}' (with {len(gemini_parts)} parts)"
     )
 
     try:
