@@ -21,8 +21,6 @@ class WriteFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["write", "edit", "edit_file", "replace", "replace_file"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:

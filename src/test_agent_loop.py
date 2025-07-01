@@ -23,7 +23,6 @@ class TestAgentLoop(unittest.TestCase):
     """Set up common stateless mocks for all tests."""
     self.mock_list_files_command = MagicMock(spec=AgentCommand)
     self.mock_list_files_command.Name.return_value = "list_files"
-    self.mock_list_files_command.Aliases.return_value = []
     self.mock_list_files_command.Syntax.return_value = CommandSyntax(
         multiline=None,
         required=[],
@@ -35,7 +34,6 @@ class TestAgentLoop(unittest.TestCase):
 
     self.mock_read_file_command = MagicMock(spec=AgentCommand)
     self.mock_read_file_command.Name.return_value = "read_file"
-    self.mock_read_file_command.Aliases.return_value = []
     self.mock_read_file_command.Syntax.return_value = CommandSyntax(
         multiline=None,
         required=[
@@ -55,7 +53,6 @@ class TestAgentLoop(unittest.TestCase):
 
     self.mock_write_file_command = MagicMock(spec=AgentCommand)
     self.mock_write_file_command.Name.return_value = "write_file"
-    self.mock_write_file_command.Aliases.return_value = []
     self.mock_write_file_command.Syntax.return_value = CommandSyntax(
         multiline=ArgumentMultiline(description="The content to write."),
         required=[

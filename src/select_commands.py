@@ -21,8 +21,6 @@ class SelectCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return []
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
@@ -105,8 +103,6 @@ class SelectOverwriteCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["overwrite"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:

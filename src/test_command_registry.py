@@ -11,15 +11,11 @@ from conversation import MultilineContent
 class FakeCommand(AgentCommand):
   """A mock AgentCommand for testing purposes."""
 
-  def __init__(self, name: str, aliases: list[str] | None = None):
+  def __init__(self, name: str):
     self._name = name
-    self._aliases = aliases or []
 
   def Name(self) -> str:
     return self._name
-
-  def Aliases(self) -> list[str]:
-    return self._aliases
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(description="A fake command for testing.")
@@ -41,49 +37,18 @@ class CommandRegistryTest(unittest.TestCase):
     self.registry.Register(FakeCommand("real_command"))
     self.assertIsNone(self.registry.Get("another_non_existent"))
 
-  def test_register_command_with_aliases(self) -> None:
-    cmd = FakeCommand("test_command", ["t", "tc"])
-    self.registry.Register(cmd)
-    self.assertIs(self.registry.Get("test_command"), cmd)
-    self.assertIs(self.registry.Get("t"), cmd)
-    self.assertIs(self.registry.Get("tc"), cmd)
-
   def test_register_clash_with_canonical_name(self) -> None:
     self.registry.Register(FakeCommand("command1"))
     with self.assertRaisesRegex(CommandRegistrationError,
-                                "Name/alias clash for: command1"):
+                                "Command with name command1 already registered."):
       self.registry.Register(FakeCommand("command1"))
-
-  def test_register_clash_with_alias(self) -> None:
-    self.registry.Register(FakeCommand("command1", ["c1"]))
-    with self.assertRaisesRegex(CommandRegistrationError,
-                                "Name/alias clash for: c1"):
-      self.registry.Register(FakeCommand("c1"))
-
-  def test_register_alias_clash_with_canonical_name(self) -> None:
-    self.registry.Register(FakeCommand("command1"))
-    with self.assertRaisesRegex(CommandRegistrationError,
-                                "Name/alias clash for: command1"):
-      self.registry.Register(FakeCommand("command2", ["command1"]))
-
-  def test_register_alias_clash_with_alias(self) -> None:
-    self.registry.Register(FakeCommand("command1", ["c1"]))
-    with self.assertRaisesRegex(CommandRegistrationError,
-                                "Name/alias clash for: c1"):
-      self.registry.Register(FakeCommand("command2", ["c1"]))
-
-  def test_register_multiple_clashes_error_message(self) -> None:
-    self.registry.Register(FakeCommand("command1", ["a", "b"]))
-    with self.assertRaisesRegex(CommandRegistrationError,
-                                "Name/alias clash for: a, b"):
-      self.registry.Register(FakeCommand("command2", ["b", "a"]))
 
   def test_list_all_empty(self) -> None:
     self.assertEqual(self.registry.list_all(), [])
 
   def test_list_all_returns_sorted_canonical_names(self) -> None:
-    self.registry.Register(FakeCommand("zebra", ["z"]))
-    self.registry.Register(FakeCommand("apple", ["a"]))
+    self.registry.Register(FakeCommand("zebra"))
+    self.registry.Register(FakeCommand("apple"))
     self.assertEqual(self.registry.list_all(), ["apple", "zebra"])
 
   @patch('command_registry.FormatHelp')

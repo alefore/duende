@@ -12,8 +12,6 @@ class ValidateCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def Aliases(self) -> List[str]:
-    return ["test", "check", "verify"]
 
   @classmethod
   def Syntax(cls) -> CommandSyntax:
