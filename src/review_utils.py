@@ -58,16 +58,19 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
       name=f"AI Review ({review_file_name}): {parent_options.conversation.GetName()}",
       path=review_conversation_path)
 
-  def add_suggestion_callback(text: str) -> None:
+  def add_suggestion_callback(text: str, justification: str) -> None:
     with lock:
       index = len(review_suggestions) + 1
       logging.info(
           f"Adding suggestion from {review_file_name}: suggestion #{index}")
+      content_lines = [
+          f"Suggestion {index} (from {review_file_name}):",
+      ] + [text]
+      if justification:
+        content_lines.append(f"Justification: {justification}")
       review_suggestions.append(
           ContentSection(
-              content=[
-                  f"Suggestion {index} (from {review_file_name}):",
-              ] + [text],
+              content=content_lines,
               summary=f"Review Suggestion {index} from {review_file_name}"))
 
   review_registry = CreateReviewCommandRegistry(
