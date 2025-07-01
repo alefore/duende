@@ -1,25 +1,18 @@
 from typing import List
-from agent_command import AgentCommand, CommandSyntax, Argument, ArgumentMultiline
+from agent_command import AgentCommand, CommandSyntax, Argument
 from conversation import MultilineContent
 
 
 def HelpText(name: str, syntax: CommandSyntax) -> MultilineContent:
   """Renders a help string corresponding to the `syntax` object."""
-  header_parts = ([f"#{name}"] + [arg.name for arg in syntax.required] +
-                  [f"[{arg.name}]" for arg in syntax.optional])
-  if syntax.repeatable_final:
-    header_parts.append(f"[{syntax.repeatable_final.name}…]")
-  if syntax.multiline:
-    header_parts.append(" <<")
+  header_parts = [f"#{name}"]
+  for arg in syntax.arguments:
+    if arg.required:
+      header_parts.append(arg.name)
+    else:
+      header_parts.append(f"[{arg.name}]")
 
   output: MultilineContent = [" ".join(header_parts)]
-
-  if syntax.multiline:
-    if syntax.multiline.description:
-      output.append(syntax.multiline.description)
-      output.append("…")
-    output.append("#end")
-
   output.append(f"  {syntax.description}")
   output.append("")
   return output
