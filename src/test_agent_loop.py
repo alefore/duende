@@ -79,10 +79,30 @@ class TestAgentLoop(unittest.TestCase):
         errors=[],
         summary="Wrote to file.")
 
+    self.mock_suggest_command = MagicMock(spec=AgentCommand)
+    self.mock_suggest_command.Name.return_value = "suggest"
+    self.mock_suggest_command.Syntax.return_value = CommandSyntax(
+        name="suggest",
+        description="Suggests a change.",
+        arguments=[
+            Argument(
+                name='content',
+                arg_type=ArgumentContentType.STRING,
+                description='The content of the suggestion.',
+                required=True),
+        ],
+    )
+    self.mock_suggest_command.run.return_value = CommandOutput(
+        command_name="suggest",
+        output=[],
+        errors=[],
+        summary="Suggestion created.")
+
     self.registry = CommandRegistry()
     self.registry.Register(self.mock_list_files_command)
     self.registry.Register(self.mock_read_file_command)
     self.registry.Register(self.mock_write_file_command)
+    self.registry.Register(self.mock_suggest_command)  # Register the new mock
 
     self.mock_confirmation_state = MagicMock()
     self.mock_confirmation_state.RequireConfirmation.return_value = ""
@@ -102,7 +122,7 @@ class TestAgentLoop(unittest.TestCase):
         os.remove(review_file)
 
   def _run_agent_loop_for_test(self,
-                               scripted_responses: Dict[str, List[str]],
+                               scripted_responses: Dict[str, List[Message]],
                                confirm_done: bool = False,
                                do_review: bool = False) -> List[Message]:
     """Creates and runs an AgentLoop instance, returning the conversation."""
@@ -134,8 +154,23 @@ class TestAgentLoop(unittest.TestCase):
     Tests a simple interaction where the AI issues one command and then #done.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test(
-        {"test-name": ["#list_files", "#done"]})
+    messages = self._run_agent_loop_for_test({
+        "test-name": [
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="list_files"),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
+        ]
+    })
 
     # 2. Assertions: Verify the loop behaved as expected.
     # The conversation should have 4 messages:
@@ -153,18 +188,29 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(sections[0].summary, "Listed 1 file.")
     self.assertEqual(sections[0].content, ["src/agent_loop.py"])
 
-    self.mock_list_files_command.run.assert_called_once()
-    called_with_input = self.mock_list_files_command.run.call_args[0][0]
-    self.assertIsInstance(called_with_input, CommandInput)
-    self.assertEqual(called_with_input.command_name, "list_files")
+    self.mock_list_files_command.run.assert_called_once_with({})
 
   def test_run_loop_with_no_commands_in_response(self):
     """
     Tests that the loop sends an error back to the AI if it responds with no commands.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test(
-        {"test-name": ["This is just conversational text.", "#done"]})
+    messages = self._run_agent_loop_for_test({
+        "test-name": [
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        content=["This is just conversational text."])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
+        ]
+    })
 
     # 2. Assertions
     # The conversation should have 4 messages:
@@ -187,8 +233,23 @@ class TestAgentLoop(unittest.TestCase):
     Tests that the loop sends an error back to the AI for an unknown command.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test(
-        {"test-name": ["#unknown_command", "#done"]})
+    messages = self._run_agent_loop_for_test({
+        "test-name": [
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="unknown_command"),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
+        ]
+    })
 
     # 2. Assertions
     # The conversation should have 4 messages:
@@ -213,12 +274,31 @@ class TestAgentLoop(unittest.TestCase):
     """
     # 1. Setup and run the agent loop.
     # The scripted response contains two command lines in a single message.
-    messages = self._run_agent_loop_for_test(
-        {"test-name": ["#list_files\n#read_file foo.py", "#done"]})
+    messages = self._run_agent_loop_for_test({
+        "test-name": [
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="list_files"),
+                        content=[]),
+                    ContentSection(
+                        command=CommandInput(
+                            command_name="read_file", args={'path': 'foo.py'}),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
+        ]
+    })
 
     # 2. Assertions
-    self.mock_list_files_command.run.assert_called_once()
-    self.mock_read_file_command.run.assert_called_once()
+    self.mock_list_files_command.run.assert_called_once_with({})
+    self.mock_read_file_command.run.assert_called_once_with({'path': 'foo.py'})
 
     # The conversation should have 4 messages:
     # 1. User: Initial task
@@ -243,7 +323,32 @@ class TestAgentLoop(unittest.TestCase):
         "You are not done, please list files.", ""
     ]
     messages = self._run_agent_loop_for_test(
-        {"test-name": ["#done", "#list_files", "#done"]}, confirm_done=True)
+        {
+            "test-name": [
+                Message(
+                    role='assistant',
+                    content_sections=[
+                        ContentSection(
+                            command=CommandInput(command_name="done"),
+                            content=[])
+                    ]),
+                Message(
+                    role='assistant',
+                    content_sections=[
+                        ContentSection(
+                            command=CommandInput(command_name="list_files"),
+                            content=[])
+                    ]),
+                Message(
+                    role='assistant',
+                    content_sections=[
+                        ContentSection(
+                            command=CommandInput(command_name="done"),
+                            content=[])
+                    ]),
+            ]
+        },
+        confirm_done=True)
 
     # 2. Assertions
     # The conversation should have 6 messages:
@@ -268,7 +373,7 @@ class TestAgentLoop(unittest.TestCase):
     self.assertIn("You are not done", sections[0].content[0])
 
     # Check that the next command was executed after guidance
-    self.mock_list_files_command.run.assert_called_once()
+    self.mock_list_files_command.run.assert_called_once_with({})
 
   def test_do_review_parallel(self):
     """Tests that do_review can trigger three parallel reviews."""
@@ -279,17 +384,75 @@ class TestAgentLoop(unittest.TestCase):
 
     scripted_responses = {
         main_conv_name: [
-            "#write_file path:a.py content:'a'\n#done",
-            "#done",
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(
+                            command_name="write_file",
+                            args={
+                                'path': 'a.py',
+                                'content': 'a'
+                            }),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
         ],
         review_0_conv_name: [
-            "#suggest content:'Feedback from review 0.'\n#done",
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(
+                            command_name="suggest",
+                            args={'content': 'Feedback from review 0.'}),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
         ],
         review_1_conv_name: [
-            "#suggest content:'Feedback from review 1.'\n#done",
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(
+                            command_name="suggest",
+                            args={'content': 'Feedback from review 1.'}),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
         ],
         review_2_conv_name: [
-            "#suggest content:'Feedback from review 2.'\n#done",
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(
+                            command_name="suggest",
+                            args={'content': 'Feedback from review 2.'}),
+                        content=[])
+                ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
         ],
     }
     with patch('glob.glob') as mock_glob, \
