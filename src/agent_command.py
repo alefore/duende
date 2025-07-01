@@ -15,8 +15,6 @@ class CommandInput(NamedTuple):
   command_name: str
   arguments: List[str] = []
   args: Dict[str, Any] = {}
-  # multiline_content does not include newline characters.
-  multiline_content: Optional[List[str]] = None
 
 
 class ArgumentContentType(Enum):
@@ -44,6 +42,7 @@ class ArgumentMultiline(NamedTuple):
   description: str = ""
 
 
+
 class CommandSyntax(NamedTuple):
   """Defines the syntax structure for an AgentCommand."""
   name: str = ''
@@ -53,18 +52,6 @@ class CommandSyntax(NamedTuple):
 
   # MCP arguments
   arguments: List[Argument] = []
-
-  # A list of required arguments for the command.
-  required: List[Argument] = []
-
-  # A list of optional positional arguments for the command. These come after the required arguments.
-  optional: List[Argument] = []
-
-  # An optional final argument that can be repeated multiple times (e.g., for commands accepting multiple files).
-  repeatable_final: Optional[Argument] = None
-
-  # An optional multiline argument for the command, if applicable.
-  multiline: Optional[ArgumentMultiline] = None
 
   output_type: ArgumentContentType = ArgumentContentType.STRING
   output_description: Optional[str] = None
