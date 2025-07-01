@@ -13,7 +13,6 @@ class CommandOutput(NamedTuple):
 
 class CommandInput(NamedTuple):
   command_name: str
-  arguments: List[str] = []
   args: Dict[str, Any] = {}
 
 
@@ -34,12 +33,6 @@ class Argument(NamedTuple):
   arg_type: ArgumentContentType
   description: str
   required: bool = True
-
-
-class ArgumentMultiline(NamedTuple):
-  """Defines a multiline argument with an indicator if it's required and a description."""
-  required: bool = True
-  description: str = ""
 
 
 class CommandSyntax(NamedTuple):

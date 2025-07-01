@@ -99,7 +99,6 @@ class GeminiConversation(ConversationalAIConversation):
                     summary=f'MCP call: {function_call}',
                     command=CommandInput(
                         command_name=(function_call.name or "unknown"),
-                        arguments=[],
                         args=(function_call.args or {}))))
     else:
       logging.fatal(f'Invalid response: {response}')

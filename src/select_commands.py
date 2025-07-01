@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 import os
 import re
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager, StartPatternNotFound, EndPatternNotFound

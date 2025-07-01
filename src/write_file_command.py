@@ -3,7 +3,7 @@ import logging
 import os
 import difflib
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, ArgumentMultiline
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from selection_manager import SelectionManager
