@@ -21,7 +21,6 @@ class WriteFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -35,7 +34,12 @@ class WriteFileCommand(AgentCommand):
             Argument(
                 name="content",
                 arg_type=ArgumentContentType.STRING,
-                description="The content to write.")
+                description="The content to write."),
+            Argument(
+                name="reason",
+                arg_type=ArgumentContentType.STRING,
+                description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
+                required=False)
         ],
         output_description='A string describing the result of the operation, possibly including a diff.'
     )

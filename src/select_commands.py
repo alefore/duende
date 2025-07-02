@@ -21,7 +21,6 @@ class SelectCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="select_regex" if self.use_regex else "select",
@@ -103,7 +102,6 @@ class SelectOverwriteCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -114,7 +112,12 @@ class SelectOverwriteCommand(AgentCommand):
                 name="content",
                 arg_type=ArgumentContentType.STRING,
                 description="New contents to overwrite the current selection.",
-                required=True)
+                required=True),
+            Argument(
+                name="reason",
+                arg_type=ArgumentContentType.STRING,
+                description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
+                required=False)
         ])
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
