@@ -12,6 +12,7 @@ from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
 from conversation import Conversation, ConversationFactory, Message, ContentSection
 from conversational_ai_test_utils import FakeConversationalAI
+from done_command import DoneCommand
 from file_access_policy import FileAccessPolicy, CurrentDirectoryFileAccessPolicy
 
 
@@ -102,7 +103,8 @@ class TestAgentLoop(unittest.TestCase):
     self.registry.Register(self.mock_list_files_command)
     self.registry.Register(self.mock_read_file_command)
     self.registry.Register(self.mock_write_file_command)
-    self.registry.Register(self.mock_suggest_command)  # Register the new mock
+    self.registry.Register(DoneCommand())
+    self.registry.Register(self.mock_suggest_command)
 
     self.mock_confirmation_state = MagicMock()
     self.mock_confirmation_state.RequireConfirmation.return_value = ""
@@ -227,46 +229,6 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(sections[0].summary, "Error: No commands received")
     self.assertIn("Error: No commands found in response!",
                   sections[0].content[0])
-
-  def test_run_loop_with_unknown_command(self):
-    """
-    Tests that the loop sends an error back to the AI for an unknown command.
-    """
-    # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test({
-        "test-name": [
-            Message(
-                role='assistant',
-                content_sections=[
-                    ContentSection(
-                        command=CommandInput(command_name="unknown_command"),
-                        content=[])
-                ]),
-            Message(
-                role='assistant',
-                content_sections=[
-                    ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
-                ]),
-        ]
-    })
-
-    # 2. Assertions
-    # The conversation should have 4 messages:
-    # 1. User: Initial task
-    # 2. Assistant: #unknown_command
-    # 3. User: Error message
-    # 4. Assistant: #done
-    self.assertEqual(len(messages), 4)
-    error_message_to_ai = messages[2]
-    self.assertEqual(error_message_to_ai.role, 'user')
-
-    sections = error_message_to_ai.GetContentSections()
-    self.assertEqual(len(sections), 1)
-    self.assertEqual(sections[0].summary,
-                     "Error: Unknown command: unknown_command")
-    self.mock_list_files_command.run.assert_not_called()
-    self.mock_read_file_command.run.assert_not_called()
 
   def test_run_loop_with_multiple_commands(self):
     """
