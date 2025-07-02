@@ -7,7 +7,8 @@ from conversational_ai import ConversationalAI, ConversationalAIConversation
 class FakeConversationalAIConversation(ConversationalAIConversation):
   """A fake implementation of ConversationalAIConversation for testing."""
 
-  def __init__(self, conversation: Conversation, scripted_responses: List[Message]):
+  def __init__(self, conversation: Conversation,
+               scripted_responses: List[Message]):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
 
@@ -16,7 +17,10 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
     self.conversation.AddMessage(message)
 
     if not self.scripted_responses:
-      raise StopIteration("No more scripted responses.")
+      raise StopIteration(
+          "No more scripted responses. "
+          "This probably means the test expected the AgentLoop to stop conversing but the AgentLoop did not."
+      )
 
     response_message = self.scripted_responses.pop(0)
 
