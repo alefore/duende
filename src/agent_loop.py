@@ -29,6 +29,7 @@ class AgentLoop:
 
   def _handle_initial_review(self, start_message: Message) -> Optional[Message]:
     logging.info("Running --review-first...")
+    logging.info("Calling GetGitDiffContent from _handle_initial_review")
     git_diff_output = review_utils.GetGitDiffContent()
     if not git_diff_output:
       logging.error(
@@ -204,6 +205,7 @@ class AgentLoop:
 
   def _HandleDoneCommand(self, next_message: Message) -> bool:
     if self.options.do_review:
+      logging.info("Calling GetGitDiffContent from _HandleDoneCommand")
       git_diff_output = review_utils.GetGitDiffContent()
       if not git_diff_output:
         logging.info("No uncommitted changes to review. Proceeding with #done.")
