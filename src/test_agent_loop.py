@@ -188,7 +188,13 @@ class TestAgentLoop(unittest.TestCase):
     sections = command_output_message.GetContentSections()
     self.assertEqual(len(sections), 1)
     self.assertEqual(sections[0].summary, "Listed 1 file.")
-    self.assertEqual(sections[0].content, ["src/agent_loop.py"])
+    self.assertEqual(
+        sections[0].command_output,
+        CommandOutput(
+            command_name="list_files",
+            output=["src/agent_loop.py"],
+            errors=[],
+            summary="Listed 1 file."))
 
     self.mock_list_files_command.run.assert_called_once_with({})
 
@@ -214,21 +220,20 @@ class TestAgentLoop(unittest.TestCase):
         ]
     })
 
-    # 2. Assertions
     # The conversation should have 4 messages:
-    # 1. User: Initial task
-    # 2. Assistant: conversational text
-    # 3. User: Error message
-    # 4. Assistant: #done
+    # 0. User: Initial task
+    # 1. Assistant: conversational text
+    # 2. User: Empty.
+    # 3. Assistant: #done
     self.assertEqual(len(messages), 4)
+
     last_message_to_ai = messages[2]
     self.assertEqual(last_message_to_ai.role, 'user')
+    self.assertEqual(len(messages[2].GetContentSections()), 0)  # Empty!
 
-    sections = last_message_to_ai.GetContentSections()
-    self.assertEqual(len(sections), 1)
-    self.assertEqual(sections[0].summary, "Error: No commands received")
-    self.assertIn("Error: No commands found in response!",
-                  sections[0].content[0])
+    self.assertEqual(len(messages[3].GetContentSections()), 1)
+    self.assertEqual(messages[3].GetContentSections()[0].command.command_name,
+                     "done")
 
   def test_run_loop_with_multiple_commands(self):
     """
@@ -438,7 +443,7 @@ class TestAgentLoop(unittest.TestCase):
       messages = self._run_agent_loop_for_test(
           scripted_responses=scripted_responses, do_review=True)
 
-    self.assertEqual(mock_get_diff.call_count, 2)
+    self.assertEqual(mock_get_diff.call_count, 1)
     mock_glob.assert_called_once_with('agent/review/*.txt')
     self.assertEqual(mock_read_prompt.call_count, 3)
     self.assertEqual(len(messages), 4)
