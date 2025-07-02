@@ -32,7 +32,6 @@ class ListFilesCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -71,9 +70,8 @@ class ListFilesCommand(AgentCommand):
       return [], [error_msg], summary
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    directory = inputs.get('directory', ["."])
-
-    output_lines, errors, summary = self._process_directory(directory)
+    output_lines, errors, summary = self._process_directory(
+        inputs.get('directory', "."))
 
     return CommandOutput(
         output=output_lines,
