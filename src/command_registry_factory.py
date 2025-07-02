@@ -57,24 +57,28 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
   if validation_manager:
     registry.Register(ValidateCommand(validation_manager))
 
-  selection_manager = SelectionManager()
-  if can_write:
-    registry.Register(
-        WriteFileCommand(file_access_policy, validation_manager,
-                         selection_manager))
+  enable_select = False
 
-  for use_regex in [True, False]:
-    registry.Register(
-        SelectCommand(file_access_policy, selection_manager, use_regex))
+  if enable_select:
+    selection_manager = SelectionManager()
+    if can_write:
+      registry.Register(
+          WriteFileCommand(file_access_policy, validation_manager,
+                           selection_manager))
 
-  if can_write:
-    registry.Register(
-        SelectOverwriteCommand(selection_manager, validation_manager))
+    for use_regex in [True, False]:
+      registry.Register(
+          SelectCommand(file_access_policy, selection_manager, use_regex))
 
-  registry.Register(SelectPythonCommand(file_access_policy, selection_manager))
-  if can_write:
+    if can_write:
+      registry.Register(
+          SelectOverwriteCommand(selection_manager, validation_manager))
+
     registry.Register(
-        ReplacePythonCommand(file_access_policy, validation_manager))
+        SelectPythonCommand(file_access_policy, selection_manager))
+    if can_write:
+      registry.Register(
+          ReplacePythonCommand(file_access_policy, validation_manager))
 
   #if can_start_tasks:
   #  registry.Register(TaskCommand(start_new_task))
