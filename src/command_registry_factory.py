@@ -59,13 +59,13 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
 
   enable_select = False
 
-  if enable_select:
-    selection_manager = SelectionManager()
-    if can_write:
-      registry.Register(
-          WriteFileCommand(file_access_policy, validation_manager,
-                           selection_manager))
+  selection_manager = SelectionManager()
+  if can_write:
+    registry.Register(
+        WriteFileCommand(file_access_policy, validation_manager,
+                         selection_manager))
 
+  if enable_select:
     for use_regex in [True, False]:
       registry.Register(
           SelectCommand(file_access_policy, selection_manager, use_regex))
