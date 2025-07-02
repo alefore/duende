@@ -38,7 +38,12 @@ class ReplacePythonCommand(AgentCommand):
                 name="content",
                 arg_type=ArgumentContentType.STRING,
                 description="The new definition of the Python element.",
-                required=True)
+                required=True),
+            Argument(
+                name="reason",
+                arg_type=ArgumentContentType.STRING,
+                description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
+                required=False)
         ])
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:

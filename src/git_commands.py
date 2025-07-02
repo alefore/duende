@@ -59,7 +59,12 @@ class ResetFileCommand(AgentCommand):
                 name="path",
                 arg_type=ArgumentContentType.PATH_OUTPUT,
                 description="Path to reset to original state.",
-                required=True)
+                required=True),
+            Argument(
+                name="reason",
+                arg_type=ArgumentContentType.STRING,
+                description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
+                required=False)
         ])
 
 
