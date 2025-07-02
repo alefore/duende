@@ -162,7 +162,15 @@ class AgentLoop:
       outputs.append(
           ContentSection(
               content=[f"Error: {e}" for e in command_output.errors],
+              command_output=command_output,
               summary=f"Errors for command '{command_name}'"))
+    if not command_output.output and not command_output.errors and command_output.task_done:
+      outputs.append(
+          ContentSection(
+              content=[f"Done!"],
+              command_output=command_output,
+              summary=f"Done!"))
+
     logging.info(command_output.summary)
     return outputs
 
@@ -179,6 +187,7 @@ class AgentLoop:
           task_done = True
 
     return outputs, task_done
+
   def _RunReviews(self,
                   git_diff_output: List[str]) -> Optional[List[ContentSection]]:
     self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
