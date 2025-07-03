@@ -12,7 +12,6 @@ class ValidateCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -26,7 +25,7 @@ class ValidateCommand(AgentCommand):
     if not result.success:
       return CommandOutput(
           output="",
-          errors=f"#{self.Name()}_output FAIL << \n" + "\n".join(result.error) + "\n#end",
+          errors=f"#{self.Name()} FAIL:\n" + result.error,
           summary="Validation script failed.",
           command_name=self.Name())
 
