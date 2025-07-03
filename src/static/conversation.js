@@ -86,12 +86,12 @@ class ConversationData {
       const fullContentParts = [];
 
       if (section.content && section.content.length > 0)
-        fullContentParts.push('📝' + section.content.join('\\n'));
+        fullContentParts.push('📝' + section.content.join('\n'));
       if (section.command) fullContentParts.push('🤖' + section.command);
       if (section.command_output)
         fullContentParts.push('⚙️"' + section.command_output);
 
-      $fullContentPre.text(fullContentParts.join('\\n'));
+      $fullContentPre.text(fullContentParts.join('\n'));
 
       if (lineCount <= 5) {
         $sectionDiv.append($fullContentPre);
