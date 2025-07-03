@@ -61,10 +61,13 @@ class GeminiConversation(ConversationalAIConversation):
         gemini_parts.append("\n".join(section.content))
       if section.command_output:
         assert section.command_output.command_name
+        response_dict = {"output": '\n'.join(section.command_output.output)}
+        if section.command_output.errors:
+          response_dict['errors'] = '\n'.join(section.command_output.errors)
         gemini_parts.append(
             genai.types.Part.from_function_response(
                 name=section.command_output.command_name,
-                response={"result": '\n'.join(section.command_output.output)}))
+                response=response_dict))
 
     log_content = '\n'.join(
         ['\n'.join(s.content) for s in message.GetContentSections()])
