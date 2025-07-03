@@ -5,7 +5,6 @@ from agent_command import (AgentCommand, CommandInput, CommandOutput,
                            CommandSyntax)
 from command_registry import (CommandRegistrationError, CommandRegistry,
                               UnknownCommandError)
-from conversation import MultilineContent
 
 
 class FakeCommand(AgentCommand):
@@ -53,7 +52,7 @@ class CommandRegistryTest(unittest.TestCase):
 
   @patch('command_registry.FormatHelp')
   def test_help_text_empty(self, mock_format_help: Mock) -> None:
-    mock_return = MultilineContent("empty")
+    mock_return = "empty"
     mock_format_help.return_value = mock_return
     self.assertIs(self.registry.HelpText(), mock_return)
     mock_format_help.assert_called_once_with([])
@@ -65,7 +64,7 @@ class CommandRegistryTest(unittest.TestCase):
     self.registry.Register(cmd_zebra)
     self.registry.Register(cmd_apple)
 
-    mock_return = MultilineContent("help text")
+    mock_return = "help text"
     mock_format_help.return_value = mock_return
     self.assertIs(self.registry.HelpText(), mock_return)
 
