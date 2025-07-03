@@ -11,6 +11,10 @@ h1 {
   margin-top: 0; /* Remove default top margin to reduce empty space at the top */
 }
 
+td.property-value {
+  width: 100%;
+}
+
 #fixed_header {
   position: fixed;
   top: 0;
