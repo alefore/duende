@@ -3,7 +3,8 @@ import logging
 import os
 import re
 import sys
-from typing import Optional, Pattern, List, Tuple, Callable
+from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Tuple
+
 from agent_loop_options import AgentLoopOptions
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
@@ -18,6 +19,22 @@ from conversational_ai import ConversationalAI
 from gemini import Gemini
 from validate_command_input import ValidateCommandInput
 
+
+# Used to tell if a flag was set explicitly (which argparse doesn't directly
+# support.
+class TrackedFlagStr(NamedTuple):
+  value: str
+  set_explicitly: bool
+
+
+class TrackFlagStrAction(argparse.Action):
+
+  def __call__(self,
+               parser: argparse.ArgumentParser,
+               namespace: argparse.Namespace,
+               values: Any,
+               option_string: Optional[str] = None) -> None:
+    setattr(namespace, self.dest, TrackedFlagStr(values, True))
 
 def CreateCommonParser() -> argparse.ArgumentParser:
   parser = argparse.ArgumentParser()
@@ -42,6 +59,14 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       dest='file_access_regex',
       type=str,
       help="Regex to match allowed file paths. Defaults to allowing all paths. Match is based on relative path to current directory."
+  )
+  parser.add_argument(
+      '--file-access-regex-path',
+      dest='file_access_regex_path',
+      type=str,
+      default=TrackedFlagStr('agent/file-access-regex.txt', False),
+      action=TrackFlagStrAction,
+      help="File path to a regex to match allowed file paths. Ignored if --file-access-regex is given."
   )
   parser.add_argument(
       '--test-file-access',
@@ -97,7 +122,8 @@ def GetConversationalAI(args: argparse.Namespace,
 def CreateAgentLoopOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory: ConversationFactory) -> AgentLoopOptions:
-  file_access_policy = CreateFileAccessPolicy(args.file_access_regex)
+  file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
+                                              args.file_access_regex_path)
 
   matched_files = list(list_all_files('.', file_access_policy))
   logging.info(f"File matched by access policy: {len(matched_files)}")
@@ -215,8 +241,32 @@ def LoadOrCreateConversation(
 
 
 def CreateFileAccessPolicy(
-    file_access_regex: Optional[str]) -> FileAccessPolicy:
+    file_access_regex: Optional[str],
+    file_access_regex_path: TrackedFlagStr) -> FileAccessPolicy:
   policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
+
+  if file_access_regex:
+    if file_access_regex_path.set_explicitly:
+      print(
+          "Error: Invalid usage: "
+          "At most one of `--file-access-regex` and `--file-access-regex-path` can be used.",
+          file=sys.stderr)
+      sys.exit(1)
+  elif file_access_regex_path.value:
+    try:
+      with open(file_access_regex_path.value, 'r') as f:
+        file_access_regex = f.read().strip()
+      if not file_access_regex:
+        print(
+            f"Error: Invalid usage: --file-access-regex-path: "
+            f"{file_access_regex_path.value}: File is empty.",
+            file=sys.stderr)
+        sys.exit(1)
+    except FileNotFoundError as e:
+      if file_access_regex_path.set_explicitly:
+        print(f"Error: --file-access-regex-path: {file_access_regex_path.value}: {e}", file=sys.stderr)
+        sys.exit(1)
+
   if file_access_regex:
     policies.append(RegexFileAccessPolicy(file_access_regex))
   return CompositeFileAccessPolicy(policies)

@@ -11,10 +11,24 @@ h1 {
   margin-top: 0; /* Remove default top margin to reduce empty space at the top */
 }
 
-td.property-value {
-  width: 100%;
+table {
+  border-collapse: separate
+  border-spacing: 0
 }
 
+td.property-value {
+  width: 100%;
+  border: 1px dashed #666;
+  border-radius: 8px;
+}
+td.property-value, td.property-label {
+  font-family: monospace;
+  vertical-align: top;
+}
+td.property-label {
+  text-align: right;
+  width: 20%;
+}
 #fixed_header {
   position: fixed;
   top: 0;
