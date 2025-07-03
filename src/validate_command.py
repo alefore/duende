@@ -25,13 +25,13 @@ class ValidateCommand(AgentCommand):
 
     if not result.success:
       return CommandOutput(
-          output=[],
-          errors=[f"#{self.Name()}_output FAIL << "] + result.error + ["#end"],
+          output="",
+          errors=f"#{self.Name()}_output FAIL << \n" + "\n".join(result.error) + "\n#end",
           summary="Validation script failed.",
           command_name=self.Name())
 
     return CommandOutput(
-        output=[f"#{self.Name()}: Success (all checks passed)."],
-        errors=[],
+        output=f"#{self.Name()}: Success (all checks passed).",
+        errors="",
         summary="Validation script succeeded.",
         command_name=self.Name())

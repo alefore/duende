@@ -56,16 +56,16 @@ class ReplacePythonCommand(AgentCommand):
           self.file_access_policy, validated_path, identifier)
     except Exception as e:
       return CommandOutput(
-          output=[],
-          errors=[f"{self.Name()} error: {str(e)}"],
+          output="",
+          errors=f"{self.Name()} error: {str(e)}",
           summary=f"{self.Name()} error: {str(e)}",
           command_name=self.Name())
 
     if len(selections) == 0:
       return CommandOutput(
           command_name=self.Name(),
-          output=[],
-          errors=[f"No matches found for identifier '{identifier}'."],
+          output="",
+          errors=f"No matches found for identifier '{identifier}'.",
           summary="No matches found.")
     if len(selections) > 1:
       locations = [
@@ -74,9 +74,9 @@ class ReplacePythonCommand(AgentCommand):
       ]
       return CommandOutput(
           command_name=self.Name(),
-          output=[],
-          errors=[f"Multiple matches found for identifier '{identifier}':"] +
-          locations + ["#end (matches)"],
+          output="",
+          errors="\n".join([f"Multiple matches found for identifier '{identifier}':"] +
+          locations + ["#end (matches)"]),
           summary="Multiple matches found.")
 
     selections[0].Overwrite(new_content)
@@ -86,6 +86,6 @@ class ReplacePythonCommand(AgentCommand):
 
     return CommandOutput(
         command_name=self.Name(),
-        output=["The definition was successfully replaced."],
-        errors=[],
+        output="The definition was successfully replaced.",
+        errors="",
         summary="Replacement successful.")

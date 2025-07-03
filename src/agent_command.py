@@ -6,8 +6,8 @@ from enum import Enum, auto
 
 class CommandOutput(NamedTuple):
   command_name: str
-  output: List[str]
-  errors: List[str]
+  output: str
+  errors: str
   summary: str
   task_done: bool = False
 

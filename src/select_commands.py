@@ -64,30 +64,26 @@ class SelectCommand(AgentCommand):
       selected_lines = selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(
-          output=["select <<"] + selected_lines + [f"#end ({path})"],
-          errors=[],
+          output="select <<\n" + "\n".join(selected_lines) + f"\n#end ({path})",
+          errors="",
           summary=selection.ProvideSummary(),
           command_name=self.Name())
     except StartPatternNotFound:
       return CommandOutput(
-          output=[],
-          errors=[
-              f"{self.Name()}: Could not find start pattern '{start_line_pattern_raw}' in {path}."
-          ],
+          output="",
+          errors=f"{self.Name()}: Could not find start pattern '{start_line_pattern_raw}' in {path}.",
           summary="Select command error: start pattern not found.",
           command_name=self.Name())
     except EndPatternNotFound:
       return CommandOutput(
-          output=[],
-          errors=[
-              f"{self.Name()}: Could not find end pattern '{end_line_pattern_raw}' in {path} after finding start pattern."
-          ],
+          output="",
+          errors=f"{self.Name()}: Could not find end pattern '{end_line_pattern_raw}' in {path} after finding start pattern.",
           summary="Select command error: end pattern not found.",
           command_name=self.Name())
     except Exception as e:
       return CommandOutput(
-          output=[],
-          errors=[f"{self.Name()}: {str(e)}"],
+          output="",
+          errors=f"{self.Name()}: {str(e)}",
           summary=f"Select command error: {str(e)}",
           command_name=self.Name())
 
@@ -127,8 +123,8 @@ class SelectOverwriteCommand(AgentCommand):
 
     if current_selection is None:
       return CommandOutput(
-          output=[],
-          errors=["No selection exists (call #select first?)."],
+          output="",
+          errors="No selection exists (call #select first?).",
           summary="Select overwrite failed because no selection exists.",
           command_name=self.Name())
 
@@ -138,13 +134,13 @@ class SelectOverwriteCommand(AgentCommand):
         self.validation_manager.RegisterChange()
       line_count = len(content.splitlines())
       return CommandOutput(
-          output=["The selection was successfully overwritten."],
-          errors=[],
+          output="The selection was successfully overwritten.",
+          errors="",
           summary=f"Successfully overwrote the selection with {line_count} lines.",
           command_name=self.Name())
     except Exception as e:
       return CommandOutput(
-          output=[],
-          errors=[f"Error overwriting selection: {str(e)}"],
+          output="",
+          errors=f"Error overwriting selection: {str(e)}",
           summary="Select overwrite encountered an error.",
           command_name=self.Name())

@@ -27,8 +27,8 @@ class TestWriteFileCommand(unittest.TestCase):
       result = write_file_command.run(command_input.args)
 
       self.assertIn("#write_file test.txt: Success with 2 lines written.",
-                    result.output[0])
-      self.assertEqual(len(result.errors), 0)
+                    result.output)
+      self.assertEqual(result.errors, "")
       mock_file.assert_called_once_with("test.txt", "w")
       handle = mock_file()
       handle.write.assert_called_once_with("line1\nline2")
@@ -48,8 +48,8 @@ class TestWriteFileCommand(unittest.TestCase):
       result = write_file_command.run(command_input.args)
 
       self.assertIn("#write_file dir/test.txt: Success with 1 lines written.",
-                    result.output[0])
-      self.assertEqual(len(result.errors), 0)
+                    result.output)
+      self.assertEqual(result.errors, "")
       mock_makedirs.assert_called_once_with("dir", exist_ok=True)
       mock_file.assert_called_once_with("dir/test.txt", "w")
 
@@ -68,10 +68,9 @@ class TestWriteFileCommand(unittest.TestCase):
       mock_file.side_effect = IOError("File not found")
       result = write_file_command.run(command_input.args)
 
-      self.assertEqual(len(result.output), 0)
-      self.assertEqual(len(result.errors), 1)
+      self.assertEqual(result.output, "")
       self.assertIn("Error writing to test.txt: File not found",
-                    result.errors[0])
+                    result.errors)
 
   def test_write_file_with_small_diff(self):
     path = "test.txt"
@@ -91,7 +90,7 @@ class TestWriteFileCommand(unittest.TestCase):
 
       self.assertIn(
           f"#{write_file_command.Name()} {path}: Success with 3 lines written.",
-          result.output[0])
+          result.output)
       self.assertIn("```diff", result.output)
       self.assertIn("--- a/test.txt", result.output)
       self.assertIn("+++ b/test.txt", result.output)
@@ -119,10 +118,10 @@ class TestWriteFileCommand(unittest.TestCase):
 
       self.assertIn(
           f"#{write_file_command.Name()} {path}: Success with 30 lines written.",
-          result.output[0])
+          result.output)
       self.assertIn(
           "Diff is too large. Summary: 30 lines added, 30 lines removed.",
-          result.output[1])
+          result.output)
       mock_file.assert_any_call(path, "r")
       mock_file.assert_any_call(path, "w")
 

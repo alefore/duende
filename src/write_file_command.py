@@ -101,13 +101,13 @@ class WriteFileCommand(AgentCommand):
         )
 
       return CommandOutput(
-          output=output_messages,
-          errors=[],
+          output="\n".join(output_messages),
+          errors="",
           summary=f"Wrote to file {path} with {len(new_content_lines)} lines.",
           command_name=self.Name())
     except Exception as e:
       return CommandOutput(
-          output=[],
-          errors=[f"Error writing to {path}: {str(e)}"],
+          output="",
+          errors=f"Error writing to {path}: {str(e)}",
           summary=f"{self.Name()} command encountered an error.",
           command_name=self.Name())

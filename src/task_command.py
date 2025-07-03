@@ -35,8 +35,8 @@ class TaskCommand(AgentCommand):
           command_name=self.Syntax().name)
     except Exception as e:
       return CommandOutput(
-          output=[],
-          errors=[f"Error forking sub-task '{task_info.task_name}': {e}"],
+          output="",
+          errors=f"Error forking sub-task '{task_info.task_name}': {e}",
           summary=f"Error executing {self.Syntax().name} command: {e}",
           command_name=self.Syntax().name)
 

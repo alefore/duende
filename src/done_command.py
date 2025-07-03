@@ -18,4 +18,4 @@ class DoneCommand(AgentCommand):
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     logging.info("Done command runs!")
-    return CommandOutput(self.Name(), [], [], "Task completed.", task_done=True)
+    return CommandOutput(self.Name(), "", "", "Task completed.", task_done=True)

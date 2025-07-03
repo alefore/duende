@@ -14,7 +14,6 @@ class SearchFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -87,17 +86,20 @@ class SearchFileCommand(AgentCommand):
           "Files with matches:",
           "path,lines_match,file_line_count",
       ])
-      output_lines.extend(files_data)
+      output_str = "\n".join(output_lines + files_data)
     elif matches:
-      output_lines.extend(matches)
+      output_str = "\n".join(output_lines + matches)
     else:
-      output_lines.append(f"No matches found for '{search_term}'.")
+      output_str = "\n".join(output_lines +
+                             [f"No matches found for '{search_term}'."])
+
+    errors_str = "\n".join(errors)
 
     summary = f"Searched {global_file_count} files, found {global_match_count} matches."
     if errors:
       summary += f" Errors: {len(errors)}"
     return CommandOutput(
-        output=output_lines,
-        errors=errors,
+        output=output_str,
+        errors=errors_str,
         summary=summary,
         command_name=self.Syntax().name)

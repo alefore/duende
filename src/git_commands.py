@@ -37,15 +37,15 @@ class ResetFileCommand(AgentCommand):
 
     if errors:
       return CommandOutput(
-          output=[],
-          errors=errors,
+          output="",
+          errors="\n".join(errors),
           summary="Error while resetting files",
           command_name=self.Syntax().name)
 
     success_message = f"Reset file: {path}"
     return CommandOutput(
-        output=[success_message],
-        errors=[],
+        output=success_message,
+        errors="",
         summary=success_message,
         command_name=self.Syntax().name)
 

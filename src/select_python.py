@@ -48,30 +48,30 @@ class SelectPythonCommand(AgentCommand):
 
       if len(selections) == 0:
         return CommandOutput(
-            output=[],
-            errors=[f"Could not find a definition for '{identifier}'."],
+            output="",
+            errors=f"Could not find a definition for '{identifier}'.",
             summary=f"Definition for '{identifier}' not found.",
             command_name=self.Name())
 
       if len(selections) > 1:
         return CommandOutput(
-            output=[],
-            errors=[f"Multiple definitions found for '{identifier}'."],
+            output="",
+            errors=f"Multiple definitions found for '{identifier}'.",
             summary="Multiple matches found, unable to select.",
             command_name=self.Name())
 
       self.selection_manager.set_selection(selections[0])
       return CommandOutput(
-          output=[f"select <<"] + selections[0].Read() +
-          [f"#end (selection in {selections[0].path})"],
-          errors=[],
+          output="select <<\n" + "\n".join(selections[0].Read()) +
+          f"\n#end (selection in {selections[0].path})",
+          errors="",
           summary=selections[0].ProvideSummary(),
           command_name=self.Name())
 
     except Exception as e:
       return CommandOutput(
-          output=[],
-          errors=[f"select_python error: {str(e)}"],
+          output="",
+          errors=f"select_python error: {str(e)}",
           summary=f"Select python command encountered an error: {str(e)}",
           command_name=self.Name())
 

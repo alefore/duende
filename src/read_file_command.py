@@ -13,7 +13,6 @@ class ReadFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
@@ -33,22 +32,17 @@ class ReadFileCommand(AgentCommand):
 
     try:
       with open(path, "r") as f:
-        contents = f.readlines()
+        contents = f.read()
     except Exception as e:
       return CommandOutput(
           command_name=self.Syntax().name,
-          output=[],
-          errors=[f"#{self.Name()} {path}: {e}"],
+          output="",
+          errors=f"#{self.Name()} {path}: {e}",
           summary=f"{self.Name()} command error: {path}: {e}")
 
-    line_count = len(contents)
-
-    output_lines = [f"#{self.Name()} {path} <<"]
-    output_lines.extend(line.rstrip('\n') for line in contents)
-    output_lines.append(f"#end ({path})")
-
+    line_count = len(contents.splitlines())
     return CommandOutput(
         command_name=self.Syntax().name,
-        output=output_lines,
-        errors=[],
+        output=contents,
+        errors="",
         summary=f"Read file {path} with {line_count} lines.")

@@ -17,8 +17,8 @@ class SuggestCommand(AgentCommand):
 
     if not suggestion_content:
       return CommandOutput(
-          output=[],
-          errors=["#suggest requires non-empty content."],
+          output="",
+          errors="#suggest requires non-empty content.",
           summary="Suggestion failed: no content.",
           command_name=self.Syntax().name)
 
@@ -27,8 +27,8 @@ class SuggestCommand(AgentCommand):
         f"Suggestion recorded: '{suggestion_content[:50]}…' with justification '{justification[:50]}…'"
     )
     return CommandOutput(
-        output=["Suggestion recorded successfully."],
-        errors=[],
+        output="Suggestion recorded successfully.",
+        errors="",
         summary="Suggestion recorded.",
         command_name=self.Syntax().name)
 

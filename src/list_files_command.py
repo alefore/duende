@@ -8,7 +8,7 @@ from list_files import list_all_files
 
 def _ListFileDetails(
     directory: str,
-    file_access_policy: FileAccessPolicy) -> Tuple[List[str], List[str]]:
+    file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
   details: List[str] = []
   errors: List[str] = []
   for file in list_all_files(directory, file_access_policy):
@@ -21,7 +21,7 @@ def _ListFileDetails(
         details.append(f"{file}: {line_count} lines, {byte_count} bytes")
     except Exception as e:
       errors.append(f"Error: {file}: Error reading: {str(e)}")
-  return details, errors
+  return "\n".join(details), "\n".join(errors)
 
 
 class ListFilesCommand(AgentCommand):
@@ -47,34 +47,33 @@ class ListFilesCommand(AgentCommand):
 
   # TODO: Inline this into `run` and simplify (avoid unnecessary variables).
   def _process_directory(self,
-                         directory: str) -> Tuple[List[str], List[str], str]:
+                         directory: str) -> Tuple[str, str, str]:
     """
     Processes a single directory.
     Returns: (output_lines, errors, summary)
     """
     try:
       details, errors = _ListFileDetails(directory, self.file_access_policy)
-      output_lines: list[str] = []
-      if details:
-        output_lines.extend(details)
-      summary = (f"Listed files: '{directory}'. Matches: {len(details)}" +
-                 (f", errors: {len(errors)}" if errors else ""))
-      return output_lines, errors, summary
+      detail_lines = details.splitlines() if details else []
+      error_lines = errors.splitlines() if errors else []
+      summary = (f"Listed files: '{directory}'. Matches: {len(detail_lines)}" +
+                 (f", errors: {len(error_lines)}" if error_lines else ""))
+      return details, errors, summary
     except NotADirectoryError:
       error_msg = f"Directory not found or is not accessible: {directory}"
       summary = f"{self.Name()} command failed for '{directory}' due to inaccessible directory."
-      return [], [error_msg], summary
+      return "", error_msg, summary
     except Exception as e:
       error_msg = f"Listing files in {directory}: {e}"
       summary = f"{self.Name()} command encountered an error for '{directory}'."
-      return [], [error_msg], summary
+      return "", error_msg, summary
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    output_lines, errors, summary = self._process_directory(
+    output, errors, summary = self._process_directory(
         inputs.get('directory', "."))
 
     return CommandOutput(
-        output=output_lines,
+        output=output,
         errors=errors,
         summary=summary,
         command_name=self.Name())
