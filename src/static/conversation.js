@@ -115,9 +115,9 @@ class ConversationData {
               $toggleLink.text('[collapse]');
             }
           });
-          $toggleLink.click();  // Initialize in collapsed state
-
           $container.append($header, $summaryPre, $contentPre);
+          setTimeout(
+              () => $toggleLink.click(), 0);  // Initialize in collapsed state
         } else {
           $container.append($contentPre);
         }
