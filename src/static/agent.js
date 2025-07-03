@@ -156,7 +156,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   $conversationSelector.on('change', function() {
-    showConversation(parseInt($(this).val()));
+    const id = parseInt($(this).val());
+    if (conversationsById[id]) conversationsById[id].show();
   });
 
   console.log('Requesting conversation list.');
