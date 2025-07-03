@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import MagicMock, call, patch
 from typing import Dict, List, Union
 import glob
+import logging
 
 import review_utils
 from agent_command import (AgentCommand, CommandInput, CommandOutput,
@@ -87,10 +88,15 @@ class TestAgentLoop(unittest.TestCase):
         description="Suggests a change.",
         arguments=[
             Argument(
-                name='content',
+                name='suggestion_content',
                 arg_type=ArgumentContentType.STRING,
-                description='The content of the suggestion.',
+                description='The detailed suggestion for the code changes.',
                 required=True),
+            Argument(
+                name='justification',
+                arg_type=ArgumentContentType.STRING,
+                description='The AI *must* justify why this suggestion is being issued (why is it related to the goal of the review). You should only issue suggestions directly related to the specific review task.',
+                required=True)
         ],
     )
     self.mock_suggest_command.run.return_value = CommandOutput(
@@ -335,9 +341,12 @@ class TestAgentLoop(unittest.TestCase):
     guidance_message = messages[2]
     self.assertEqual(guidance_message.role, 'user')
     sections = guidance_message.GetContentSections()
-    self.assertEqual(len(sections), 1)
-    self.assertEqual(sections[0].summary, "Human decision to continue")
-    self.assertIn("You are not done", sections[0].content[0])
+    self.assertEqual(len(sections), 2)
+    self.assertEqual(sections[0].summary, "Task completed.")
+    self.assertEqual(sections[0].content, [])
+    self.assertEqual(sections[0].command_output.task_done, True)
+    self.assertEqual(sections[1].summary, "Human decision to continue")
+    self.assertIn("You are not done", sections[1].content[0])
 
     # Check that the next command was executed after guidance
     self.mock_list_files_command.run.assert_called_once_with({})
@@ -369,6 +378,12 @@ class TestAgentLoop(unittest.TestCase):
                     ContentSection(
                         command=CommandInput(command_name="done"), content=[])
                 ]),
+            Message(
+                role='assistant',
+                content_sections=[
+                    ContentSection(
+                        command=CommandInput(command_name="done"), content=[])
+                ]),
         ],
         review_0_conv_name: [
             Message(
@@ -377,7 +392,10 @@ class TestAgentLoop(unittest.TestCase):
                     ContentSection(
                         command=CommandInput(
                             command_name="suggest",
-                            args={'content': 'Feedback from review 0.'}),
+                            args={
+                                'suggestion_content': 'Feedback from review 0.',
+                                'justification': 'Justification 0 for review 0.'
+                            }),
                         content=[])
                 ]),
             Message(
@@ -394,7 +412,10 @@ class TestAgentLoop(unittest.TestCase):
                     ContentSection(
                         command=CommandInput(
                             command_name="suggest",
-                            args={'content': 'Feedback from review 1.'}),
+                            args={
+                                'suggestion_content': 'Feedback from review 1.',
+                                'justification': 'Justification 1 for review 1.'
+                            }),
                         content=[])
                 ]),
             Message(
@@ -411,7 +432,10 @@ class TestAgentLoop(unittest.TestCase):
                     ContentSection(
                         command=CommandInput(
                             command_name="suggest",
-                            args={'content': 'Feedback from review 2.'}),
+                            args={
+                                'suggestion_content': 'Feedback from review 2.',
+                                'justification': 'Justification 2 for review 2.'
+                            }),
                         content=[])
                 ]),
             Message(
@@ -443,15 +467,18 @@ class TestAgentLoop(unittest.TestCase):
       messages = self._run_agent_loop_for_test(
           scripted_responses=scripted_responses, do_review=True)
 
-    self.assertEqual(mock_get_diff.call_count, 1)
+    logging.info([m.Serialize() for m in messages])
+    # Diff happens twice, once for each Done command (the 2nd time to detect
+    # that no review is needed).
+    self.assertEqual(mock_get_diff.call_count, 2)
     mock_glob.assert_called_once_with('agent/review/*.txt')
     self.assertEqual(mock_read_prompt.call_count, 3)
-    self.assertEqual(len(messages), 4)
+    self.assertEqual(len(messages), 6)
 
-    feedback_message = messages[2]
+    feedback_message = messages[4]
     self.assertEqual(feedback_message.role, 'user')
     sections = feedback_message.GetContentSections()
-    self.assertEqual(len(sections), 4)
+    self.assertEqual(len(sections), 5)
 
     instruction_sections = [
         s for s in sections
@@ -463,7 +490,7 @@ class TestAgentLoop(unittest.TestCase):
     ]
 
     self.assertEqual(len(instruction_sections), 1)
-    self.assertEqual(len(suggestion_sections), 3)
+    self.assertEqual(len(suggestion_sections), 4)
 
     summaries = [s.summary for s in suggestion_sections]
     self.assertTrue(any("from review_0" in s for s in summaries))
@@ -473,10 +500,12 @@ class TestAgentLoop(unittest.TestCase):
     self.assertTrue(any("Suggestion 2" in s for s in summaries))
     self.assertTrue(any("Suggestion 3" in s for s in summaries))
 
-    contents = [s.content[1] for s in suggestion_sections]
-    self.assertIn("Feedback from review 0.", contents)
-    self.assertIn("Feedback from review 1.", contents)
-    self.assertIn("Feedback from review 2.", contents)
+    contents = ['\n'.join(s.content) for s in sections]
+    self.assertTrue(any("Feedback from review 0." in s for s in contents))
+    self.assertTrue(any("Feedback from review 1." in s for s in contents))
+    self.assertTrue(any("Feedback from review 2." in s for s in contents))
+    self.assertTrue(
+        any("Please try to address these suggestions" in s for s in contents))
 
 
 if __name__ == '__main__':
