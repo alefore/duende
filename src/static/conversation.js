@@ -79,14 +79,14 @@ class ConversationData {
     const $contentContainer = $('<div>').addClass('content-container');
     (message.content_sections || []).forEach(section => {
       const $sectionDiv = $('<div>').addClass('messageSection');
+      // TODO: This needs to be fixed to count lines, not just bytes, duh.
       const lineCount = section.content.length;
-
 
       const $fullContentPre = $('<pre>').addClass('full-content-pre');
       const fullContentParts = [];
 
       if (section.content && section.content.length > 0)
-        fullContentParts.push('📝' + section.content.join('\n'));
+        fullContentParts.push('📝' + section.content);
       if (section.command) fullContentParts.push('🤖' + section.command);
       if (section.command_output)
         fullContentParts.push('⚙️"' + section.command_output);
@@ -96,7 +96,7 @@ class ConversationData {
       if (lineCount <= 5) {
         $sectionDiv.append($fullContentPre);
       } else {
-        const firstLineContent = section.summary || section.content[0] || '';
+        const firstLineContent = section.summary || section.content || '';
         const $firstLinePre =
             $('<pre>')
                 .addClass('first-line-pre')
