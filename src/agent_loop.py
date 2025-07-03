@@ -168,9 +168,9 @@ class AgentLoop:
     if not command_output.output and not command_output.errors and command_output.task_done:
       outputs.append(
           ContentSection(
-              content=[f"Done!"],
+              content=[],
               command_output=command_output,
-              summary=f"Done!"))
+              summary=command_output.summary))
 
     logging.info(command_output.summary)
     return outputs
