@@ -13,7 +13,7 @@ from command_registry_factory import CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from chatgpt import ChatGPT
-from conversation import Conversation, ConversationFactory, Message, MultilineContent, ContentSection
+from conversation import Conversation, ConversationFactory, Message, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from validate_command_input import ValidateCommandInput
@@ -142,9 +142,10 @@ def CreateAgentLoopOptions(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
-  task_file_content: List[str] = []
+  # TODO: Why does this use readlines? It should just use `read`.
+  task_file_content: str = ""
   with open(args.task, 'r') as f:
-    task_file_content = [l.rstrip() for l in f.readlines()]
+    task_file_content = "\n".join([l.rstrip() for l in f.readlines()])
 
   conversation, start_message = LoadOrCreateConversation(
       task_file_content, args.task, conversation_factory, conversation_path,
@@ -170,7 +171,7 @@ def CreateAgentLoopOptions(
 
 
 def LoadOrCreateConversation(
-    task_file_content: List[str],
+    task_file_content: str,
     task_file_path: str,
     conversation_factory: ConversationFactory,
     conversation_path: str,
@@ -188,9 +189,7 @@ def LoadOrCreateConversation(
         'system',
         content_sections=[
             ContentSection(
-                content=[
-                    'The server running this interaction has been restarted.'
-                ],
+                content='The server running this interaction has been restarted.',
                 summary=None)
         ])
   else:
@@ -201,7 +200,8 @@ def LoadOrCreateConversation(
       with open(agent_prompt_path, 'r') as f:
         content_sections.append(
             ContentSection(
-                content=list(l.rstrip() for l in f.readlines()),
+                # TODO: Why does this use readlines? Just use `read`?
+                content="\n".join(list(l.rstrip() for l in f.readlines())),
                 summary=f"Constant prompt guidance: {agent_prompt_path}"))
 
     content_sections.append(

@@ -1,7 +1,6 @@
 from typing import Dict, Optional, List, Set
 from agent_command import AgentCommand
 from agent_command_helpers import FormatHelp
-from conversation import MultilineContent
 
 
 class UnknownCommandError(Exception):
@@ -36,7 +35,7 @@ class CommandRegistry:
   def list_all(self) -> List[str]:
     return sorted(self.commands.keys())
 
-  def HelpText(self) -> MultilineContent:
+  def HelpText(self) -> str:
     return FormatHelp([self.commands[name] for name in self.list_all()])
 
   def GetCommands(self) -> List[AgentCommand]:

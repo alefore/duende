@@ -6,12 +6,9 @@ from datetime import datetime, timezone
 from conversation_state import ConversationState
 from agent_command import CommandInput, CommandOutput
 
-# Avoid strings with newline characters; to break lines, just add more entries.
-MultilineContent = List[str]
-
 
 class ContentSection(NamedTuple):
-  content: MultilineContent
+  content: str
   command: Optional[CommandInput] = None
   command_output: Optional[CommandOutput] = None
   summary: Optional[str] = None
@@ -52,7 +49,7 @@ class Message:
     for section_data in raw_sections:
       content_sections.append(
           ContentSection(
-              content=section_data.get('content', []),
+              content="".join(section_data.get('content', [])),
               summary=section_data.get('summary')))
     return Message(
         role=data['role'],
@@ -108,11 +105,11 @@ class Conversation:
 
   def _DebugString(self, message: Message) -> str:
     content_sections: List[ContentSection] = message.GetContentSections()
-    content: MultilineContent = []
+    content: str = ""
     for section in content_sections:
-      content.extend(section.content)
+      content += section.content
     return (f"Add message: {message.role}: {len(content_sections)} sections: "
-            f"{'\n'.join(content)[:50]}...")
+            f"{content[:50]}...")
 
   def GetMessagesList(self) -> List[Message]:
     return self.messages

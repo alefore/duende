@@ -31,8 +31,8 @@ class TestAgentLoop(unittest.TestCase):
     )
     self.mock_list_files_command.run.return_value = CommandOutput(
         command_name="list_files",
-        output=["src/agent_loop.py"],
-        errors=[],
+        output="src/agent_loop.py",
+        errors="",
         summary="Listed 1 file.")
 
     self.mock_read_file_command = MagicMock(spec=AgentCommand)
@@ -43,8 +43,8 @@ class TestAgentLoop(unittest.TestCase):
         arguments=[
             Argument(
                 name='path',
-                # Technically, it would be more correct to use PATH_INPUT; but
-                # then we'd have to create the file (or else AgentLoop will
+                # Technically, it would be more correct to use PATH_INPUT;
+                # but then we'd have to create the file (or else AgentLoop will
                 # register an error).
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
                 description='The path of the file to be read.',
@@ -53,8 +53,8 @@ class TestAgentLoop(unittest.TestCase):
     )
     self.mock_read_file_command.run.return_value = CommandOutput(
         command_name="read_file",
-        output=["file content"],
-        errors=[],
+        output="file content",
+        errors="",
         summary="Read 1 file.")
 
     self.mock_write_file_command = MagicMock(spec=AgentCommand)
@@ -77,8 +77,8 @@ class TestAgentLoop(unittest.TestCase):
     )
     self.mock_write_file_command.run.return_value = CommandOutput(
         command_name="write_file",
-        output=[],
-        errors=[],
+        output="",
+        errors="",
         summary="Wrote to file.")
 
     self.mock_suggest_command = MagicMock(spec=AgentCommand)
@@ -101,8 +101,8 @@ class TestAgentLoop(unittest.TestCase):
     )
     self.mock_suggest_command.run.return_value = CommandOutput(
         command_name="suggest",
-        output=[],
-        errors=[],
+        output="",
+        errors="",
         summary="Suggestion created.")
 
     self.registry = CommandRegistry()
@@ -139,12 +139,12 @@ class TestAgentLoop(unittest.TestCase):
         unique_id=0, name="test-name", path="/tmp/test_conversation.json")
 
     options = AgentLoopOptions(
-        task_prompt_content=["Test task"],
+        task_prompt_content="Test task",
         conversation_factory=self.conv_factory,
         conversation=conversation,
         start_message=Message(
             role='user',
-            content_sections=[ContentSection(content=["Test Task"])]),
+            content_sections=[ContentSection(content="Test Task")]),
         commands_registry=self.registry,
         confirmation_state=self.mock_confirmation_state,
         file_access_policy=self.file_access_policy,
@@ -169,13 +169,13 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(command_name="list_files"),
-                        content=[])
+                        content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ]
     })
@@ -198,8 +198,8 @@ class TestAgentLoop(unittest.TestCase):
         sections[0].command_output,
         CommandOutput(
             command_name="list_files",
-            output=["src/agent_loop.py"],
-            errors=[],
+            output="src/agent_loop.py",
+            errors="",
             summary="Listed 1 file."))
 
     self.mock_list_files_command.run.assert_called_once_with({})
@@ -214,14 +214,13 @@ class TestAgentLoop(unittest.TestCase):
             Message(
                 role='assistant',
                 content_sections=[
-                    ContentSection(
-                        content=["This is just conversational text."])
+                    ContentSection(content="This is just conversational text.")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ]
     })
@@ -254,17 +253,17 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(command_name="list_files"),
-                        content=[]),
+                        content=""),
                     ContentSection(
                         command=CommandInput(
                             command_name="read_file", args={'path': 'foo.py'}),
-                        content=[])
+                        content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ]
     })
@@ -303,21 +302,21 @@ class TestAgentLoop(unittest.TestCase):
                     content_sections=[
                         ContentSection(
                             command=CommandInput(command_name="done"),
-                            content=[])
+                            content="")
                     ]),
                 Message(
                     role='assistant',
                     content_sections=[
                         ContentSection(
                             command=CommandInput(command_name="list_files"),
-                            content=[])
+                            content="")
                     ]),
                 Message(
                     role='assistant',
                     content_sections=[
                         ContentSection(
                             command=CommandInput(command_name="done"),
-                            content=[])
+                            content="")
                     ]),
             ]
         },
@@ -343,10 +342,10 @@ class TestAgentLoop(unittest.TestCase):
     sections = guidance_message.GetContentSections()
     self.assertEqual(len(sections), 2)
     self.assertEqual(sections[0].summary, "Task completed.")
-    self.assertEqual(sections[0].content, [])
+    self.assertEqual(sections[0].content, "")
     self.assertEqual(sections[0].command_output.task_done, True)
     self.assertEqual(sections[1].summary, "Human decision to continue")
-    self.assertIn("You are not done", sections[1].content[0])
+    self.assertIn("You are not done", sections[1].content)
 
     # Check that the next command was executed after guidance
     self.mock_list_files_command.run.assert_called_once_with({})
@@ -370,19 +369,19 @@ class TestAgentLoop(unittest.TestCase):
                                 'path': 'a.py',
                                 'content': 'a'
                             }),
-                        content=[])
+                        content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
         review_0_conv_name: [
@@ -396,13 +395,13 @@ class TestAgentLoop(unittest.TestCase):
                                 'suggestion_content': 'Feedback from review 0.',
                                 'justification': 'Justification 0 for review 0.'
                             }),
-                        content=[])
+                        content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
         review_1_conv_name: [
@@ -416,13 +415,13 @@ class TestAgentLoop(unittest.TestCase):
                                 'suggestion_content': 'Feedback from review 1.',
                                 'justification': 'Justification 1 for review 1.'
                             }),
-                        content=[])
+                        content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
         review_2_conv_name: [
@@ -436,13 +435,13 @@ class TestAgentLoop(unittest.TestCase):
                                 'suggestion_content': 'Feedback from review 2.',
                                 'justification': 'Justification 2 for review 2.'
                             }),
-                        content=[])
+                        content="")
                 ]),
             Message(
                 role='assistant',
                 content_sections=[
                     ContentSection(
-                        command=CommandInput(command_name="done"), content=[])
+                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
     }
@@ -455,13 +454,13 @@ class TestAgentLoop(unittest.TestCase):
           'agent/review/review_2.txt'
       ]
       mock_read_prompt.side_effect = [
-          ["Review prompt 0."],
-          ["Review prompt 1."],
-          ["Review prompt 2."],
+          "Review prompt 0.",
+          "Review prompt 1.",
+          "Review prompt 2.",
       ]
       mock_get_diff.side_effect = [
-          ['--- a/a.py'],  # Main agent's change, triggers reviews
-          [],  # After feedback, agent issues #done, no new changes
+          '--- a/a.py\n',  # Main agent's change, triggers reviews
+          '',  # After feedback, agent issues #done, no new changes
       ]
 
       messages = self._run_agent_loop_for_test(
@@ -500,7 +499,7 @@ class TestAgentLoop(unittest.TestCase):
     self.assertTrue(any("Suggestion 2" in s for s in summaries))
     self.assertTrue(any("Suggestion 3" in s for s in summaries))
 
-    contents = ['\n'.join(s.content) for s in sections]
+    contents = [s.content for s in sections]
     self.assertTrue(any("Feedback from review 0." in s for s in contents))
     self.assertTrue(any("Feedback from review 1." in s for s in contents))
     self.assertTrue(any("Feedback from review 2." in s for s in contents))

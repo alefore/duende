@@ -3,13 +3,11 @@ import subprocess
 import logging
 from typing import Optional, NamedTuple
 
-from conversation import MultilineContent
-
 
 class ValidationResult(NamedTuple):
   success: bool
-  output: MultilineContent
-  error: MultilineContent
+  output: str
+  error: str
 
 
 class ValidationManager:
@@ -27,7 +25,7 @@ class ValidationManager:
 
       if not self.validation_output.success:
         logging.error(
-            f"Validation failed: {'\\n'.join(self.validation_output.error)}")
+            f"Validation failed: {self.validation_output.error}")
       else:
         logging.info("Validation succeeded.")
 
@@ -40,11 +38,11 @@ class ValidationManager:
                                text=True)
       return ValidationResult(
           success=process.returncode == 0,
-          output=process.stdout.splitlines(),
-          error=process.stderr.splitlines())
+          output=process.stdout,
+          error=process.stderr)
     except Exception as e:
       logging.error(f"Error executing validation script: {str(e)}")
-      return ValidationResult(success=False, output=[], error=[str(e)])
+      return ValidationResult(success=False, output="", error=str(e))
 
 
 def CreateValidationManager() -> Optional[ValidationManager]:

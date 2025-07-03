@@ -9,43 +9,43 @@ from agent_command import CommandOutput
 from agent_loop_options import AgentLoopOptions
 from command_registry_factory import CreateReviewCommandRegistry
 from confirmation import ConfirmationState
-from conversation import ContentSection, Message, MultilineContent
+from conversation import ContentSection, Message
 from file_access_policy import FileAccessPolicy
 from review_commands import SuggestCommand
 from task_command import TaskInformation
 
 
-def GetGitDiffContent() -> List[str]:
+def GetGitDiffContent() -> str:
   """Retrieves the git diff output for uncommitted changes."""
   try:
     result = subprocess.run(["git", "diff", "--unified=0"],
                             capture_output=True,
                             text=True,
                             check=True)
-    return result.stdout.splitlines()
+    return result.stdout
   except subprocess.CalledProcessError as e:
     logging.error(f"Failed to get git diff: {e}\nStderr: {e.stderr}")
-    return [f"Error getting git diff: {e.stderr}"]
+    return f"Error getting git diff: {e.stderr}"
   except FileNotFoundError:
     logging.error("Git command not found. Cannot get git diff.")
-    return ["Warning: Git command not found. Cannot get git diff."]
+    return "Warning: Git command not found. Cannot get git diff."
   except Exception as e:
     logging.error(f"An unexpected error occurred while getting git diff: {e}")
-    return [f"Error getting git diff: {e}"]
+    return f"Error getting git diff: {e}"
 
 
-def ReadReviewPromptFile(file_path: str) -> List[str]:
+def ReadReviewPromptFile(file_path: str) -> str:
   """Reads the content of the review prompt file."""
   with open(file_path, 'r') as f:
-    return [l.rstrip() for l in f.readlines()]
+    return f.read()
 
 
 def _run_single_review(review_prompt_path: str, original_conversation_path: str,
                        parent_options: AgentLoopOptions,
                        agent_loop_runner: Callable[[AgentLoopOptions], None],
                        review_suggestions: List[ContentSection],
-                       lock: threading.Lock, git_diff_output: List[str],
-                       original_task_prompt_content: List[str]) -> None:
+                       lock: threading.Lock, git_diff_output: str,
+                       original_task_prompt_content: str) -> None:
   logging.info(f"Starting review for {review_prompt_path}...")
 
   review_prompt_content = ReadReviewPromptFile(review_prompt_path)
@@ -65,12 +65,12 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
           f"Adding suggestion from {review_file_name}: suggestion #{index}")
       content_lines = [
           f"Suggestion {index} (from {review_file_name}):",
-      ] + [text]
+      ] + text.splitlines()
       if justification:
         content_lines.append(f"Justification: {justification}")
       review_suggestions.append(
           ContentSection(
-              content=content_lines,
+              content="\n".join(content_lines),
               summary=f"Review Suggestion {index} from {review_file_name}"))
 
   review_registry = CreateReviewCommandRegistry(
@@ -79,29 +79,19 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
 
   review_start_sections: List[ContentSection] = [
       ContentSection(
-          content=[
-              "### REVIEW TASK",
-              "",
-              *original_task_prompt_content,
-              "",
-              "### ISSUING SUGGESTIONS",
-              "",
-              "If the code looks good, just run a `done` command.",
-              "",
-              "Otherwise, emit suggestions which should be specific, be actionable, and include an explanation of how they are directly related with the aforementioned task.",
-              "",
-              "### CHANGE",
-              "",
-              "The change to review:",
-              "",
-              *git_diff_output,
-              "",
-              "### GOAL OF THIS CHANGE",
-              "",
-              f"Original goal of this change:",
-              "",
-              *review_prompt_content,
-          ],
+          content=(
+              "### REVIEW TASK\n\n" +
+              original_task_prompt_content +
+              "\n\n### ISSUING SUGGESTIONS\n\n" +
+              "If the code looks good, just run a `done` command.\n\n" +
+              "Otherwise, emit suggestions which should be specific, be actionable, and include an explanation of how they are directly related with the aforementioned task.\n\n" +
+              "### CHANGE\n\n" +
+              "The change to review:\n\n" +
+              git_diff_output +
+              "\n\n### GOAL OF THIS CHANGE\n\n" +
+              f"Original goal of this change:\n\n" +
+              review_prompt_content
+          ),
           summary="Generic review guidelines"),
   ]
   review_start_message = Message(
@@ -136,8 +126,8 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
 def run_parallel_reviews(
     parent_options: AgentLoopOptions, original_conversation_path: str,
     agent_loop_runner: Callable[[AgentLoopOptions],
-                                None], original_task_prompt_content: List[str],
-    git_diff_output: List[str]) -> Optional[List[ContentSection]]:
+                                None], original_task_prompt_content: str,
+    git_diff_output: str) -> Optional[List[ContentSection]]:
   """Runs reviews in parallel based on files in agent/review/*.txt.
 
   Args:
@@ -187,7 +177,7 @@ def run_parallel_reviews(
     logging.info(f"AI review found {len(review_suggestions)} suggestions.")
     review_suggestions.append(
         ContentSection(
-            content=["Please try to address these suggestions."],
+            content="Please try to address these suggestions.",
             summary="Instructions after review suggestions"))
     return review_suggestions
   else:

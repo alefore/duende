@@ -1,9 +1,9 @@
 from typing import List
 from agent_command import AgentCommand, CommandSyntax, Argument
-from conversation import MultilineContent
+from conversation import ContentSection
 
 
-def HelpText(name: str, syntax: CommandSyntax) -> MultilineContent:
+def HelpText(name: str, syntax: CommandSyntax) -> str:
   """Renders a help string corresponding to the `syntax` object."""
   header_parts = [f"#{name}"]
   for arg in syntax.arguments:
@@ -12,15 +12,15 @@ def HelpText(name: str, syntax: CommandSyntax) -> MultilineContent:
     else:
       header_parts.append(f"[{arg.name}]")
 
-  output: MultilineContent = [" ".join(header_parts)]
-  output.append(f"  {syntax.description}")
-  output.append("")
-  return output
+  output_list: List[str] = [" ".join(header_parts)]
+  output_list.append(f"  {syntax.description}")
+  output_list.append("")
+  return "\n".join(output_list)
 
 
-def FormatHelp(commands: List[AgentCommand]) -> MultilineContent:
-  output: MultilineContent = []
+def FormatHelp(commands: List[AgentCommand]) -> str:
+  output_list: List[str] = []
   for command in sorted(commands, key=lambda c: c.Name()):
-    output.extend(HelpText(command.Name(), command.Syntax()))
+    output_list.append(HelpText(command.Name(), command.Syntax()))
 
-  return output
+  return "\n".join(output_list)

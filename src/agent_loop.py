@@ -59,7 +59,7 @@ class AgentLoop:
       if section.command:
         commands.append(section.command)
       else:
-        non_command_lines.extend(section.content)
+        non_command_lines.append(section.content)
 
     next_message = Message(role='user')
 
@@ -91,14 +91,13 @@ class AgentLoop:
       assert self.options.validation_manager
       validation_result = self.options.validation_manager.Validate()
       if not validation_result.success:
-        logging.info(f"Validation failed: {'\n'.join(validation_result.error)}")
+        logging.info(f"Validation failed: {validation_result.error}")
         next_message.PushSection(
             ContentSection(
-                content=[
+                content=(
                     "The validation command is currently reporting failures "
                     "(normal if you are in the middle of applying changes). "
-                    "To see the failures, use: #validate"
-                ],
+                    "To see the failures, use: #validate"),
                 summary="Validation status (failures detected)"))
     return next_message
 
@@ -125,7 +124,7 @@ class AgentLoop:
       logging.info("Your guidance will be sent to the AI.")
       next_message.PushSection(
           ContentSection(
-              content=[f"{content_prefix}: {guidance}"], summary=summary))
+              content=f"{content_prefix}: {guidance}", summary=summary))
       return True
     return False
 
@@ -135,7 +134,7 @@ class AgentLoop:
     if not command:
       output = f"Error: Unknown command: {command_name}"
       logging.error(output)
-      return [ContentSection(content=[output], summary=output)]
+      return [ContentSection(content=output, summary=output)]
 
     warnings = ValidateCommandInput(command.Syntax(), cmd_input,
                                     self.options.file_access_policy)
@@ -143,9 +142,9 @@ class AgentLoop:
       logging.info(f"Warnings: {','.join(warnings)}")
       return [
           ContentSection(
-              content=[
+              content="\n".join([
                   f"Warning {command_name}: {warning}" for warning in warnings
-              ],
+              ]),
               summary=f"Command '{command_name}' validation warnings")
       ]
 
@@ -154,21 +153,23 @@ class AgentLoop:
     outputs: List[ContentSection] = []
     if command_output.output:
       outputs.append(
+          # We deliberately leave `content` empty (since the output is included
+          # in `command_output`, so this would make it redundant).
           ContentSection(
-              content=[],
+              content='',
               command_output=command_output,
               summary=command_output.summary or
               f"Output for command '{command_name}'"))
     if command_output.errors:
       outputs.append(
           ContentSection(
-              content=[f"Error: {e}" for e in command_output.errors],
+              content=f"Error: {command_output.errors}",
               command_output=command_output,
               summary=f"Errors for command '{command_name}'"))
     if not command_output.output and not command_output.errors and command_output.task_done:
       outputs.append(
           ContentSection(
-              content=[],
+              content="",
               command_output=command_output,
               summary=command_output.summary))
 
@@ -189,8 +190,7 @@ class AgentLoop:
 
     return outputs, task_done
 
-  def _RunReviews(self,
-                  git_diff_output: List[str]) -> Optional[List[ContentSection]]:
+  def _RunReviews(self, git_diff_output: str) -> Optional[List[ContentSection]]:
     self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
 
     def agent_loop_runner(options: AgentLoopOptions) -> None:

@@ -6,7 +6,7 @@ from typing import cast, Any, Coroutine, Dict, List, Optional
 
 from command_registry import CommandRegistry
 from agent_command import CommandInput, CommandSyntax
-from conversation import Conversation, Message, MultilineContent, ContentSection
+from conversation import Conversation, Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 
 
@@ -58,7 +58,7 @@ class GeminiConversation(ConversationalAIConversation):
     gemini_parts: List[str | genai.types.Part] = []
     for section in message.GetContentSections():
       if section.content:
-        gemini_parts.append("\n".join(section.content))
+        gemini_parts.append(section.content)
       if section.command_output:
         assert section.command_output.command_name
         response_dict = {"output": section.command_output.output}
@@ -69,8 +69,8 @@ class GeminiConversation(ConversationalAIConversation):
                 name=section.command_output.command_name,
                 response=response_dict))
 
-    log_content = '\n'.join(
-        ['\n'.join(s.content) for s in message.GetContentSections()])
+    log_content = "\n".join(
+        [s.content for s in message.GetContentSections() if s.content])
     logging.info(
         f"Sending message to Gemini: '{gemini_parts}' (with {len(gemini_parts)} parts)"
     )
@@ -86,7 +86,7 @@ class GeminiConversation(ConversationalAIConversation):
     if response.text:
       logging.info(f"Text received from Gemini: '{response.text[:50]}...'")
       reply_message.PushSection(
-          ContentSection(content=response.text.splitlines(), summary=None))
+          ContentSection(content=response.text, summary=None))
     if response.candidates:
       if response.candidates[0].content and response.candidates[0].content.parts:
         for part in response.candidates[0].content.parts:
@@ -98,7 +98,7 @@ class GeminiConversation(ConversationalAIConversation):
             logging.info(function_call.args)
             reply_message.PushSection(
                 ContentSection(
-                    content=[],
+                    content="",
                     summary=f'MCP call: {function_call}',
                     command=CommandInput(
                         command_name=(function_call.name or "unknown"),

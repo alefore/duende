@@ -9,7 +9,7 @@ from validation import ValidationManager
 
 
 class AgentLoopOptions(NamedTuple):
-  task_prompt_content: List[str]
+  task_prompt_content: str
   conversation_factory: ConversationFactory
   conversation: Conversation
   start_message: Message
