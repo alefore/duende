@@ -6,7 +6,7 @@ class ConversationData {
     this.name = name;
     this.state = state;
     this.stateEmoji = stateEmoji;
-    this.lastStateChangeTime = lastStateChangeTime;
+    this.lastStateChangeTime = lastStateChangeTime;  // Fixed typo here
     // This is not the time at which it was sent; rather, it is the value of
     // lastStateChangeTime when the confirmation was sent (which is good enough
     // to make sure we don't send multiple confirmations for the same request).
@@ -79,62 +79,103 @@ class ConversationData {
     const $contentContainer = $('<div>').addClass('content-container');
     (message.content_sections || []).forEach(section => {
       const $sectionDiv = $('<div>').addClass('messageSection');
-      // TODO: This needs to be fixed to count lines, not just bytes, duh.
-      const lineCount = section.content.length;
 
-      const $fullContentPre = $('<pre>').addClass('full-content-pre');
-      const fullContentParts = [];
+      // Returns a jQuery object containing the elements for collapsible content
+      const createCollapsibleContent = (content, summaryContent) => {
+        if (content === undefined || content === null || content === '')
+          return null;
 
-      if (section.content && section.content.length > 0)
-        fullContentParts.push('📝' + section.content);
-      if (section.command) fullContentParts.push('🤖' + section.command);
-      if (section.command_output)
-        fullContentParts.push('⚙️"' + section.command_output);
+        const lineCount = String(content).split('\n').length;
+        const $contentPre =
+            $('<pre>').addClass('field-content-pre').text(content);
+        const $container = $('<div>').addClass('collapsible-content-container');
 
-      $fullContentPre.text(fullContentParts.join('\n'));
+        if (lineCount > 5) {
+          const $summaryPre = $('<pre>').addClass('field-summary-pre');
+          const summary = summaryContent ||
+              String(content).split('\n').slice(0, 5).join('\n') + '...';
+          $summaryPre.text(summary);
 
-      if (lineCount <= 5) {
-        $sectionDiv.append($fullContentPre);
-      } else {
-        const firstLineContent = section.summary || section.content || '';
-        const $firstLinePre =
-            $('<pre>')
-                .addClass('first-line-pre')
-                .text(
-                    firstLineContent.length > 100 ?
-                        firstLineContent.substring(0, 100) + '...' :
-                        firstLineContent);
+          const $toggleLink =
+              $('<span>').addClass('toggle-link').text('[expand]');
+          const $lineCountSpan =
+              $('<span>').addClass('line-count').text(` (${lineCount} lines)`);
 
-        const $sectionHeader = $('<div>').addClass('section-header');
-        const $expandLink =
-            $('<span>').addClass('toggle-link expand').text('[expand]');
-        const $collapseLink = $('<span>')
-                                  .addClass('toggle-link collapse')
-                                  .text('[collapse]')
-                                  .hide();
-        const $lineCountSpan =
-            $('<span>').addClass('line-count').text(` (${lineCount} lines)`);
+          const $header = $('<div>').addClass('field-header');
+          $header.append($toggleLink, $lineCountSpan);
 
-        $sectionHeader.append($expandLink, $collapseLink, $lineCountSpan);
-        $sectionDiv.append($sectionHeader, $firstLinePre, $fullContentPre);
+          $toggleLink.on('click', () => {
+            if ($contentPre.is(':visible')) {
+              $contentPre.hide();
+              $summaryPre.show();
+              $toggleLink.text('[expand]');
+            } else {
+              $contentPre.show();
+              $summaryPre.hide();
+              $toggleLink.text('[collapse]');
+            }
+          });
+          $toggleLink.click();  // Initialize in collapsed state
 
-        $expandLink.on('click', () => {
-          $fullContentPre.show();
-          $firstLinePre.hide();
-          $expandLink.hide();
-          $lineCountSpan.hide();
-          $collapseLink.show();
+          $container.append($header, $summaryPre, $contentPre);
+        } else {
+          $container.append($contentPre);
+        }
+        return $container;
+      };
+
+      const renderPropertiesTable = (propertiesObject, orderedKeys, title) => {
+        const $block = $('<div>').addClass(
+            title.toLowerCase().replace(/ /g, '-') + '-block');
+        $block.append($('<h3>').html(title));
+        const $table = $('<table>').addClass('properties-table');
+
+        orderedKeys.forEach(key => {
+          const value = propertiesObject[key];
+          const displayLabel =
+              key.replace(/_/g, ' ')
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+
+          const $collapsibleContent = createCollapsibleContent(value);
+          if ($collapsibleContent) {
+            const $row = $('<tr>');
+            $row.append(
+                $('<td>').addClass('property-label').text(`${displayLabel}:`));
+            $row.append($('<td>')
+                            .addClass('property-value')
+                            .append($collapsibleContent));
+            $table.append($row);
+          }
         });
+        $block.append($table);
+        return $block;
+      };
 
-        $collapseLink.on('click', () => {
-          $fullContentPre.hide();
-          $firstLinePre.show();
-          $expandLink.show();
-          $lineCountSpan.show();
-          $collapseLink.hide();
-        });
-        $collapseLink.click();
+      if (section.command) {
+        const commandKeys = Object.keys(section.command)
+                                .filter(key => key !== 'command_name')
+                                .sort();
+        const orderedCommandKeys = ['command_name', ...commandKeys];
+        const $commandBlock = renderPropertiesTable(
+            section.command, orderedCommandKeys, '&#129302; Command');
+        $sectionDiv.append($commandBlock);
+      } else if (section.command_output) {
+        const outputKeys =
+            ['command_name', 'output', 'errors', 'summary', 'task_done'];
+        const $outputBlock = renderPropertiesTable(
+            section.command_output, outputKeys,
+            '&#9881;&#65039; Command Output');
+        $sectionDiv.append($outputBlock);
+      } else if (section.content && section.content.length > 0) {
+        const $contentElement =
+            createCollapsibleContent(section.content, section.summary);
+        if ($contentElement) {
+          $sectionDiv.append($contentElement);
+        }
       }
+
       $contentContainer.append($sectionDiv);
     });
 

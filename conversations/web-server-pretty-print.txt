@@ -1,0 +1,30 @@
+Currently the web server receives and displays strings like this:
+
+CommandOutput(command_name='write_file', output='#write_file src/test_agent_loop.py: Success with 511 lines written.\nDiff is too large. Summary: 81 lines added, 82 lines removed.', errors='', summary='Wrote to file src/test_agent_loop.py with 511 lines.', task_done=False)
+
+Sometimes they contain very large embedded strings (e.g., `output` could be a very large file).
+
+This display is difficult.
+
+That happens through the following classes:
+
+Message (in src/conversation.py): Contains a Serialize method that returns the
+string representation.
+
+WebServerState (in src/web_server_state.py): Sends serialized messages to the web UI through the `conversation` field.
+
+src/static/conversation.js: Creates a <pre> field to display the conversation messages.
+
+And additional complexity is that messages have "sections". Each section has itself one of these fields.
+
+TASK: Can you figure out a nicer way to display these message sections (that contain either a `command` or `command_output` field)? I would like your response to be a prompt with very specific instructions for an AI to do this extension: what should the AI extend? How? Include anything that might be useful.
+
+Constraints:
+
+* Do not modify the existing Serialize method.
+
+* DO: Read all relevant files (at least src/web_server_state.py, src/static/agent.js, src/static/agent.css, src/conversation.py) to make sure your instructions are very specific: what should be changed, where should it be changed.
+
+* Do not invent new HTML tags; the output should continue to work in an existing browser.
+
+* Try to keep things relatively simple. Do not add too much logic. We just want an initial version for now, we can refine it later.

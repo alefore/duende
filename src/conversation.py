@@ -42,6 +42,34 @@ class Message:
         'creation_time': self.creation_time.isoformat()
     }
 
+  def ToPropertiesDict(self) -> Dict[str, Any]:
+    serialized_sections = []
+    for section in self._content_sections:
+      section_dict: Dict[str, Any] = {'content': section.content}
+      if section.summary is not None:
+        section_dict['summary'] = section.summary
+      if section.command is not None:
+        command_dict = {
+            'command_name': section.command.command_name,
+        }
+        for key, value in section.command.args.items():
+            command_dict[key] = str(value)
+        section_dict['command'] = command_dict
+      if section.command_output is not None:
+        section_dict['command_output'] = {
+            'command_name': section.command_output.command_name,
+            'output': str(section.command_output.output),
+            'errors': str(section.command_output.errors),
+            'summary': str(section.command_output.summary),
+            'task_done': str(section.command_output.task_done)
+        }
+      serialized_sections.append(section_dict)
+    return {
+        'role': self.role,
+        'content_sections': serialized_sections,
+        'creation_time': self.creation_time.isoformat()
+    }
+
   @staticmethod
   def Deserialize(data: Dict[str, Any]) -> 'Message':
     content_sections: List[ContentSection] = []

@@ -72,7 +72,7 @@ class WebServerState:
             conversation.last_state_change_time.isoformat(),
         'confirmation_required':
             confirmation_required,
-        'conversation': [m.Serialize() for m in new_messages],
+        'conversation': [m.ToPropertiesDict() for m in new_messages],
         'message_count':
             len(messages_list),
         'session_key':

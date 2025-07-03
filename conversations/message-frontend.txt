@@ -1,0 +1,37 @@
+**Objective:** Introduce a new method in the `Message` class to serialize `CommandInput` and `CommandOutput` objects into a structured dictionary format, making individual fields accessible to the frontend.
+
+**Details:**
+
+*   **Locate `src/conversation.py`:**
+    *   Add a new public method to the `Message` class, named `ToPropertiesDict(self) -> Dict[str, Any]`.
+    *   This new method will be responsible for preparing the message data for the frontend.
+    *   It should iterate through `self._content_sections`.
+    *   For each `ContentSection`, when a `command` (an instance of `CommandInput`) or a `command_output` (an instance of `CommandOutput`) is present:
+        *   Instead of converting these objects to a single string (as `str(section.command)` or `str(section.command_output)` would do), convert the object into a *dictionary*.
+        *   This dictionary should contain all relevant properties of the `CommandInput` or `CommandOutput` object (e.g., `command_name`, `args` for `CommandInput`; `command_name`, `output`, `errors`, `summary`, `task_done` for `CommandOutput`).
+        *   The *values* associated with these properties in the dictionary should be their string representations.
+        *   For example, a `command` field in a `section_dict` should become `{'command_name': 'write_file', 'args': '{path: "...", content: "..."}'}`, where `args` is the string representation of the arguments.
+    *   Regular `content` sections (plain text) should continue to be serialized as they are currently, within the structure returned by `ToPropertiesDict`.
+*   **Locate `src/web_server_state.py`:**
+    *   Find the `SendUpdate` method.
+    *   Modify the line that prepares messages for sending to the frontend. Instead of calling `m.Serialize()`, it should call the new `m.ToPropertiesDict()` for each message.
+
+### 2. Frontend Modifications: Dynamic Structured Display
+
+**Objective:** In `src/static/conversation.js`, update the `addMessage` method to dynamically render the structured `command` and `command_output` sections. These sections should display their individual fields, with expand/collapse functionality for larger field values.
+
+**Details:**
+
+*   **Locate `src/static/conversation.js`:**
+    *   Inside the `ConversationData.addMessage` method, where `message.content_sections` are iterated, the logic needs to be updated to handle structured data.
+    *   When a `content_section` contains a `command` field *or* a `command_output` field (which will now be dictionaries from the backend):
+        *   The UI should render a dedicated block for this section.
+        *   This block should start with a clear, general header that includes an appropriate icon (e.g., `🤖` for commands, `⚙️` for command outputs) and a label (e.g., "Command" or "Command Output").
+        *   Within this block, all properties of the `command` or `command_output` object should be displayed in a clear, two-column, table-like layout (e.g., "Field Name" | "Value"). The field names should be user-friendly (e.g., "Command Name", "Arguments", "Raw Output", "Errors", "Summary", "Task Done").
+        *   For any field whose value is a long string (e.g., exceeding a certain character count or line limit):
+            *   The value should be initially truncated or summarized.
+            *   An expand/collapse mechanism (e.g., `[expand]` and `[collapse]` links) should be provided specifically for that individual field's value.
+            *   The line count of the full content should be displayed next to the summary/toggle for these collapsible fields.
+    *   Regular `content` sections (plain text) should continue to be displayed in a simple text format.
+
+**Important Note:** Do not add or modify any CSS rules in this task. Focus solely on the Python serialization logic and the JavaScript for dynamic HTML structure generation and interaction.
