@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 import threading
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, NamedTuple
 
 from agent_command import CommandOutput
 from agent_loop_options import AgentLoopOptions
@@ -12,7 +12,7 @@ from confirmation import ConfirmationState
 from conversation import Conversation
 from message import ContentSection, Message
 from file_access_policy import FileAccessPolicy
-from review_commands import SuggestCommand
+from review_commands import AcceptChange, RejectChange
 from task_command import TaskInformation
 
 
@@ -41,11 +41,17 @@ def ReadReviewPromptFile(file_path: str) -> str:
     return f.read()
 
 
+class ReviewResult(NamedTuple):
+  command_output: CommandOutput
+  review_file_name: str
+  is_accepted: bool
+
+
 def _run_single_review(review_prompt_path: str, original_conversation_path: str,
                        parent_options: AgentLoopOptions,
                        agent_loop_runner: Callable[[AgentLoopOptions], None],
-                       review_suggestions: List[ContentSection],
-                       lock: threading.Lock, git_diff_output: str,
+                       review_results: List[ReviewResult], lock: threading.Lock,
+                       git_diff_output: str,
                        original_task_prompt_content: str) -> None:
   logging.info(f"Starting review for {review_prompt_path}...")
 
@@ -59,40 +65,33 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
       name=f"AI Review ({review_file_name}): {parent_options.conversation.GetName()}",
       path=review_conversation_path)
 
-  def add_suggestion_callback(text: str, justification: str) -> None:
+  def add_review_result_callback(command_output: CommandOutput,
+                                 is_accepted: bool) -> None:
     with lock:
-      index = len(review_suggestions) + 1
-      logging.info(
-          f"Adding suggestion from {review_file_name}: suggestion #{index}")
-      content_lines = [
-          f"Suggestion {index} (from {review_file_name}):",
-      ] + text.splitlines()
-      if justification:
-        content_lines.append(f"Justification: {justification}")
-      review_suggestions.append(
-          ContentSection(
-              content="\n".join(content_lines),
-              summary=f"Review Suggestion {index} from {review_file_name}"))
+      review_results.append(
+          ReviewResult(
+              command_output=command_output,
+              review_file_name=review_file_name,
+              is_accepted=is_accepted))
 
   review_registry = CreateReviewCommandRegistry(
       file_access_policy=parent_options.file_access_policy)
-  review_registry.Register(SuggestCommand(add_suggestion_callback))
+  review_registry.Register(
+      AcceptChange(lambda command_output: add_review_result_callback(
+          command_output, True)))
+  review_registry.Register(
+      RejectChange(lambda command_output: add_review_result_callback(
+          command_output, False)))
 
   review_start_sections: List[ContentSection] = [
       ContentSection(
           content=(
-              "### REVIEW TASK\n\n" +
-              original_task_prompt_content +
-              "\n\n### ISSUING SUGGESTIONS\n\n" +
-              "If the code looks good, just run a `done` command.\n\n" +
-              "Otherwise, emit suggestions which should be specific, be actionable, and include an explanation of how they are directly related with the aforementioned task.\n\n" +
-              "### CHANGE\n\n" +
-              "The change to review:\n\n" +
-              git_diff_output +
-              "\n\n### GOAL OF THIS CHANGE\n\n" +
-              f"Original goal of this change:\n\n" +
-              review_prompt_content
-          ),
+              "### REVIEW TASK\n\n" + original_task_prompt_content +
+              "\n\n### EVALUATION\n\n" +
+              "You MUST use either the `accept_change` or `reject_change` command. As soon as you use either, the conversation terminates. You should use ReadFile to read any files relevant to make a good assessment.\n\n"
+              + "### CHANGE\n\n" + "The change to review:\n\n" +
+              git_diff_output + "\n\n### GOAL OF THIS CHANGE\n\n" +
+              f"Original goal of this change:\n\n" + review_prompt_content),
           summary="Generic review guidelines"),
   ]
   review_start_message = Message(
@@ -123,6 +122,7 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
   agent_loop_runner(review_options)
   logging.info(f"Nested review agent loop for {review_prompt_path} done.")
 
+
 def run_parallel_reviews(
     parent_options: AgentLoopOptions, original_conversation_path: str,
     agent_loop_runner: Callable[[AgentLoopOptions],
@@ -137,8 +137,8 @@ def run_parallel_reviews(
     git_diff_output: The git diff content to be reviewed.
 
   Returns:
-    A list of content sections with review suggestions, or None if no
-    suggestions were made.
+    A list of content sections with rejection reasons, or None if all review
+    evaluators accepted the change.
   """
   logging.info("Initiating AI reviews...")
 
@@ -148,7 +148,7 @@ def run_parallel_reviews(
         "No review files found in agent/review/*.txt. Skipping review.")
     return None
 
-  review_suggestions: List[ContentSection] = []
+  review_results: List[ReviewResult] = []
   lock = threading.Lock()
   threads = []
 
@@ -160,7 +160,7 @@ def run_parallel_reviews(
             original_conversation_path,
             parent_options,
             agent_loop_runner,
-            review_suggestions,
+            review_results,
             lock,
             git_diff_output,
             original_task_prompt_content,
@@ -173,13 +173,26 @@ def run_parallel_reviews(
 
   logging.info("All review threads finished.")
 
-  if review_suggestions:
-    logging.info(f"AI review found {len(review_suggestions)} suggestions.")
-    review_suggestions.append(
-        ContentSection(
-            content="Please try to address these suggestions.",
-            summary="Instructions after review suggestions"))
-    return review_suggestions
-  else:
-    logging.info("AI review found no suggestions.")
+  if not review_results:
+    logging.info("AI review found no results.")
     return None
+
+  logging.info(f"AI review found {len(review_results)} results.")
+  all_accepted = all(result.is_accepted for result in review_results)
+  if all_accepted:
+    logging.info("All reviews accepted the change.")
+    return None  # Return None to indicate success and terminate the outer loop
+
+  logging.info("Some reviews rejected the change.")
+  feedback_sections: List[ContentSection] = [
+      ContentSection(
+          content="Please consider addressing the following issues that caused the evaluatores to reject your change and try again.",
+          summary="Instructions about review results")
+  ]
+  for r in review_results:
+    if not r.is_accepted:
+      feedback_sections.append(
+          ContentSection(
+              content=f"Evaluator {r.review_file_name} found issues with your change:\n\n{r.command_output.output}",
+              summary=f"Review rejection from {r.review_file_name}"))
+  return feedback_sections

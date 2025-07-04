@@ -15,6 +15,8 @@ from conversation import Conversation, ConversationFactory, Message, ContentSect
 from conversational_ai_test_utils import FakeConversationalAI
 from done_command import DoneCommand
 from file_access_policy import FileAccessPolicy, CurrentDirectoryFileAccessPolicy
+# Import real commands
+from review_commands import AcceptChange, RejectChange
 
 
 class TestAgentLoop(unittest.TestCase):
@@ -81,36 +83,20 @@ class TestAgentLoop(unittest.TestCase):
         errors="",
         summary="Wrote to file.")
 
-    self.mock_suggest_command = MagicMock(spec=AgentCommand)
-    self.mock_suggest_command.Name.return_value = "suggest"
-    self.mock_suggest_command.Syntax.return_value = CommandSyntax(
-        name="suggest",
-        description="Suggests a change.",
-        arguments=[
-            Argument(
-                name='suggestion_content',
-                arg_type=ArgumentContentType.STRING,
-                description='The detailed suggestion for the code changes.',
-                required=True),
-            Argument(
-                name='justification',
-                arg_type=ArgumentContentType.STRING,
-                description='The AI *must* justify why this suggestion is being issued (why is it related to the goal of the review). You should only issue suggestions directly related to the specific review task.',
-                required=True)
-        ],
-    )
-    self.mock_suggest_command.run.return_value = CommandOutput(
-        command_name="suggest",
-        output="",
-        errors="",
-        summary="Suggestion created.")
-
     self.registry = CommandRegistry()
     self.registry.Register(self.mock_list_files_command)
     self.registry.Register(self.mock_read_file_command)
     self.registry.Register(self.mock_write_file_command)
     self.registry.Register(DoneCommand())
-    self.registry.Register(self.mock_suggest_command)
+
+    # Dummy callback for the real AcceptChange and RejectChange commands
+    # These commands are not expected to be run by the main agent in this test setup
+    # but they need to be registered with a valid constructor.
+    def dummy_review_callback(command_output):
+      pass
+
+    self.registry.Register(AcceptChange(dummy_review_callback))
+    self.registry.Register(RejectChange(dummy_review_callback))
 
     self.mock_confirmation_state = MagicMock()
     self.mock_confirmation_state.RequireConfirmation.return_value = ""
@@ -381,7 +367,7 @@ class TestAgentLoop(unittest.TestCase):
                     ContentSection(
                         command=CommandInput(command_name="done"), content="")
                 ]),
-            Message(
+            Message(  # Second done command, after review feedback
                 role='assistant',
                 content_sections=[
                     ContentSection(
@@ -394,18 +380,9 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(
-                            command_name="suggest",
-                            args={
-                                'suggestion_content': 'Feedback from review 0.',
-                                'justification': 'Justification 0 for review 0.'
-                            }),
+                            command_name="reject_change",
+                            args={'reason': 'Feedback from review 0.'}),
                         content="")
-                ]),
-            Message(
-                role='assistant',
-                content_sections=[
-                    ContentSection(
-                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
         review_1_conv_name: [
@@ -414,18 +391,9 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(
-                            command_name="suggest",
-                            args={
-                                'suggestion_content': 'Feedback from review 1.',
-                                'justification': 'Justification 1 for review 1.'
-                            }),
+                            command_name="reject_change",
+                            args={'reason': 'Feedback from review 1.'}),
                         content="")
-                ]),
-            Message(
-                role='assistant',
-                content_sections=[
-                    ContentSection(
-                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
         review_2_conv_name: [
@@ -434,18 +402,9 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(
-                            command_name="suggest",
-                            args={
-                                'suggestion_content': 'Feedback from review 2.',
-                                'justification': 'Justification 2 for review 2.'
-                            }),
+                            command_name="accept_change",
+                            args={'reason': 'Accepted review 2.'}),
                         content="")
-                ]),
-            Message(
-                role='assistant',
-                content_sections=[
-                    ContentSection(
-                        command=CommandInput(command_name="done"), content="")
                 ]),
         ],
     }
@@ -476,39 +435,41 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(mock_get_diff.call_count, 2)
     mock_glob.assert_called_once_with('agent/review/*.txt')
     self.assertEqual(mock_read_prompt.call_count, 3)
+    # The conversation should have 6 messages: (initial user, assistant write_file, user empty, assistant done, user review feedback, assistant done)
     self.assertEqual(len(messages), 6)
 
     feedback_message = messages[4]
     self.assertEqual(feedback_message.role, 'user')
     sections = feedback_message.GetContentSections()
-    self.assertEqual(len(sections), 5)
+    # Expect: 1 done + 2 rejection messages + 1 instruction message.
+    self.assertEqual(len(sections), 4)
 
     instruction_sections = [
-        s for s in sections
-        if s.summary == "Instructions after review suggestions"
+        s for s in sections if s.summary == "Instructions about review results"
     ]
-    suggestion_sections = [
-        s for s in sections
-        if s.summary != "Instructions after review suggestions"
+    rejection_sections = [
+        s for s in sections if s.summary.startswith("Review rejection from")
     ]
 
     self.assertEqual(len(instruction_sections), 1)
-    self.assertEqual(len(suggestion_sections), 4)
+    self.assertEqual(len(rejection_sections), 2)
 
-    summaries = [s.summary for s in suggestion_sections]
+    summaries = [s.summary for s in rejection_sections]
     self.assertTrue(any("from review_0" in s for s in summaries))
     self.assertTrue(any("from review_1" in s for s in summaries))
-    self.assertTrue(any("from review_2" in s for s in summaries))
-    self.assertTrue(any("Suggestion 1" in s for s in summaries))
-    self.assertTrue(any("Suggestion 2" in s for s in summaries))
-    self.assertTrue(any("Suggestion 3" in s for s in summaries))
+    self.assertFalse(any("from review_2" in s for s in summaries))
 
     contents = [s.content for s in sections]
-    self.assertTrue(any("Feedback from review 0." in s for s in contents))
-    self.assertTrue(any("Feedback from review 1." in s for s in contents))
-    self.assertTrue(any("Feedback from review 2." in s for s in contents))
     self.assertTrue(
-        any("Please try to address these suggestions" in s for s in contents))
+        any("Evaluator review_0 found issues with your change:\n\nChange rejected."
+            in s for s in contents))
+    self.assertTrue(
+        any("Evaluator review_1 found issues with your change:\n\nChange rejected."
+            in s for s in contents))
+    self.assertFalse(any("Evaluator review_2" in s for s in contents))
+    self.assertTrue(
+        any("Please consider addressing the following issues that caused the evaluatores to reject your change and try again."
+            in s for s in contents))
 
 
 if __name__ == '__main__':

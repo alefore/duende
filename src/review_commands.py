@@ -1,50 +1,71 @@
 import logging
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
-from typing import Callable, List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional, Callable
 
 
-class SuggestCommand(AgentCommand):
+class AcceptChange(AgentCommand):
 
-  def __init__(self, add_suggestion_callback: Callable[[str, str], None]):
-    self._add_suggestion_callback = add_suggestion_callback
+  def __init__(self, add_review_result_callback: Callable[[CommandOutput],
+                                                          None]):
+    self._add_review_result_callback = add_review_result_callback
 
   def Name(self) -> str:
     return self.Syntax().name
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    suggestion_content = inputs["suggestion_content"]
-    justification = inputs["justification"]
-
-    if not suggestion_content:
-      return CommandOutput(
-          output="",
-          errors="#suggest requires non-empty content.",
-          summary="Suggestion failed: no content.",
-          command_name=self.Syntax().name)
-
-    self._add_suggestion_callback(suggestion_content, justification)
-    logging.info(
-        f"Suggestion recorded: '{suggestion_content[:50]}…' with justification '{justification[:50]}…'"
-    )
-    return CommandOutput(
-        output="Suggestion recorded successfully.",
+    reason = inputs["reason"]
+    logging.info(f"Change accepted with reason: {reason[:50]}...")
+    command_output = CommandOutput(
+        output="Change accepted.",
         errors="",
-        summary="Suggestion recorded.",
-        command_name=self.Syntax().name)
+        summary="Change accepted. Conversation terminated.",
+        command_name=self.Syntax().name,
+        task_done=True)
+    self._add_review_result_callback(command_output)
+    return command_output
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
-        name="suggest",
-        description="Records a suggestion for the code changes. Use with multi-line content to provide detailed suggestions.",
+        name="accept_change",
+        description="Accepts the proposed code changes. Use after thoroughly reviewing the changes if they meet the evaluation criteria.",
         arguments=[
             Argument(
-                name="suggestion_content",
+                name="reason",
                 arg_type=ArgumentContentType.STRING,
-                description="The detailed suggestion for the code changes.",
-                required=True),
+                description="A human-readable description of why the change is being accepted.",
+                required=True)
+        ])
+
+
+class RejectChange(AgentCommand):
+
+  def __init__(self, add_review_result_callback: Callable[[CommandOutput],
+                                                          None]):
+    self._add_review_result_callback = add_review_result_callback
+
+  def Name(self) -> str:
+    return self.Syntax().name
+
+  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+    reason = inputs["reason"]
+    logging.info(f"Change rejected with reason: {reason[:50]}...")
+    command_output = CommandOutput(
+        output="Change rejected.",
+        errors="",
+        summary="Change rejected. Conversation terminated.",
+        command_name=self.Syntax().name,
+        task_done=True)
+    self._add_review_result_callback(command_output)
+    return command_output
+
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name="reject_change",
+        description="Rejects the proposed code changes. Use this command if you find issues that prevent them from meeting the criteria.",
+        arguments=[
             Argument(
-                name="justification",
+                name="reason",
                 arg_type=ArgumentContentType.STRING,
-                description="The AI *must* justify why this suggestion is being issued (why is it related to the goal of the review). You should only issue suggestions directly related to the specific review task.",
+                description="A human-readable description of why the change is being rejected, including specific issues found.",
                 required=True)
         ])

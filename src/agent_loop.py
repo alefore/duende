@@ -108,6 +108,8 @@ class AgentLoop:
     if self.options.review_first:
       assert next_message
       next_message = self._handle_initial_review(next_message)
+      if not next_message:  # Terminate if initial review accepts the change
+        return
 
     while next_message:
       logging.info("Querying AI...")
@@ -208,14 +210,14 @@ class AgentLoop:
     if self.options.do_review:
       logging.info("Calling GetGitDiffContent from _HandleDoneCommand")
       git_diff_output = review_utils.GetGitDiffContent()
-      if not git_diff_output:
-        logging.info("No uncommitted changes to review. Proceeding with #done.")
-      else:
+      if git_diff_output:
         review_feedback_content = self._RunReviews(git_diff_output)
         if review_feedback_content:
           for section in review_feedback_content:
             next_message.PushSection(section)
           return False
+      else:
+        logging.info("No uncommitted changes; skipping review.")
 
     if self.options.confirm_done:
       prompt = ("Confirm #done command? "
