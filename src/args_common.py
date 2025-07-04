@@ -14,7 +14,7 @@ from command_registry_factory import CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from chatgpt import ChatGPT
-from conversation import Conversation, ConversationFactory
+from conversation import Conversation, ConversationFactory, ConversationFactoryOptions
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
@@ -123,7 +123,8 @@ def GetConversationalAI(args: argparse.Namespace,
 
 def CreateAgentLoopOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
-    conversation_factory: ConversationFactory) -> AgentLoopOptions:
+    conversation_factory_options: ConversationFactoryOptions
+) -> AgentLoopOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
                                               args.file_access_regex_path)
 
@@ -163,10 +164,8 @@ def CreateAgentLoopOptions(
           summary="Not implemented"),
       git_dirty_accept=args.git_dirty_accept)
 
-  # TODO: Setting registry here is very ugly. We should find a better way
-  # (probably requires creating the conversation_factory in this method), after
-  # the registry has been created.
-  conversation_factory.command_registry = registry
+  conversation_factory = ConversationFactory(
+      conversation_factory_options._replace(command_registry=registry))
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation_name = os.path.basename(args.task).replace('.txt', '')

@@ -3,7 +3,7 @@ import logging
 from agent_loop import AgentLoop
 from args_common import CreateCommonParser, CreateAgentLoopOptions
 from confirmation import CLIConfirmationManager
-from conversation import ConversationFactory
+from conversation import ConversationFactory, ConversationFactoryOptions
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -20,7 +20,7 @@ def main() -> None:
 
   try:
     options = CreateAgentLoopOptions(args, CLIConfirmationManager(),
-                                     ConversationFactory())
+                                     ConversationFactoryOptions())
   except RuntimeError as e:
     logging.error(e)
     return

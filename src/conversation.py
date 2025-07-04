@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Callable, NamedTuple
 import json
 import logging
 from datetime import datetime, timezone
@@ -9,6 +9,12 @@ from message import Message, ContentSection
 from command_registry import CommandRegistry
 
 ConversationId = int
+
+
+class ConversationFactoryOptions(NamedTuple):
+  on_message_added_callback: Optional[Callable[[ConversationId], None]] = None
+  on_state_changed_callback: Optional[Callable[[ConversationId], None]] = None
+  command_registry: Optional[CommandRegistry] = None
 
 
 class Conversation:
@@ -31,7 +37,7 @@ class Conversation:
     self._state: ConversationState = ConversationState.STARTING
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
     self.path = path
-    self.command_registry = command_registry
+    self._command_registry = command_registry
     try:
       with open(path, 'r') as f:
         self.messages.extend(
@@ -49,7 +55,7 @@ class Conversation:
     for section in message.GetContentSections():
       if section.command:
         command_name = section.command.command_name
-        command = self.command_registry.Get(command_name)
+        command = self._command_registry.Get(command_name)
         if command:
           output_content_sections.append(
               ContentSection(
@@ -109,26 +115,19 @@ class Conversation:
 
 class ConversationFactory:
 
-  def __init__(
-      self,
-      on_message_added_callback: Optional[Callable[[ConversationId],
-                                                   None]] = None,
-      on_state_changed_callback: Optional[Callable[[ConversationId],
-                                                   None]] = None
-  ) -> None:
+  def __init__(self, options: ConversationFactoryOptions) -> None:
     self._next_id: ConversationId = 0
     self._conversations: Dict[ConversationId, Conversation] = {}
-    self.on_message_added_callback = on_message_added_callback
-    self.on_state_changed_callback = on_state_changed_callback
-    self.command_registry: Optional[
-        CommandRegistry] = None  # Will be set by client.
+    self.on_message_added_callback = options.on_message_added_callback
+    self.on_state_changed_callback = options.on_state_changed_callback
+    if options.command_registry is None:
+      raise ValueError(
+          "CommandRegistry must be set on ConversationFactoryOptions."
+      )
+    self._command_registry: CommandRegistry = options.command_registry
 
   def New(self, name: str, path: str) -> Conversation:
-    if not self.command_registry:
-      raise ValueError(
-          "CommandRegistry must be set on ConversationFactory before creating new conversations."
-      )
-    output = Conversation(self._next_id, name, path, self.command_registry,
+    output = Conversation(self._next_id, name, path, self._command_registry,
                           self.on_message_added_callback,
                           self.on_state_changed_callback)
     self._conversations[self._next_id] = output

@@ -11,7 +11,7 @@ from agent_command import (AgentCommand, CommandInput, CommandOutput,
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
-from conversation import Conversation, ConversationFactory, Message, ContentSection
+from conversation import Conversation, ConversationFactory, Message, ContentSection, ConversationFactoryOptions
 from conversational_ai_test_utils import FakeConversationalAI
 from done_command import DoneCommand
 from file_access_policy import FileAccessPolicy, CurrentDirectoryFileAccessPolicy
@@ -115,8 +115,8 @@ class TestAgentLoop(unittest.TestCase):
     self.mock_confirmation_state = MagicMock()
     self.mock_confirmation_state.RequireConfirmation.return_value = ""
 
-    self.conv_factory = ConversationFactory()
-    self.conv_factory.command_registry = self.registry # Set the command registry on the factory
+    self.conv_factory = ConversationFactory(
+        ConversationFactoryOptions(command_registry=self.registry))
 
     self.file_access_policy = CurrentDirectoryFileAccessPolicy()
 
