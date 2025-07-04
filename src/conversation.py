@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from conversation_state import ConversationState
 from agent_command import CommandInput, CommandOutput
 from message import Message, ContentSection
+from command_registry import CommandRegistry
 
 ConversationId = int
 
@@ -17,6 +18,7 @@ class Conversation:
       unique_id: int,
       name: str,
       path: str,
+      command_registry: CommandRegistry,
       on_message_added_callback: Optional[Callable[[int], None]] = None,
       on_state_changed_callback: Optional[Callable[[ConversationId],
                                                    None]] = None
@@ -29,6 +31,7 @@ class Conversation:
     self._state: ConversationState = ConversationState.STARTING
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
     self.path = path
+    self.command_registry = command_registry
     try:
       with open(path, 'r') as f:
         self.messages.extend(
@@ -40,7 +43,35 @@ class Conversation:
     with open(self.path, 'w') as f:
       json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
+  def _derive_args(self, message: Message) -> Message:
+    # Iterate over content sections and compute derived args for commands
+    output_content_sections: List[ContentSection] = []
+    for section in message.GetContentSections():
+      if section.command:
+        command_name = section.command.command_name
+        command = self.command_registry.Get(command_name)
+        if command:
+          output_content_sections.append(
+              ContentSection(
+                  content=section.content,
+                  command=CommandInput(
+                      command_name=section.command.command_name,
+                      args=section.command.args,
+                      derived_args=command.derive_args(section.command.args)),
+                  command_output=section.command_output,
+                  summary=section.summary))
+        else:
+          output_content_sections.append(section)
+      else:
+        output_content_sections.append(section)
+
+    return Message(
+        role=message.role,
+        content_sections=output_content_sections,
+        creation_time=message.creation_time)
+
   def AddMessage(self, message: Message) -> None:
+    message = self._derive_args(message)
     logging.info(self._DebugString(message))
     self.messages.append(message)
     self._Save()
@@ -89,9 +120,15 @@ class ConversationFactory:
     self._conversations: Dict[ConversationId, Conversation] = {}
     self.on_message_added_callback = on_message_added_callback
     self.on_state_changed_callback = on_state_changed_callback
+    self.command_registry: Optional[
+        CommandRegistry] = None  # Will be set by client.
 
   def New(self, name: str, path: str) -> Conversation:
-    output = Conversation(self._next_id, name, path,
+    if not self.command_registry:
+      raise ValueError(
+          "CommandRegistry must be set on ConversationFactory before creating new conversations."
+      )
+    output = Conversation(self._next_id, name, path, self.command_registry,
                           self.on_message_added_callback,
                           self.on_state_changed_callback)
     self._conversations[self._next_id] = output

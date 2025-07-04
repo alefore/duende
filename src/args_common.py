@@ -37,6 +37,7 @@ class TrackFlagStrAction(argparse.Action):
                option_string: Optional[str] = None) -> None:
     setattr(namespace, self.dest, TrackedFlagStr(values, True))
 
+
 def CreateCommonParser() -> argparse.ArgumentParser:
   parser = argparse.ArgumentParser()
   parser.add_argument(
@@ -162,6 +163,11 @@ def CreateAgentLoopOptions(
           summary="Not implemented"),
       git_dirty_accept=args.git_dirty_accept)
 
+  # TODO: Setting registry here is very ugly. We should find a better way
+  # (probably requires creating the conversation_factory in this method), after
+  # the registry has been created.
+  conversation_factory.command_registry = registry
+
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation_name = os.path.basename(args.task).replace('.txt', '')
 
@@ -265,7 +271,9 @@ def CreateFileAccessPolicy(
         sys.exit(1)
     except FileNotFoundError as e:
       if file_access_regex_path.set_explicitly:
-        print(f"Error: --file-access-regex-path: {file_access_regex_path.value}: {e}", file=sys.stderr)
+        print(
+            f"Error: --file-access-regex-path: {file_access_regex_path.value}: {e}",
+            file=sys.stderr)
         sys.exit(1)
 
   if file_access_regex:

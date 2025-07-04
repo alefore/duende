@@ -116,6 +116,7 @@ class TestAgentLoop(unittest.TestCase):
     self.mock_confirmation_state.RequireConfirmation.return_value = ""
 
     self.conv_factory = ConversationFactory()
+    self.conv_factory.command_registry = self.registry # Set the command registry on the factory
 
     self.file_access_policy = CurrentDirectoryFileAccessPolicy()
 
@@ -136,7 +137,10 @@ class TestAgentLoop(unittest.TestCase):
     """Creates and runs an AgentLoop instance, returning the conversation."""
     self.fake_ai = FakeConversationalAI(scripted_responses=scripted_responses)
     conversation = Conversation(
-        unique_id=0, name="test-name", path="/tmp/test_conversation.json")
+        unique_id=0,
+        name="test-name",
+        path="/tmp/test_conversation.json",
+        command_registry=self.registry)
 
     options = AgentLoopOptions(
         task_prompt_content="Test task",
