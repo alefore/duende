@@ -27,6 +27,7 @@ class AgentLoop:
     self.conversation = self.options.conversation
     self.ai_conversation = options.conversational_ai.StartConversation(
         self.conversation)
+    self._previous_validation_passed = True
 
   def _handle_initial_review(self, start_message: Message) -> Optional[Message]:
     logging.info("Running --review-first...")
@@ -92,14 +93,24 @@ class AgentLoop:
       assert self.options.validation_manager
       validation_result = self.options.validation_manager.Validate()
       if not validation_result.success:
-        logging.info(f"Validation failed: {validation_result.error}")
-        next_message.PushSection(
-            ContentSection(
-                content=(
-                    "The validation command is currently reporting failures "
-                    "(normal if you are in the middle of applying changes). "
-                    "To see the failures, use: #validate"),
-                summary="Validation status (failures detected)"))
+        if self._previous_validation_passed:
+          logging.info(f"Validation failed: {validation_result.error}")
+          next_message.PushSection(
+              ContentSection(
+                  content=(
+                      "The validation command is currently reporting failures "
+                      "(normal if you are in the middle of applying changes). "
+                      "To see the failures, use: `validate`"),
+                  summary="Validation status (failures detected)"))
+        self._previous_validation_passed = False
+      else:
+        if not self._previous_validation_passed:
+          logging.info("Validation passed.")
+          next_message.PushSection(
+              ContentSection(
+                  content=("The validation command is now passing."),
+                  summary="Validation status (passed)"))
+        self._previous_validation_passed = True
     return next_message
 
   def run(self) -> None:
@@ -179,7 +190,7 @@ class AgentLoop:
     logging.info(command_output.summary)
     return outputs
 
-  # Return value indicates whether #done was received.
+  # Return value indicates whether `done` was received.
   def _ExecuteCommands(
       self, commands: List[CommandInput]) -> Tuple[List[ContentSection], bool]:
     outputs: List[ContentSection] = []
@@ -220,7 +231,7 @@ class AgentLoop:
         logging.info("No uncommitted changes; skipping review.")
 
     if self.options.confirm_done:
-      prompt = ("Confirm #done command? "
+      prompt = ("Confirm `done` command? "
                 "Enter an empty string to accept and terminate, "
                 "or some message to be sent to the AI asking it to continue.")
       guidance_provided = self._get_human_guidance(
