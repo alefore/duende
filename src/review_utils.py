@@ -86,12 +86,13 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
   review_start_sections: List[ContentSection] = [
       ContentSection(
           content=(
-              "### REVIEW TASK\n\n" + original_task_prompt_content +
+              "### REVIEW CRITERIA\n\n" + review_prompt_content +
               "\n\n### EVALUATION\n\n" +
               "You MUST use either the `accept_change` or `reject_change` command. As soon as you use either, the conversation terminates. You should use ReadFile to read any files relevant to make a good assessment.\n\n"
               + "### CHANGE\n\n" + "The change to review:\n\n" +
               git_diff_output + "\n\n### GOAL OF THIS CHANGE\n\n" +
-              f"Original goal of this change:\n\n" + review_prompt_content),
+              f"Original goal of this change:\n\n" +
+              original_task_prompt_content),
           summary="Generic review guidelines"),
   ]
   review_start_message = Message(
