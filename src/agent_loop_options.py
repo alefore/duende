@@ -2,7 +2,8 @@ from typing import List, Optional, Pattern, NamedTuple
 
 from command_registry import CommandRegistry
 from confirmation import ConfirmationState
-from conversation import Conversation, ConversationFactory, Message
+from conversation import Conversation, ConversationFactory
+from message import Message
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
 from validation import ValidationManager

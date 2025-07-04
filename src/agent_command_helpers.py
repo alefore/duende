@@ -1,6 +1,6 @@
 from typing import List
 from agent_command import AgentCommand, CommandSyntax, Argument
-from conversation import ContentSection
+from message import ContentSection
 
 
 def HelpText(name: str, syntax: CommandSyntax) -> str:

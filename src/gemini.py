@@ -6,7 +6,8 @@ from typing import cast, Any, Coroutine, Dict, List, Optional
 
 from command_registry import CommandRegistry
 from agent_command import CommandInput, CommandSyntax
-from conversation import Conversation, Message, ContentSection
+from conversation import Conversation
+from message import Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 
 

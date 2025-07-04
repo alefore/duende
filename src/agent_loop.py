@@ -1,6 +1,7 @@
 import json
 import logging
-from conversation import Conversation, ConversationFactory, Message, ContentSection
+from conversation import Conversation, ConversationFactory
+from message import Message, ContentSection
 from conversation_state import ConversationState
 from typing import cast, Generator, List, Optional, Tuple, Union
 

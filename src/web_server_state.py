@@ -8,7 +8,8 @@ from args_common import CreateAgentLoopOptions
 from agent_loop import AgentLoop
 from confirmation import AsyncConfirmationManager
 from random_key import GenerateRandomKey
-from conversation import ConversationFactory, ConversationId, Message
+from conversation import ConversationFactory, ConversationId
+from message import Message
 
 
 class WebServerState:

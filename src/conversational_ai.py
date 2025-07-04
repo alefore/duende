@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from conversation import Conversation, Message
+from conversation import Conversation
+from message import Message
 
 
 class ConversationalAIConversation(ABC):

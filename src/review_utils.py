@@ -9,7 +9,8 @@ from agent_command import CommandOutput
 from agent_loop_options import AgentLoopOptions
 from command_registry_factory import CreateReviewCommandRegistry
 from confirmation import ConfirmationState
-from conversation import ContentSection, Message
+from conversation import Conversation
+from message import ContentSection, Message
 from file_access_policy import FileAccessPolicy
 from review_commands import SuggestCommand
 from task_command import TaskInformation
@@ -121,7 +122,6 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
 
   agent_loop_runner(review_options)
   logging.info(f"Nested review agent loop for {review_prompt_path} done.")
-
 
 def run_parallel_reviews(
     parent_options: AgentLoopOptions, original_conversation_path: str,

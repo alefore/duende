@@ -14,7 +14,8 @@ from command_registry_factory import CreateCommandRegistry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from chatgpt import ChatGPT
-from conversation import Conversation, ConversationFactory, Message, ContentSection
+from conversation import Conversation, ConversationFactory
+from message import Message, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from validate_command_input import ValidateCommandInput
