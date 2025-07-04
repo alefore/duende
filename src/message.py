@@ -50,7 +50,9 @@ class Message:
             'command_name': section.command.command_name,
         }
         for key, value in section.command.args.items():
-            command_dict[key] = str(value)
+          command_dict[key] = str(value)
+        for key, value in section.command.derived_args.items():
+          command_dict[f"derived_{key}"] = str(value)
         section_dict['command'] = command_dict
       if section.command_output is not None:
         section_dict['command_output'] = {
