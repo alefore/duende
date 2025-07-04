@@ -44,6 +44,39 @@ class WriteFileCommand(AgentCommand):
         output_description='A string describing the result of the operation, possibly including a diff.'
     )
 
+  def _get_full_diff(self, path: str, new_content: str) -> Optional[List[str]]:
+    if not os.path.exists(path):
+      return None
+
+    with open(path, "r") as f:
+      original_content_lines: List[str] = f.read().splitlines()
+    diff = list(
+        difflib.unified_diff(
+            original_content_lines,
+            new_content.splitlines(),
+            fromfile=f"a/{path}",
+            tofile=f"b/{path}",
+            lineterm="",
+        ))
+    return diff
+
+  def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        'content_diff': self._derive_diff(inputs['path'], inputs['content'])
+    }
+
+  def _derive_diff(self, path: str, new_content: str) -> str:
+    try:
+      diff = self._get_full_diff(path, new_content)
+      if diff is None:
+        return "File is new."
+      elif not diff:
+        return "No changes."
+      else:
+        return "\n".join(diff)
+    except Exception as e:
+      return f"Could not compute diff: {e}"
+
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path = inputs['path']
     new_content = inputs['content']
@@ -56,11 +89,6 @@ class WriteFileCommand(AgentCommand):
       selection_invalidated = True
 
     try:
-      original_content_lines = []
-      if os.path.exists(path):
-        with open(path, "r") as f:
-          original_content_lines = f.read().splitlines()
-
       directory = os.path.dirname(path)
       if directory:
         os.makedirs(directory, exist_ok=True)
@@ -78,16 +106,13 @@ class WriteFileCommand(AgentCommand):
         output_messages[
             0] += " Selection invalidated due to write operation on the same file."
 
-      diff = list(
-          difflib.unified_diff(
-              original_content_lines,
-              new_content_lines,
-              fromfile=f"a/{path}",
-              tofile=f"b/{path}",
-              lineterm="",
-          ))
+      diff = self._get_full_diff(path, new_content)
 
-      if 0 < len(diff) < 25:
+      if diff is None:
+        output_messages.append("File is new.")
+      elif not diff:
+        output_messages.append("No changes.")
+      elif 0 < len(diff) < 25:
         output_messages.append("```diff")
         output_messages.extend(diff)
         output_messages.append("```")
