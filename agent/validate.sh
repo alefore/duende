@@ -17,11 +17,22 @@ function run_command {
   rm -f "$tmp_output"
 }
 
+# Determine VALIDATE_PYTHON if not already set or empty
+if [ -z "${VALIDATE_PYTHON}" ]; then
+  if [ -f "~/local/bin/python3" ]; then
+    VALIDATE_PYTHON="~/local/bin/python3"
+  elif [ -f "~/bin/python3" ]; then
+    VALIDATE_PYTHON="~/bin/python3"
+  else
+    VALIDATE_PYTHON="python3"
+  fi
+fi
+
 run_command "~/bin/mypy --strict src/agent_cli.py"
 run_command "~/bin/mypy --strict src/agent_server.py"
 
 for file in src/test_{args_common,async_confirmation_manager,command_registry,validate_command_input,write_file_command,agent_loop}.py; do
-  run_command "${VALIDATE_PYTHON:-python3} $file"
+  run_command "${VALIDATE_PYTHON} $file"
 done
 
 exit $exit_status
