@@ -1,7 +1,7 @@
 import argparse
 import logging
-from agent_loop import AgentLoop
-from args_common import CreateCommonParser, CreateAgentLoopOptions
+from agent_workflow import AgentWorkflow
+from args_common import CreateCommonParser, CreateAgentWorkflow
 from confirmation import CLIConfirmationManager
 from conversation import ConversationFactory, ConversationFactoryOptions
 
@@ -19,14 +19,13 @@ def main() -> None:
   args: argparse.Namespace = parse_arguments()
 
   try:
-    options = CreateAgentLoopOptions(args, CLIConfirmationManager(),
-                                     ConversationFactoryOptions())
+    workflow = CreateAgentWorkflow(args, CLIConfirmationManager(),
+                                   ConversationFactoryOptions())
   except RuntimeError as e:
     logging.error(e)
     return
 
-  loop = AgentLoop(options)
-  loop.run()
+  workflow.run()
 
 
 if __name__ == '__main__':

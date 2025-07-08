@@ -6,6 +6,7 @@ import sys
 from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Tuple
 
 from agent_loop_options import AgentLoopOptions
+from agent_workflow import AgentWorkflow
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
@@ -128,10 +129,10 @@ def GetConversationalAI(args: argparse.Namespace,
   raise Exception(f"Unknown AI: {args.model}")
 
 
-def CreateAgentLoopOptions(
+def CreateAgentWorkflow(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory_options: ConversationFactoryOptions
-) -> AgentLoopOptions:
+) -> AgentWorkflow:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
                                               args.file_access_regex_path)
 
@@ -193,7 +194,7 @@ def CreateAgentLoopOptions(
       registry, file_access_policy, validation_manager, confirmation_state,
       conversation_name)
 
-  return AgentLoopOptions(
+  options = AgentLoopOptions(
       task_prompt_content=task_file_content,
       conversation_factory=conversation_factory,
       conversation=conversation,
@@ -209,6 +210,7 @@ def CreateAgentLoopOptions(
       do_review=args.review,
       review_first=args.review_first,
   )
+  return AgentWorkflow(options)
 
 
 def LoadOrCreateConversation(

@@ -4,9 +4,10 @@ import logging
 from flask_socketio import SocketIO
 from threading import Thread
 
-from args_common import CreateAgentLoopOptions
+from args_common import CreateAgentWorkflow
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
+from agent_workflow import AgentWorkflow
 from confirmation import AsyncConfirmationManager
 from random_key import GenerateRandomKey
 from conversation import ConversationFactory, ConversationId, ConversationFactoryOptions
@@ -25,13 +26,13 @@ class WebServerState:
         on_message_added_callback=self._on_conversation_updated,
         on_state_changed_callback=self._on_conversation_updated)
     try:
-      self.agent_loop_options: AgentLoopOptions = CreateAgentLoopOptions(args, self.confirmation_manager,
-                                       conversation_factory_options)
+      self.agent_workflow: AgentWorkflow = CreateAgentWorkflow(
+          args, self.confirmation_manager, conversation_factory_options)
     except RuntimeError as e:
       logging.error(e)
       raise e
 
-    Thread(target=AgentLoop(self.agent_loop_options).run).start()
+    Thread(target=self.agent_workflow.run).start()
 
   def _on_conversation_updated(self, conversation_id: ConversationId) -> None:
     logging.info(f"Conversation {conversation_id} updated.")
@@ -41,7 +42,7 @@ class WebServerState:
                  client_message_count: Optional[int],
                  confirmation_required: Optional[str]) -> None:
     try:
-      conversation = self.agent_loop_options.conversation_factory.Get(conversation_id)
+      conversation = self.agent_workflow.get_conversation_by_id(conversation_id)
     except KeyError:
       logging.error(
           f"Conversation with ID {conversation_id} not found. Cannot send update."
@@ -96,7 +97,7 @@ class WebServerState:
   def ListConversations(self) -> None:
     logging.info("Listing conversations.")
     conversations_data = []
-    for conversation in self.agent_loop_options.conversation_factory.GetAll():
+    for conversation in self.agent_workflow.get_all_conversations():
       state = conversation.GetState()
       conversations_data.append({
           'id':
