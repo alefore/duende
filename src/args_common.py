@@ -109,6 +109,13 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       action='store_true',
       help="Trigger an AI review of changes *before* the agent loop starts. If there are review comments, they are added to the initial prompt."
   )
+  parser.add_argument(
+      '--prompt-include',
+      dest='prompt_include',
+      action='append',
+      default=[],
+      help="Path to a file to include in the prompt. Can be specified multiple times."
+  )
   return parser
 
 
@@ -174,10 +181,12 @@ def CreateAgentLoopOptions(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
-  # TODO: Why does this use readlines? It should just use `read`.
   task_file_content: str = ""
   with open(args.task, 'r') as f:
-    task_file_content = "\n".join([l.rstrip() for l in f.readlines()])
+    task_file_content = f.read()
+
+  task_file_content += _read_prompt_include_files(args.prompt_include,
+                                                  file_access_policy)
 
   conversation, start_message = LoadOrCreateConversation(
       task_file_content, args.task, conversation_factory, conversation_path,
@@ -232,8 +241,7 @@ def LoadOrCreateConversation(
       with open(agent_prompt_path, 'r') as f:
         content_sections.append(
             ContentSection(
-                # TODO: Why does this use readlines? Just use `read`?
-                content="\n".join(list(l.rstrip() for l in f.readlines())),
+                content=f.read(),
                 summary=f"Constant prompt guidance: {agent_prompt_path}"))
 
     content_sections.append(
@@ -283,3 +291,37 @@ def CreateFileAccessPolicy(
 def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
   for file in list_all_files('.', file_access_policy):
     print(file)
+
+
+def _read_prompt_include_files(paths: List[str],
+                               file_access_policy: FileAccessPolicy) -> str:
+  not_allowed_paths = list(
+      filter(lambda p: not file_access_policy.allow_access(os.path.abspath(p)),
+             paths))
+  if not_allowed_paths:
+    print(
+        "Error: --prompt-include: Access to the following included files not allowed by policy:",
+        file=sys.stderr)
+    for path in not_allowed_paths:
+      print(f"  {path}", file=sys.stderr)
+    sys.exit(1)
+
+  output = []
+  for included_file_path in paths:
+    try:
+      with open(included_file_path, 'r') as f:
+        included_content = f.read()
+      output.append(
+          f"\n\n## Context file: {included_file_path}\n{included_content}")
+    except FileNotFoundError:
+      print(
+          f"Error: --prompt-include: File not found: {included_file_path}",
+          file=sys.stderr)
+      sys.exit(1)
+    except IOError as e:
+      print(
+          f"Error: --prompt-include: Error while reading {included_file_path}: {e}",
+          file=sys.stderr)
+      sys.exit(1)
+
+  return ''.join(output)
