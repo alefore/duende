@@ -28,6 +28,7 @@ class AgentLoop:
     self.ai_conversation = options.conversational_ai.StartConversation(
         self.conversation)
     self._previous_validation_passed = True
+    self.next_message: Optional[Message] = self.options.start_message
 
   def _handle_initial_review(self, start_message: Message) -> Optional[Message]:
     logging.info("Running --review-first...")
@@ -113,9 +114,13 @@ class AgentLoop:
         self._previous_validation_passed = True
     return next_message
 
+  def set_next_message(self, message: Message) -> None:
+    self.next_message = message
+
   def run(self) -> None:
     logging.info("Starting AgentLoop run method...")
-    next_message: Optional[Message] = self.options.start_message
+    next_message: Optional[Message] = self.next_message
+    self.next_message = None
     if self.options.review_first:
       assert next_message
       next_message = self._handle_initial_review(next_message)
