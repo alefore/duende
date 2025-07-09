@@ -6,9 +6,8 @@ from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
 
-def _ListFileDetails(
-    directory: str,
-    file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
+def _ListFileDetails(directory: str,
+                     file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
   details: List[str] = []
   errors: List[str] = []
   for file in list_all_files(directory, file_access_policy):
@@ -45,35 +44,29 @@ class ListFilesCommand(AgentCommand):
                 required=False)
         ])
 
-  # TODO: Inline this into `run` and simplify (avoid unnecessary variables).
-  def _process_directory(self,
-                         directory: str) -> Tuple[str, str, str]:
-    """
-    Processes a single directory.
-    Returns: (output_lines, errors, summary)
-    """
-    try:
-      details, errors = _ListFileDetails(directory, self.file_access_policy)
-      detail_lines = details.splitlines() if details else []
-      error_lines = errors.splitlines() if errors else []
-      summary = (f"Listed files: '{directory}'. Matches: {len(detail_lines)}" +
-                 (f", errors: {len(error_lines)}" if error_lines else ""))
-      return details, errors, summary
-    except NotADirectoryError:
-      error_msg = f"Directory not found or is not accessible: {directory}"
-      summary = f"{self.Name()} command failed for '{directory}' due to inaccessible directory."
-      return "", error_msg, summary
-    except Exception as e:
-      error_msg = f"Listing files in {directory}: {e}"
-      summary = f"{self.Name()} command encountered an error for '{directory}'."
-      return "", error_msg, summary
-
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    output, errors, summary = self._process_directory(
-        inputs.get('directory', "."))
+    directory = inputs.get('directory', ".")
 
-    return CommandOutput(
-        output=output,
-        errors=errors,
-        summary=summary,
-        command_name=self.Name())
+    try:
+      output, errors = _ListFileDetails(directory, self.file_access_policy)
+
+      return CommandOutput(
+          output=output,
+          errors=errors,
+          summary=(
+              f"Listed files: '{directory}'. Matches: {len(output.splitlines() if output else [])}"
+              + (f", errors: {len(errors.splitlines() if errors else [])}"
+                 if errors else "")),
+          command_name=self.Name())
+    except NotADirectoryError:
+      return CommandOutput(
+          output="",
+          errors=f"Directory not found or is not accessible: {directory}",
+          summary=f"{self.Name()} command failed for '{directory}' due to inaccessible directory.",
+          command_name=self.Name())
+    except Exception as e:
+      return CommandOutput(
+          output="",
+          errors=f"Listing files in {directory}: {e}",
+          summary=f"{self.Name()} command encountered an error for '{directory}'.",
+          command_name=self.Name())
