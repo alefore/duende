@@ -115,8 +115,6 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
       confirm_regex=None,
       skip_implicit_validation=True,
       validation_manager=None,
-      do_review=False,
-      review_first=False,
   )
 
   agent_loop_runner(review_options)

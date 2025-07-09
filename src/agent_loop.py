@@ -30,27 +30,6 @@ class AgentLoop:
     self._previous_validation_passed = True
     self.next_message: Optional[Message] = self.options.start_message
 
-  def _handle_initial_review(self, start_message: Message) -> Optional[Message]:
-    logging.info("Running --review-first...")
-    logging.info("Calling GetGitDiffContent from _handle_initial_review")
-    git_diff_output = review_utils.GetGitDiffContent()
-    if not git_diff_output:
-      logging.error(
-          "Cannot run --review-first with no uncommitted changes. Aborting.")
-      return None
-
-    review_feedback_content = self._RunReviews(git_diff_output)
-    if review_feedback_content:
-      logging.info(
-          f"Found {len(review_feedback_content)} review suggestions. Adding to prompt."
-      )
-      all_sections = review_feedback_content + start_message.GetContentSections(
-      )
-      return Message(role='system', content_sections=all_sections)
-    else:
-      logging.info("No review suggestions found. Exiting.")
-      return None
-
   def _process_ai_response(self,
                            response_message: Message) -> Optional[Message]:
     commands: List[CommandInput] = []
@@ -85,8 +64,7 @@ class AgentLoop:
       next_message.PushSection(content_section)
 
     if done_command_received and not has_human_guidance:
-      if self._HandleDoneCommand(next_message):
-        return None
+      return None
 
     if not self.options.skip_implicit_validation:
       self.conversation.SetState(
@@ -121,12 +99,6 @@ class AgentLoop:
     logging.info("Starting AgentLoop run method...")
     next_message: Optional[Message] = self.next_message
     self.next_message = None
-
-    if self.options.review_first:
-      assert next_message
-      next_message = self._handle_initial_review(next_message)
-      if not next_message:
-        return  # Terminate if initial review accepts the change
 
     while next_message:
       logging.info("Querying AI...")
@@ -209,31 +181,3 @@ class AgentLoop:
           task_done = True
 
     return outputs, task_done
-
-  def _RunReviews(self, git_diff_output: str) -> Optional[List[ContentSection]]:
-    self.conversation.SetState(ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
-
-    def agent_loop_runner(options: AgentLoopOptions) -> None:
-      AgentLoop(options).run()
-
-    return review_utils.run_parallel_reviews(
-        parent_options=self.options,
-        original_conversation_path=self.conversation.path,
-        agent_loop_runner=agent_loop_runner,
-        original_task_prompt_content=self.options.task_prompt_content,
-        git_diff_output=git_diff_output)
-
-  def _HandleDoneCommand(self, next_message: Message) -> bool:
-    if self.options.do_review:
-      logging.info("Calling GetGitDiffContent from _HandleDoneCommand")
-      git_diff_output = review_utils.GetGitDiffContent()
-      if git_diff_output:
-        review_feedback_content = self._RunReviews(git_diff_output)
-        if review_feedback_content:
-          for section in review_feedback_content:
-            next_message.PushSection(section)
-          return False  # Do not terminate, review feedback received
-      else:
-        logging.info("No uncommitted changes; skipping review.")
-
-    return True  # Terminate if no review feedback or no review was requested

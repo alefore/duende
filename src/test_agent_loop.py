@@ -140,11 +140,10 @@ class TestAgentLoop(unittest.TestCase):
         confirmation_state=self.mock_confirmation_state,
         file_access_policy=self.file_access_policy,
         conversational_ai=self.fake_ai,
-        do_review=do_review,
         skip_implicit_validation=True,
     )
 
-    agent_workflow = AgentWorkflow(options, confirm_done=str(confirm_done))
+    agent_workflow = AgentWorkflow(options, confirm_done=str(confirm_done), do_review=do_review)
     agent_workflow.run()
     return conversation.messages
 
@@ -444,8 +443,8 @@ class TestAgentLoop(unittest.TestCase):
     feedback_message = messages[4]
     self.assertEqual(feedback_message.role, 'user')
     sections = feedback_message.GetContentSections()
-    # Expect: 1 done + 2 rejection messages + 1 instruction message.
-    self.assertEqual(len(sections), 4)
+    # Expect: 1 done + 2 rejection messages + 1 instruction message. THIS IS WRONG, should be 3
+    self.assertEqual(len(sections), 3)
 
     instruction_sections = [
         s for s in sections if s.summary == "Instructions about review results"

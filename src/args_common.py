@@ -31,11 +31,7 @@ class TrackedFlagStr(NamedTuple):
 
 class TrackFlagStrAction(argparse.Action):
 
-  def __call__(self,
-               parser: argparse.ArgumentParser,
-               namespace: argparse.Namespace,
-               values: Any,
-               option_string: Optional[str] = None) -> None:
+  def __call__(self, parser: argparse.ArgumentParser, namespace: argparse.Namespace, values: Any, option_string: Optional[str] = None) -> None:
     setattr(namespace, self.dest, TrackedFlagStr(values, True))
 
 
@@ -205,10 +201,8 @@ def CreateAgentWorkflow(
       confirm_regex=confirm_regex,
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
-      do_review=args.review,
-      review_first=args.review_first,
   )
-  return AgentWorkflow(options, confirm_done=args.confirm)
+  return AgentWorkflow(options, confirm_done=args.confirm, do_review=args.review, review_first=args.review_first)
 
 
 def LoadOrCreateConversation(
