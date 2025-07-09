@@ -93,6 +93,8 @@ class WriteFileCommand(AgentCommand):
       if directory:
         os.makedirs(directory, exist_ok=True)
 
+      diff = self._get_full_diff(path, new_content)
+
       with open(path, "w") as f:
         f.write(new_content)
       if self.validation_manager:
@@ -105,8 +107,6 @@ class WriteFileCommand(AgentCommand):
       if selection_invalidated:
         output_messages[
             0] += " Selection invalidated due to write operation on the same file."
-
-      diff = self._get_full_diff(path, new_content)
 
       if diff is None:
         output_messages.append("File is new.")
