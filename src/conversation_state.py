@@ -4,6 +4,7 @@ from typing import Mapping
 
 class ConversationState(Enum):
   STARTING = auto()
+  DONE = auto()
   WAITING_FOR_AI_RESPONSE = auto()
   WAITING_FOR_REVIEW_FEEDBACK = auto()
   RUNNING_COMMANDS = auto()
@@ -18,6 +19,7 @@ class ConversationState(Enum):
 
 _STATE_TO_EMOJI: Mapping[ConversationState, str] = {
     ConversationState.STARTING: "🚀",
+    ConversationState.DONE: "✅",
     ConversationState.WAITING_FOR_AI_RESPONSE: "🤖",
     ConversationState.WAITING_FOR_REVIEW_FEEDBACK: "🔎",
     ConversationState.RUNNING_COMMANDS: "🏃",
