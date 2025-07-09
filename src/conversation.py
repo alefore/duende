@@ -1,6 +1,7 @@
 from typing import List, Dict, Any, Optional, Callable, NamedTuple
 import json
 import logging
+import threading
 from datetime import datetime, timezone
 
 from conversation_state import ConversationState
@@ -116,22 +117,24 @@ class Conversation:
 class ConversationFactory:
 
   def __init__(self, options: ConversationFactoryOptions) -> None:
+    self._lock = threading.Lock()
     self._next_id: ConversationId = 0
     self._conversations: Dict[ConversationId, Conversation] = {}
     self.on_message_added_callback = options.on_message_added_callback
     self.on_state_changed_callback = options.on_state_changed_callback
     if options.command_registry is None:
       raise ValueError(
-          "CommandRegistry must be set on ConversationFactoryOptions."
-      )
+          "CommandRegistry must be set on ConversationFactoryOptions.")
     self._command_registry: CommandRegistry = options.command_registry
 
   def New(self, name: str, path: str) -> Conversation:
-    output = Conversation(self._next_id, name, path, self._command_registry,
+    with self._lock:
+      reserved_id = self._next_id
+      self._next_id += 1
+    output = Conversation(reserved_id, name, path, self._command_registry,
                           self.on_message_added_callback,
                           self.on_state_changed_callback)
-    self._conversations[self._next_id] = output
-    self._next_id += 1
+    self._conversations[reserved_id] = output
     return output
 
   def Get(self, id: ConversationId) -> Conversation:
