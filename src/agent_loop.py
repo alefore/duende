@@ -110,7 +110,8 @@ class AgentLoop:
     while next_message:
       logging.info("Querying AI...")
       self.conversation.SetState(ConversationState.WAITING_FOR_AI_RESPONSE)
-      next_message = self._process_ai_response(self.ai_conversation.SendMessage(next_message))
+      next_message = self._process_ai_response(
+          self.ai_conversation.SendMessage(next_message))
     self.conversation.SetState(ConversationState.DONE)
 
   def _get_human_guidance(self, prompt: str, summary: str, content_prefix: str,
@@ -128,13 +129,18 @@ class AgentLoop:
             content=f"{content_prefix}: {guidance}", summary=summary))
     return True
 
-  def _execute_one_command(self, cmd_input: CommandInput) -> List[ContentSection]:
+  def _execute_one_command(self,
+                           cmd_input: CommandInput) -> List[ContentSection]:
     command_name = cmd_input.command_name
     command = self.options.commands_registry.Get(command_name)
     if not command:
       unknown_command_error_msg = f"Error: Unknown command: {command_name}"
       logging.error(unknown_command_error_msg)
-      return [ContentSection(content=unknown_command_error_msg, summary=unknown_command_error_msg)]
+      return [
+          ContentSection(
+              content=unknown_command_error_msg,
+              summary=unknown_command_error_msg)
+      ]
 
     warnings = ValidateCommandInput(command.Syntax(), cmd_input,
                                     self.options.file_access_policy)
@@ -183,4 +189,5 @@ class AgentLoop:
     for cmd_input in commands:
       outputs.extend(self._execute_one_command(cmd_input))
 
-    return outputs, any(o.command_output and o.command_output.task_done for o in outputs)
+    return outputs, any(
+        o.command_output and o.command_output.task_done for o in outputs)
