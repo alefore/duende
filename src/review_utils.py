@@ -117,6 +117,7 @@ def _run_single_review(review_prompt_path: str, original_conversation_path: str,
       validation_manager=None,
   )
 
+  logging.info(f"Starting review for {review_prompt_path}.")
   agent_loop_runner(review_options)
   logging.info(f"Nested review agent loop for {review_prompt_path} done.")
 
