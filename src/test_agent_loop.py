@@ -143,7 +143,8 @@ class TestAgentLoop(unittest.TestCase):
         skip_implicit_validation=True,
     )
 
-    agent_workflow = AgentWorkflow(options, confirm_done=str(confirm_done), do_review=do_review)
+    agent_workflow = AgentWorkflow(
+        options, confirm_done=str(confirm_done), do_review=do_review)
     agent_workflow.run()
     return conversation.messages
 
@@ -224,7 +225,9 @@ class TestAgentLoop(unittest.TestCase):
 
     last_message_to_ai = messages[2]
     self.assertEqual(last_message_to_ai.role, 'user')
-    self.assertEqual(len(messages[2].GetContentSections()), 0)  # Empty!
+    self.assertEqual(len(messages[2].GetContentSections()), 1)
+    self.assertIn("Response is empty.",
+                  messages[2].GetContentSections()[0].content)
 
     self.assertEqual(len(messages[3].GetContentSections()), 1)
     self.assertEqual(messages[3].GetContentSections()[0].command.command_name,

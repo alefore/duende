@@ -87,9 +87,16 @@ class AgentLoop:
           logging.info("Validation passed.")
           next_message.PushSection(
               ContentSection(
-                  content=("The validation command is now passing."),
+                  content="The validation command is now passing.",
                   summary="Validation status (passed)"))
         self._previous_validation_passed = True
+
+    if not next_message.GetContentSections():
+      next_message.PushSection(
+          ContentSection(
+              content=("Response is empty. " +
+                       "Issue a Done command if you've finished."),
+              summary="Empty response placeholder."))
     return next_message
 
   def set_next_message(self, message: Message) -> None:
@@ -112,13 +119,15 @@ class AgentLoop:
     self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
     guidance = self.options.confirmation_state.RequireConfirmation(
         self.conversation.GetId(), prompt)
-    if guidance:
-      logging.info("Your guidance will be sent to the AI.")
-      next_message.PushSection(
-          ContentSection(
-              content=f"{content_prefix}: {guidance}", summary=summary))
-      return True
-    return False
+    if not guidance:
+      logging.info("No guidance.")
+      return False
+
+    logging.info("Your guidance will be sent to the AI.")
+    next_message.PushSection(
+        ContentSection(
+            content=f"{content_prefix}: {guidance}", summary=summary))
+    return True
 
   def _ExecuteOneCommand(self, cmd_input: CommandInput) -> List[ContentSection]:
     command_name = cmd_input.command_name
