@@ -46,10 +46,14 @@ def run_server() -> None:
   def handle_confirmation(data: Dict[str, Any]) -> None:
     logging.info("Received: confirm.")
     confirmation = data.get('confirmation')
+    conversation_id = data.get('conversation_id')
     if confirmation is None:
       logging.error("handle_confirmation: confirmation is missing")
       return
-    server_state.ReceiveConfirmation(confirmation)
+    if conversation_id is None:
+      logging.error("handle_confirmation: conversation_id is missing")
+      return
+    server_state.ReceiveConfirmation(confirmation, conversation_id)
     SendUpdate(server_state, data)
 
   @socketio.on('request_update')

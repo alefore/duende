@@ -7,14 +7,16 @@ class TestAsyncConfirmationManager(unittest.TestCase):
 
   def setUp(self) -> None:
     self.manager = AsyncConfirmationManager()
+    self.conversation_id = 0
 
   def test_initial_state(self) -> None:
     """Test the initial state of AsyncConfirmationManager."""
-    self.assertIsNone(self.manager.get_pending_message(),
-                      "Initial message should be None.")
+    self.assertIsNone(
+        self.manager.get_pending_message(self.conversation_id),
+        "Initial message should be None.")
 
   def provide_confirmation(self, message) -> None:
-    self.manager.provide_confirmation(message)
+    self.manager.provide_confirmation(self.conversation_id, message)
 
   def test_provide_confirmation(self) -> None:
     """Test providing confirmation."""
@@ -23,7 +25,8 @@ class TestAsyncConfirmationManager(unittest.TestCase):
     confirmation_thread.start()
 
     test_message = "Are you sure?"
-    confirmation = self.manager.RequireConfirmation(0, test_message)
+    confirmation = self.manager.RequireConfirmation(self.conversation_id,
+                                                    test_message)
 
     self.assertEqual(confirmation, "Yes",
                      "Confirmation should match the provided input.")
@@ -32,7 +35,8 @@ class TestAsyncConfirmationManager(unittest.TestCase):
   def test_pending_message(self) -> None:
     """Test that a message is pending until confirmation is given."""
     test_message = "Confirm this action."
-    pending_message_before = self.manager.get_pending_message()
+    pending_message_before = self.manager.get_pending_message(
+        self.conversation_id)
     self.assertIsNone(pending_message_before,
                       "Pending message should initially be None.")
 

@@ -60,7 +60,8 @@ class WebServerState:
       logging.info("Sending update without new messages.")
 
     if confirmation_required is None:
-      confirmation_required = self.confirmation_manager.get_pending_message()
+      confirmation_required = self.confirmation_manager.get_pending_message(
+          conversation_id)
     state = conversation.GetState()
     data = {
         'conversation_id':
@@ -90,9 +91,11 @@ class WebServerState:
     logging.info("Confirmation requested.")
     self.SendUpdate(conversation_id, None, confirmation_required=message)
 
-  def ReceiveConfirmation(self, confirmation_message: str) -> None:
+  def ReceiveConfirmation(self, confirmation_message: str,
+                          conversation_id: int) -> None:
     logging.info("Received confirmation.")
-    self.confirmation_manager.provide_confirmation(confirmation_message)
+    self.confirmation_manager.provide_confirmation(conversation_id,
+                                                   confirmation_message)
 
   def ListConversations(self) -> None:
     logging.info("Listing conversations.")

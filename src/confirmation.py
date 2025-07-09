@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Callable
+from typing import Dict, Optional, Callable
 import threading
 import queue
 
@@ -29,27 +29,35 @@ class AsyncConfirmationManager(ConfirmationManager):
       on_confirmation_requested: Optional[Callable[[ConversationId, str],
                                                    None]] = None
   ) -> None:
-    self.confirm_queue: queue.Queue[str] = queue.Queue()
+    self.confirm_queue: Dict[ConversationId, queue.Queue[str]] = {}
     self.message_lock = threading.Lock()
-    self.current_message: Optional[str] = None
+    self.current_message: Dict[ConversationId, str] = {}
     self.on_confirmation_requested = on_confirmation_requested
 
   def RequireConfirmation(self, conversation_id: ConversationId,
                           message: str) -> Optional[str]:
     with self.message_lock:
-      self.current_message = message
+      if conversation_id not in self.confirm_queue:
+        self.confirm_queue[conversation_id] = queue.Queue()
+      self.current_message[conversation_id] = message
       if self.on_confirmation_requested is not None:
         self.on_confirmation_requested(conversation_id, message)
-    return self.confirm_queue.get()  # Blocks until item is present
+      conversation_queue = self.confirm_queue[conversation_id]
+    return conversation_queue.get()
 
-  def provide_confirmation(self, confirmation: str) -> None:
+  def provide_confirmation(self, conversation_id: ConversationId,
+                           confirmation: str) -> None:
     with self.message_lock:
-      self.current_message = None
-    self.confirm_queue.put(confirmation)
+      if conversation_id not in self.confirm_queue:
+        self.confirm_queue[conversation_id] = queue.Queue()
+      conversation_queue = self.confirm_queue[conversation_id]
+      self.current_message.pop(conversation_id, None)
+    conversation_queue.put(confirmation)
 
-  def get_pending_message(self) -> Optional[str]:
+  def get_pending_message(self,
+                          conversation_id: ConversationId) -> Optional[str]:
     with self.message_lock:
-      return self.current_message
+      return self.current_message.get(conversation_id)
 
 
 class ConfirmationState:
