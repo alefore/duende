@@ -172,6 +172,9 @@ class AgentLoop:
   def _ExecuteCommands(
       self, commands: List[CommandInput]) -> Tuple[List[ContentSection], bool]:
     outputs: List[ContentSection] = []
+    # TODO: Don't compute task_done during the loop. Instead, have the loop just
+    # extend outputs and, at the end, compute task_done with an `any(...)`
+    # expression.
     task_done = False
     for cmd_input in commands:
       command_outputs = self._ExecuteOneCommand(cmd_input)
