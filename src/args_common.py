@@ -131,8 +131,7 @@ def GetConversationalAI(args: argparse.Namespace,
 
 def CreateAgentWorkflow(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
-    conversation_factory_options: ConversationFactoryOptions
-) -> AgentWorkflow:
+    conversation_factory_options: ConversationFactoryOptions) -> AgentWorkflow:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
                                               args.file_access_regex_path)
 
@@ -204,13 +203,12 @@ def CreateAgentWorkflow(
       file_access_policy=file_access_policy,
       conversational_ai=GetConversationalAI(args, registry),
       confirm_regex=confirm_regex,
-      confirm_done=args.confirm,
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
       do_review=args.review,
       review_first=args.review_first,
   )
-  return AgentWorkflow(options)
+  return AgentWorkflow(options, confirm_done=args.confirm)
 
 
 def LoadOrCreateConversation(

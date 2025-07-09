@@ -121,11 +121,12 @@ class AgentLoop:
     logging.info("Starting AgentLoop run method...")
     next_message: Optional[Message] = self.next_message
     self.next_message = None
+
     if self.options.review_first:
       assert next_message
       next_message = self._handle_initial_review(next_message)
-      if not next_message:  # Terminate if initial review accepts the change
-        return
+      if not next_message:
+        return  # Terminate if initial review accepts the change
 
     while next_message:
       logging.info("Querying AI...")
@@ -231,20 +232,8 @@ class AgentLoop:
         if review_feedback_content:
           for section in review_feedback_content:
             next_message.PushSection(section)
-          return False
+          return False  # Do not terminate, review feedback received
       else:
         logging.info("No uncommitted changes; skipping review.")
 
-    if self.options.confirm_done:
-      prompt = ("Confirm `done` command? "
-                "Enter an empty string to accept and terminate, "
-                "or some message to be sent to the AI asking it to continue.")
-      guidance_provided = self._get_human_guidance(
-          prompt=prompt,
-          summary="Human decision to continue",
-          content_prefix="Notice from human",
-          next_message=next_message)
-      if guidance_provided:
-        return False
-
-    return True
+    return True  # Terminate if no review feedback or no review was requested

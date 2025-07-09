@@ -19,7 +19,6 @@ class AgentLoopOptions(NamedTuple):
   file_access_policy: FileAccessPolicy
   conversational_ai: ConversationalAI
   confirm_regex: Optional[Pattern[str]] = None
-  confirm_done: bool = False
   skip_implicit_validation: bool = False
   validation_manager: Optional[ValidationManager] = None
   do_review: bool = False

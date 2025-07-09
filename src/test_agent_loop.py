@@ -10,6 +10,7 @@ from agent_command import (AgentCommand, CommandInput, CommandOutput,
                            CommandSyntax, Argument, ArgumentContentType)
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
+from agent_workflow import AgentWorkflow  # Import AgentWorkflow
 from command_registry import CommandRegistry
 from conversation import Conversation, ConversationFactory, Message, ContentSection, ConversationFactoryOptions
 from conversational_ai_test_utils import FakeConversationalAI
@@ -139,12 +140,12 @@ class TestAgentLoop(unittest.TestCase):
         confirmation_state=self.mock_confirmation_state,
         file_access_policy=self.file_access_policy,
         conversational_ai=self.fake_ai,
-        confirm_done=confirm_done,
         do_review=do_review,
         skip_implicit_validation=True,
     )
-    agent_loop = AgentLoop(options)
-    agent_loop.run()
+
+    agent_workflow = AgentWorkflow(options, confirm_done=str(confirm_done))
+    agent_workflow.run()
     return conversation.messages
 
   def test_run_loop_with_simple_command_and_done(self):
@@ -279,13 +280,13 @@ class TestAgentLoop(unittest.TestCase):
     """
     Tests that the loop continues if the user rejects the #done command.
     """
-    # 1. Setup mocks and run the loop
-    # First call to confirmation returns guidance, second returns empty to terminate.
+    # Setup mocks and run the loop
     self.mock_confirmation_state.RequireConfirmation.side_effect = [
         "You are not done, please list files.", ""
     ]
+
     messages = self._run_agent_loop_for_test(
-        {
+        scripted_responses={
             "test-name": [
                 Message(
                     role='assistant',
@@ -308,37 +309,39 @@ class TestAgentLoop(unittest.TestCase):
                             command=CommandInput(command_name="done"),
                             content="")
                     ]),
-            ]
+            ],
         },
         confirm_done=True)
 
-    # 2. Assertions
+    logging.info(f"Messages: {list(m.Serialize() for m in messages)}")
+
     # The conversation should have 6 messages:
-    # 1. User: Initial task
-    # 2. Assistant: #done (rejected)
-    # 3. User: Human guidance "You are not done..."
-    # 4. Assistant: #list_files
-    # 5. User: output of list_files
-    # 6. Assistant: #done (accepted)
+    # 0. User: Initial task
+    # 1. Assistant: #done (from AI's 1st response)
+    # 2. User: Human guidance (You are not done...)
+    # 3. Assistant: #list_files
+    # 4. User: output of list_files
+    # 5. Assistant: #done (from AI's 2nd response)
     self.assertEqual(len(messages), 6)
 
     # Check that confirmation was requested twice
     self.assertEqual(
         self.mock_confirmation_state.RequireConfirmation.call_count, 2)
 
-    # Check that human guidance was sent to AI
-    guidance_message = messages[2]
-    self.assertEqual(guidance_message.role, 'user')
-    sections = guidance_message.GetContentSections()
-    self.assertEqual(len(sections), 2)
-    self.assertEqual(sections[0].summary, "Task completed.")
-    self.assertEqual(sections[0].content, "")
-    self.assertEqual(sections[0].command_output.task_done, True)
-    self.assertEqual(sections[1].summary, "Human decision to continue")
-    self.assertIn("You are not done", sections[1].content)
+    # Check the message after the first done command (messages[2])
+    done_output_message = messages[2]
+    self.assertEqual(done_output_message.role, 'user')
+    sections = done_output_message.GetContentSections()
+    self.assertEqual(len(sections), 1)  # Only the done command output
+    self.assertEqual(sections[0].summary, "Human decision to continue")
+    self.assertIn("You are not done", sections[0].content)
 
     # Check that the next command was executed after guidance
     self.mock_list_files_command.run.assert_called_once_with({})
+
+    self.assertEqual(len(messages[-1].GetContentSections()), 1)
+    self.assertEqual(messages[-1].GetContentSections()[0].command.command_name,
+                     "done")
 
   def test_do_review_parallel(self):
     """Tests that do_review can trigger three parallel reviews."""
