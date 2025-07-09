@@ -111,8 +111,8 @@ class AgentLoop:
       logging.info("Querying AI...")
       self.conversation.SetState(ConversationState.WAITING_FOR_AI_RESPONSE)
       response_message: Message = self.ai_conversation.SendMessage(next_message)
-
       next_message = self._process_ai_response(response_message)
+    self.conversation.SetState(ConversationState.DONE)
 
   def _get_human_guidance(self, prompt: str, summary: str, content_prefix: str,
                           next_message: Message) -> bool:
