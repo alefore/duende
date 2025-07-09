@@ -1,10 +1,38 @@
-Review task: Try to avoid code that introduces (and assigns) variables that are only used in a single place. Instead, inline the code definition, to avoid declaring a noun for the variable.
+Review task: Check if this code introduces variables that are only used in a single place. If it does, reject the change suggesting that these varibles should be inlined.
 
-For example, instead of:
+This only applies to expressions that are only used in a single place. If the expression is used in more than one place, inlining it is probably a bad idea.
 
+## Example 1
+
+Instead of:
+
+  # BAD!
+  data_str = str(message.GetContents().data)
+  return "Data: " + data_str
+
+The expression should be inlined, to avoid declaring a noun for the variable:
+
+  # GOOD!
+  return "Data: " + str(message.GetContents().data)
+
+## Example 2
+
+Instead of:
+
+  # BAD!
   my_variable = SomeExpression().GetFoo(bar)
   return ExtractData(my_variable)
 
-Just inline the body:
+We can just inline the body:
 
+  # GOOD!
   return ExtractData(SomeExpression().GetFoo(bar))
+
+## Example 3
+
+Here is an example of an expression that should be accepted, because the value is used in more than one place (in the logging statement and in the return):
+
+  # GOOD: `str` should NOT be inlined, because that causes duplication.
+  str = f"Warning: There was an error with {command}: {details}"
+  logging.info(str)
+  return Message(content=str)
