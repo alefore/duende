@@ -446,7 +446,7 @@ class TestAgentLoop(unittest.TestCase):
     feedback_message = messages[4]
     self.assertEqual(feedback_message.role, 'user')
     sections = feedback_message.GetContentSections()
-    # Expect: 1 done + 2 rejection messages + 1 instruction message. THIS IS WRONG, should be 3
+    # Expect: 2 rejection messages + 1 instruction message.
     self.assertEqual(len(sections), 3)
 
     instruction_sections = [
@@ -466,10 +466,10 @@ class TestAgentLoop(unittest.TestCase):
 
     contents = [s.content for s in sections]
     self.assertTrue(
-        any("Evaluator review_0 found issues with your change:\n\nChange rejected."
+        any("Evaluator review_0 found issues with your change:\n\nFeedback from review 0."
             in s for s in contents))
     self.assertTrue(
-        any("Evaluator review_1 found issues with your change:\n\nChange rejected."
+        any("Evaluator review_1 found issues with your change:\n\nFeedback from review 1."
             in s for s in contents))
     self.assertFalse(any("Evaluator review_2" in s for s in contents))
     self.assertTrue(

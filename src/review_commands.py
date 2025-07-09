@@ -50,7 +50,7 @@ class RejectChange(AgentCommand):
     reason = inputs["reason"]
     logging.info(f"Change rejected with reason: {reason[:50]}...")
     command_output = CommandOutput(
-        output="Change rejected.",
+        output=reason,
         errors="",
         summary="Change rejected. Conversation terminated.",
         command_name=self.Syntax().name,
