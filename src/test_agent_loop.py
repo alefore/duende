@@ -10,7 +10,8 @@ from agent_command import (AgentCommand, CommandInput, CommandOutput,
                            CommandSyntax, Argument, ArgumentContentType)
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
-from agent_workflow import AgentWorkflow  # Import AgentWorkflow
+from agent_workflow import AgentWorkflow
+from implement_workflow import ImplementAndReviewWorkflow
 from command_registry import CommandRegistry
 from conversation import Conversation, ConversationFactory, Message, ContentSection, ConversationFactoryOptions
 from conversational_ai_test_utils import FakeConversationalAI
@@ -143,7 +144,7 @@ class TestAgentLoop(unittest.TestCase):
         skip_implicit_validation=True,
     )
 
-    agent_workflow = AgentWorkflow(
+    agent_workflow = ImplementAndReviewWorkflow(
         options, confirm_done=str(confirm_done), do_review=do_review)
     agent_workflow.run()
     return conversation.messages

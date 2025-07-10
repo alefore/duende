@@ -7,6 +7,7 @@ from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Tuple
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
+from implement_workflow import ImplementAndReviewWorkflow
 from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
@@ -127,7 +128,7 @@ def GetConversationalAI(args: argparse.Namespace,
 
 def CreateAgentWorkflow(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
-    conversation_factory_options: ConversationFactoryOptions) -> AgentWorkflow:
+    conversation_factory_options: ConversationFactoryOptions) -> ImplementAndReviewWorkflow:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
                                               args.file_access_regex_path)
 
@@ -202,7 +203,7 @@ def CreateAgentWorkflow(
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
   )
-  return AgentWorkflow(options, confirm_done=args.confirm, do_review=args.review, review_first=args.review_first)
+  return ImplementAndReviewWorkflow(options, confirm_done=args.confirm, do_review=args.review, review_first=args.review_first)
 
 
 def LoadOrCreateConversation(
