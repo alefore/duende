@@ -141,7 +141,7 @@ def run_parallel_reviews(
   """
   logging.info("Initiating AI reviews...")
 
-  review_files = glob.glob('agent/review/*.txt')
+  review_files = glob.glob('agent/review/*/prompt.txt')
   if not review_files:
     logging.info(
         "No review files found in agent/review/*.txt. Skipping review.")

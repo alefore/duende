@@ -438,7 +438,7 @@ class TestAgentLoop(unittest.TestCase):
     # Diff happens twice, once for each Done command (the 2nd time to detect
     # that no review is needed).
     self.assertEqual(mock_get_diff.call_count, 2)
-    mock_glob.assert_called_once_with('agent/review/*.txt')
+    mock_glob.assert_called_once_with('agent/review/*/prompt.txt')
     self.assertEqual(mock_read_prompt.call_count, 3)
     # The conversation should have 6 messages: (initial user, assistant write_file, user empty, assistant done, user review feedback, assistant done)
     self.assertEqual(len(messages), 6)

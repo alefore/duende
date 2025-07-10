@@ -95,7 +95,8 @@ class AgentLoop:
       next_message.PushSection(
           ContentSection(
               content=("Response is empty. " +
-                       "Issue a Done command if you've finished."),
+                       "The following commands are available:" +
+                       ', '.join(self.options.commands_registry.list_all())),
               summary="Empty response placeholder."))
     return next_message
 
