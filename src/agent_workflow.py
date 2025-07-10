@@ -15,25 +15,8 @@ import review_utils
 
 class AgentWorkflow(ABC):
 
-  def __init__(self,
-               conversation_factory: ConversationFactory) -> None:
+  def __init__(self, conversation_factory: ConversationFactory) -> None:
     self._conversation_factory = conversation_factory
-
-  @abstractmethod
-  def _RunReviews(self, git_diff_output: str) -> Optional[List[ContentSection]]:
-    pass
-
-  @abstractmethod
-  def _handle_initial_review(self) -> None:
-    pass
-
-  @abstractmethod
-  def _get_review_message(self) -> Optional[Message]:
-    pass
-
-  @abstractmethod
-  def _get_confirm_guidance(self) -> Optional[Message]:
-    pass
 
   @abstractmethod
   def run(self) -> None:
