@@ -29,7 +29,6 @@ def _create_base_registry(
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
   registry.Register(SearchFileCommand(file_access_policy))
-  registry.Register(DoneCommand())
   return registry
 
 
@@ -41,6 +40,8 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                           can_write: bool = True,
                           can_start_tasks: bool = True) -> CommandRegistry:
   registry = _create_base_registry(file_access_policy)
+
+  registry.Register(DoneCommand())
 
   git_state = CheckGitRepositoryState()
   if git_state == GitRepositoryState.CLEAN:
