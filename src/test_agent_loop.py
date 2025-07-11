@@ -415,8 +415,8 @@ class TestAgentLoop(unittest.TestCase):
         ],
     }
     with patch('glob.glob') as mock_glob, \
-         patch('review_utils.ReadReviewPromptFile') as mock_read_prompt, \
-         patch('review_utils.GetGitDiffContent') as mock_get_diff:
+         patch('review_utils.read_review_prompt_file') as mock_read_prompt, \
+         patch('review_utils.get_git_diff_content') as mock_get_diff:
 
       mock_glob.return_value = [
           'agent/review/review_0/prompt.txt',

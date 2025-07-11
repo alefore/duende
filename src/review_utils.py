@@ -17,7 +17,7 @@ from review_commands import AcceptChange, RejectChange
 from task_command import TaskInformation
 
 
-def GetGitDiffContent() -> str:
+def get_git_diff_content() -> str:
   """Retrieves the git diff output for uncommitted changes."""
   try:
     result = subprocess.run(["git", "diff", "--unified=0"],
@@ -36,7 +36,7 @@ def GetGitDiffContent() -> str:
     return f"Error getting git diff: {e}"
 
 
-def ReadReviewPromptFile(file_path: str) -> str:
+def read_review_prompt_file(file_path: str) -> str:
   """Reads the content of the review prompt file."""
   with open(file_path, 'r') as f:
     return f.read()
@@ -120,8 +120,8 @@ def _run_single_review(
 
 
 def run_parallel_reviews(
-    reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
-) -> List[ReviewResult]:
+    reviews_to_run: Dict[str, str],
+    parent_options: AgentLoopOptions) -> List[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
   Args:
@@ -201,7 +201,7 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
 
   for review_file_path in review_files:
     reviews_to_run[os.path.basename(os.path.dirname(review_file_path))] = (
-        "### REVIEW CRITERIA\n\n" + ReadReviewPromptFile(review_file_path) +
+        "### REVIEW CRITERIA\n\n" + read_review_prompt_file(review_file_path) +
         "\n\n### EVALUATION\n\n" +
         "You MUST use either the `accept_change` or `reject_change` command. As soon as you use either, the conversation terminates. You should use ReadFile to read any files relevant to make a good assessment.\n\n"
         + "### CHANGE\n\n" + "The change to review:\n\n" + git_diff_output +

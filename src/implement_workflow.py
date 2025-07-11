@@ -45,8 +45,8 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
   def _handle_initial_review(self) -> None:
     if self._review_first:
       logging.info("Running --review-first...")
-      logging.info("Calling GetGitDiffContent from _handle_initial_review")
-      git_diff_output = review_utils.GetGitDiffContent()
+      logging.info("Calling get_git_diff_content from _handle_initial_review")
+      git_diff_output = review_utils.get_git_diff_content()
       if not git_diff_output:
         logging.error(
             "Cannot run --review-first with no uncommitted changes. Aborting.")
@@ -72,8 +72,8 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     if not self._do_review:
       return None
 
-    logging.info("Calling GetGitDiffContent from _get_review_message")
-    git_diff_output = review_utils.GetGitDiffContent()
+    logging.info("Calling get_git_diff_content from _get_review_message")
+    git_diff_output = review_utils.get_git_diff_content()
     if not git_diff_output:
       logging.info("No uncommitted changes; skipping review.")
       return None
