@@ -24,7 +24,7 @@ class Conversation:
       self,
       unique_id: int,
       name: str,
-      path: str,
+      path: Optional[str],
       command_registry: CommandRegistry,
       on_message_added_callback: Optional[Callable[[int], None]] = None,
       on_state_changed_callback: Optional[Callable[[ConversationId],
@@ -39,16 +39,18 @@ class Conversation:
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
     self.path = path
     self._command_registry = command_registry
-    try:
-      with open(path, 'r') as f:
-        self.messages.extend(
-            Message.Deserialize(message_data) for message_data in json.load(f))
-    except (FileNotFoundError, json.JSONDecodeError, KeyError):
-      logging.info("Invalid or missing data. Starting new conversation.")
+    if self.path is not None:
+      try:
+        with open(self.path, 'r') as f:
+          self.messages.extend(
+              Message.Deserialize(message_data) for message_data in json.load(f))
+      except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        logging.info("Invalid or missing data. Starting new conversation.")
 
   def _Save(self) -> None:
-    with open(self.path, 'w') as f:
-      json.dump([message.Serialize() for message in self.messages], f, indent=2)
+    if self.path is not None:
+      with open(self.path, 'w') as f:
+        json.dump([message.Serialize() for message in self.messages], f, indent=2)
 
   def _derive_args(self, message: Message) -> Message:
     # Iterate over content sections and compute derived args for commands
@@ -127,13 +129,14 @@ class ConversationFactory:
           "CommandRegistry must be set on ConversationFactoryOptions.")
     self._command_registry: CommandRegistry = options.command_registry
 
-  def New(self, name: str, path: str) -> Conversation:
+  def New(self, name: str, path: Optional[str]) -> Conversation:
     with self._lock:
       reserved_id = self._next_id
       self._next_id += 1
-    output = Conversation(reserved_id, name, path, self._command_registry,
-                          self.on_message_added_callback,
-                          self.on_state_changed_callback)
+    output = Conversation(
+        reserved_id, name, path, self._command_registry,
+        self.on_message_added_callback,
+        self.on_state_changed_callback)
     self._conversations[reserved_id] = output
     return output
 

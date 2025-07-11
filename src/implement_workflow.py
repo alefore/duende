@@ -37,7 +37,6 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         review_utils.run_parallel_reviews(
             reviews_to_run=review_utils.implementation_review_spec(
                 parent_options=self._options,
-                original_conversation_path=self._agent_loop.conversation.path,
                 original_task_prompt_content=self._options.task_prompt_content,
                 git_diff_output=git_diff_output),
             parent_options=self._options))

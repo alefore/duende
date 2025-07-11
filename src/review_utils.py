@@ -51,17 +51,14 @@ class ReviewResult(NamedTuple):
 def _run_single_review(
     review_id: str,
     review_prompt_content: str,
-    original_conversation_path: str,
     parent_options: AgentLoopOptions,
 ) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
-  review_conversation_path = original_conversation_path.replace(
-      '.json', f'.{review_id}.review.json')
 
   review_conversation = parent_options.conversation_factory.New(
       name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
-      path=review_conversation_path)
+      path=None)
 
   # A list is used here to capture the result from the callbacks, as
   # Python closures for outer scope variables require mutable objects to
@@ -148,7 +145,6 @@ def run_parallel_reviews(
     result = _run_single_review(
         review_id=review_id,
         review_prompt_content=review_prompt_content,
-        original_conversation_path=parent_options.conversation.path,
         parent_options=parent_options,
     )
     with lock:
@@ -172,7 +168,6 @@ def run_parallel_reviews(
 
 
 def implementation_review_spec(parent_options: AgentLoopOptions,
-                               original_conversation_path: str,
                                original_task_prompt_content: str,
                                git_diff_output: str) -> Dict[str, str]:
   """Computes the dictionary of review specifications for implementation reviews.
