@@ -144,12 +144,11 @@ def run_parallel_reviews(
   threads = []
 
   def run_and_collect_single_review(review_id: str,
-                                    review_input_data: Dict[str, Any]) -> None:
+                                    review_prompt_content: str) -> None:
     result = _run_single_review(
         review_id=review_id,
-        review_prompt_content=review_input_data['review_prompt_content'],
-        original_conversation_path=review_input_data[
-            'original_conversation_path'],
+        review_prompt_content=review_prompt_content,
+        original_conversation_path=parent_options.conversation.path,
         parent_options=parent_options,
     )
     with lock:
@@ -158,10 +157,7 @@ def run_parallel_reviews(
   for review_id, review_prompt_content in reviews_to_run.items():
     thread = threading.Thread(
         target=run_and_collect_single_review,
-        args=(review_id, {
-            'review_prompt_content': review_prompt_content,
-            'original_conversation_path': parent_options.conversation.path,
-        }),
+        args=(review_id, review_prompt_content),
     )
     threads.append(thread)
     thread.start()
@@ -191,17 +187,17 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
     A dictionary mapping an arbitrary ID (str) to the full review prompt string.
   """
   reviews_to_run: Dict[str, str] = {}
-  review_files = glob.glob('agent/review/*/prompt.txt')
+  evaluator_names = find_all_evaluators()
 
-  if not review_files:
+  if not evaluator_names:
     logging.info(
         "No review files found in agent/review/*.txt. No implementation reviews will be run."
     )
     return reviews_to_run
 
-  for review_file_path in review_files:
-    reviews_to_run[os.path.basename(os.path.dirname(review_file_path))] = (
-        "### REVIEW CRITERIA\n\n" + read_review_prompt_file(review_file_path) +
+  for evaluator_name in evaluator_names:
+    reviews_to_run[evaluator_name] = (
+        "### REVIEW CRITERIA\n\n" + read_review_prompt_file(os.path.join('agent', 'review', evaluator_name, 'prompt.txt')) +
         "\n\n### EVALUATION\n\n" +
         "You MUST use either the `accept_change` or `reject_change` command. As soon as you use either, the conversation terminates. You should use ReadFile to read any files relevant to make a good assessment.\n\n"
         + "### CHANGE\n\n" + "The change to review:\n\n" + git_diff_output +
@@ -209,6 +205,11 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
         f"Original goal of this change:\n\n" + original_task_prompt_content)
 
   return reviews_to_run
+
+
+def find_all_evaluators() -> List[str]:
+  """Finds all evaluator names by globbing in the 'agent/review/' directory."""
+  return [os.path.basename(os.path.dirname(path)) for path in glob.glob('agent/review/*/prompt.txt')]
 
 
 def reject_output_content_sections(
