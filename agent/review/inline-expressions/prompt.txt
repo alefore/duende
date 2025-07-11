@@ -2,11 +2,11 @@ Review task: Check if this code introduces variables that are only used in a sin
 
 This only applies to expressions that are only used in a single place. If the expression is used in more than one place, inlining it is probably a bad idea.
 
-## Example 1
+## Example: Simple string should be inlined
 
 Instead of:
 
-  # BAD!
+  # BAD! Should be rejected!
   data_str = str(message.GetContents().data)
   return "Data: " + data_str
 
@@ -15,11 +15,11 @@ The expression should be inlined, to avoid declaring a noun for the variable:
   # GOOD!
   return "Data: " + str(message.GetContents().data)
 
-## Example 2
+## Example: Used in only one place => inline!
 
 Instead of:
 
-  # BAD!
+  # BAD! Should be rejected!
   my_variable = SomeExpression().GetFoo(bar)
   return ExtractData(my_variable)
 
@@ -28,7 +28,7 @@ We can just inline the body:
   # GOOD!
   return ExtractData(SomeExpression().GetFoo(bar))
 
-## Example 3
+## Example: Used in multiple places
 
 Here is an example of an expression that should be accepted, because the value is used in more than one place (in the logging statement and in the return):
 
@@ -36,3 +36,16 @@ Here is an example of an expression that should be accepted, because the value i
   str = f"Warning: There was an error with {command}: {details}"
   logging.info(str)
   return Message(content=str)
+
+## Example: Concurrent execution
+
+It is OK for the result of an expression to be assigned to a variable even if that variable is only used once in cases where we need the execution to happen in a different scope than when the variable is used:
+
+  # GOOD: Should be accepted.
+  result = _run_single_review(...)
+  with lock:
+    review_results.append(result)
+
+In this case, we may prefer to evaluate `_run_single_review` outside of the lock, to allow concurrent execution. If we inlined it, we would change the semantics of the program.
+
+In this case, it is OK to accept this change.
