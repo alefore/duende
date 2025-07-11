@@ -9,6 +9,10 @@ from agent_workflow import AgentWorkflow
 from agent_loop_options import AgentLoopOptions
 from review_utils import run_parallel_reviews, ReviewResult, find_all_evaluators
 
+EvaluatorName = str
+
+# TODO: Create a Namedtuple to contain a TestSpec (fields test_input: str, expect: EvaluatorOutputEnum (declare this enum!)) and store a single dictionary of [str, TestSpec] instead of `reviews_to_run` and `expected_results`.
+
 
 class ReviewEvaluatorTestWorkflow(AgentWorkflow):
   """A workflow to evaluate the quality of all review evaluators."""
@@ -25,7 +29,6 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
       logging.info("No evaluators found. Exiting.")
       return
 
-    # TODO: Create a Namedtuple to contain a TestSpec (fields test_input: str, expected_output: bool) and store a single dictionary of [str, TestSpec]. Remove `reviews_to_run` and `expected_results`.
     reviews_to_run: Dict[str, str] = {}
     expected_results: Dict[str, bool] = {}
 
@@ -59,9 +62,6 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
   def _process_results(self, all_review_results: List[ReviewResult],
                        expected_results: Dict[str, bool]) -> None:
 
-    # TODO: Define a class to hold this data and use that (instead of Any).
-    # That class should have its own method to update itself (given a result).
-    # Call it EvaluatorTestStats.
     def _create_evaluator_stats_default() -> Dict[str, Any]:
       return {
           'total': 0,
@@ -70,6 +70,10 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
           'incorrect_reject': 0,
           'details': []
       }
+
+    # TODO: Create a class EvaluatorResults. This class should internally simply
+    # keep a list of ReviewResult and, perhaps, the expected_results. That class should have a method to generate the output (markdown) for a given evaluator.
+    # Instead of stupidly updating variables like `total` and `incorrect_XXX`, just compute the values dynamically from the review_results.
 
     evaluator_stats: Dict[str, Dict[str, Any]] = collections.defaultdict(
         _create_evaluator_stats_default)
