@@ -419,8 +419,8 @@ class TestAgentLoop(unittest.TestCase):
          patch('review_utils.GetGitDiffContent') as mock_get_diff:
 
       mock_glob.return_value = [
-          'agent/review/review_0.txt', 'agent/review/review_1.txt',
-          'agent/review/review_2.txt'
+          'agent/review/review_0/prompt.txt',
+          'agent/review/review_1/prompt.txt', 'agent/review/review_2/prompt.txt'
       ]
       mock_read_prompt.side_effect = [
           "Review prompt 0.",

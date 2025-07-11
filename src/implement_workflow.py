@@ -36,12 +36,15 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     def agent_loop_runner(options: AgentLoopOptions) -> None:
       AgentLoop(options).run()
 
-    return review_utils.run_parallel_reviews(
-        parent_options=self._options,
-        original_conversation_path=self._agent_loop.conversation.path,
-        agent_loop_runner=agent_loop_runner,
-        original_task_prompt_content=self._options.task_prompt_content,
-        git_diff_output=git_diff_output)
+    return review_utils.reject_output_content_sections(
+        review_utils.run_parallel_reviews(
+            reviews_to_run=review_utils.implementation_review_spec(
+                parent_options=self._options,
+                original_conversation_path=self._agent_loop.conversation.path,
+                original_task_prompt_content=self._options.task_prompt_content,
+                git_diff_output=git_diff_output),
+            parent_options=self._options,
+            agent_loop_runner=agent_loop_runner))
 
   def _handle_initial_review(self) -> None:
     if self._review_first:
@@ -93,18 +96,21 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     self._options.conversation.SetState(
         ConversationState.WAITING_FOR_CONFIRMATION)
     guidance = self._options.confirmation_state.RequireConfirmation(
-        self._options.conversation.GetId(), ("Confirm `done` command? "
-              "Enter an empty string to accept and terminate, "
-              "or some message to be sent to the AI asking it to continue."))
+        self._options.conversation.GetId(),
+        ("Confirm `done` command? "
+         "Enter an empty string to accept and terminate, "
+         "or some message to be sent to the AI asking it to continue."))
     if not guidance:
       return None
 
     logging.info("Your guidance will be sent to the AI.")
-    return Message(role='user', content_sections=[
-        ContentSection(
-            content=f"Notice from human: {guidance}",
-            summary="Human decision to continue")
-    ])
+    return Message(
+        role='user',
+        content_sections=[
+            ContentSection(
+                content=f"Notice from human: {guidance}",
+                summary="Human decision to continue")
+        ])
 
   def run(self) -> None:
     self._handle_initial_review()
