@@ -33,9 +33,6 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     self._options.conversation.SetState(
         ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
 
-    def agent_loop_runner(options: AgentLoopOptions) -> None:
-      AgentLoop(options).run()
-
     return review_utils.reject_output_content_sections(
         review_utils.run_parallel_reviews(
             reviews_to_run=review_utils.implementation_review_spec(
@@ -43,8 +40,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
                 original_conversation_path=self._agent_loop.conversation.path,
                 original_task_prompt_content=self._options.task_prompt_content,
                 git_diff_output=git_diff_output),
-            parent_options=self._options,
-            agent_loop_runner=agent_loop_runner))
+            parent_options=self._options))
 
   def _handle_initial_review(self) -> None:
     if self._review_first:

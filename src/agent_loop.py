@@ -14,7 +14,6 @@ from command_registry_factory import CreateCommandRegistry
 from confirmation import ConfirmationState
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
-import review_utils
 from validate_command_input import ValidateCommandInput
 
 logging.basicConfig(level=logging.INFO)

@@ -6,6 +6,7 @@ import threading
 from typing import Callable, List, Optional, NamedTuple, Dict, Any
 
 from agent_command import CommandOutput
+from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from command_registry_factory import CreateReviewCommandRegistry
 from confirmation import ConfirmationState
@@ -52,7 +53,6 @@ def _run_single_review(
     review_prompt_content: str,
     original_conversation_path: str,
     parent_options: AgentLoopOptions,
-    agent_loop_runner: Callable[[AgentLoopOptions], None],
 ) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
@@ -112,7 +112,7 @@ def _run_single_review(
   )
 
   logging.info(f"Starting review for {review_id}.")
-  agent_loop_runner(review_options)
+  AgentLoop(review_options).run()
   logging.info(f"Nested review agent loop for {review_id} done.")
 
   assert single_review_result, "Review agent did not call accept/reject. This should never happen."
@@ -121,8 +121,7 @@ def _run_single_review(
 
 def run_parallel_reviews(
     reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
-    agent_loop_runner: Callable[[AgentLoopOptions],
-                                None]) -> List[ReviewResult]:
+) -> List[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
   Args:
@@ -152,7 +151,6 @@ def run_parallel_reviews(
         original_conversation_path=review_input_data[
             'original_conversation_path'],
         parent_options=parent_options,
-        agent_loop_runner=agent_loop_runner,
     )
     with lock:
       review_results.append(result)
