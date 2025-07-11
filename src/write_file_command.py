@@ -61,9 +61,11 @@ class WriteFileCommand(AgentCommand):
     return diff
 
   def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        'content_diff': self._derive_diff(inputs['path'], inputs['content'])
-    }
+    output = {}
+    if inputs['path'] and inputs['content']:
+      output['content_diff'] = self._derive_diff(inputs['path'],
+                                                 inputs['content'])
+    return output
 
   def _derive_diff(self, path: str, new_content: str) -> str:
     try:
