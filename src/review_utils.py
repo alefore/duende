@@ -55,7 +55,6 @@ def _run_single_review(
 ) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
-
   review_conversation = parent_options.conversation_factory.New(
       name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
       path=None)
@@ -192,9 +191,10 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
 
   for evaluator_name in evaluator_names:
     reviews_to_run[evaluator_name] = (
-        "### REVIEW CRITERIA\n\n" + read_review_prompt_file(os.path.join('agent', 'review', evaluator_name, 'prompt.txt')) +
+        "### REVIEW CRITERIA\n\n" + read_review_prompt_file(
+            os.path.join('agent', 'review', evaluator_name, 'prompt.txt')) +
         "\n\n### EVALUATION\n\n" +
-        "You MUST use either the `accept_change` or `reject_change` command. As soon as you use either, the conversation terminates. You should use ReadFile to read any files relevant to make a good assessment.\n\n"
+        "You MUST use either `accept_change` or `reject_change` command (with an appropriate `reason`). Use `ReadFile` to read any files relevant to make a good assessment.\n\n"
         + "### CHANGE\n\n" + "The change to review:\n\n" + git_diff_output +
         "\n\n### GOAL OF THIS CHANGE\n\n" +
         f"Original goal of this change:\n\n" + original_task_prompt_content)
@@ -204,7 +204,10 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
 
 def find_all_evaluators() -> List[str]:
   """Finds all evaluator names by globbing in the 'agent/review/' directory."""
-  return [os.path.basename(os.path.dirname(path)) for path in glob.glob('agent/review/*/prompt.txt')]
+  return [
+      os.path.basename(os.path.dirname(path))
+      for path in glob.glob('agent/review/*/prompt.txt')
+  ]
 
 
 def reject_output_content_sections(
