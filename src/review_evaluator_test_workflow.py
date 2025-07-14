@@ -4,26 +4,21 @@ import logging
 import os
 import sys
 from typing import Dict, Any, List, Tuple, Callable, NamedTuple
-from enum import Enum
 
 from agent_workflow import AgentWorkflow
 from agent_loop_options import AgentLoopOptions
-from review_utils import run_parallel_reviews, ReviewResult, find_all_evaluators
+from review_utils import run_parallel_reviews, ReviewResult, find_all_evaluators, ReviewDecision
 
 EvaluatorName = str
 
-class EvaluatorOutputEnum(Enum):
-  ACCEPT = True
-  REJECT = False
-
 class _TestSpec(NamedTuple):
   test_input: str
-  expect: EvaluatorOutputEnum
+  expect: ReviewDecision
 
 class EvaluatorResults:
-  def __init__(self, review_results: List[ReviewResult], expected_results: Dict[str, EvaluatorOutputEnum]):
+  def __init__(self, review_results: List[ReviewResult], expected_decisions: Dict[str, ReviewDecision]):
     self._review_results = review_results
-    self._expected_results = expected_results
+    self._expected_decisions = expected_decisions
 
   @property
   def total_tests(self) -> int:
@@ -31,15 +26,15 @@ class EvaluatorResults:
 
   @property
   def passed_tests(self) -> int:
-    return sum(self._expected_results[r.id].value == r.is_accepted for r in self._review_results)
+    return sum(self._expected_decisions[r.id] == r.decision for r in self._review_results)
 
   @property
   def incorrect_accepts(self) -> int:
-    return sum(1 for r in self._review_results if self._expected_results[r.id] == EvaluatorOutputEnum.REJECT and r.is_accepted is True)
+    return sum(1 for r in self._review_results if self._expected_decisions[r.id] == ReviewDecision.REJECT and r.decision == ReviewDecision.ACCEPT)
 
   @property
   def incorrect_rejects(self) -> int:
-    return sum(1 for r in self._review_results if self._expected_results[r.id] == EvaluatorOutputEnum.ACCEPT and r.is_accepted is False)
+    return sum(1 for r in self._review_results if self._expected_decisions[r.id] == ReviewDecision.ACCEPT and r.decision == ReviewDecision.REJECT)
 
   def generate_markdown_output(self, evaluator_name: EvaluatorName) -> str:
     md_content = f"# Evaluation Results for {evaluator_name}\n\n"
@@ -50,11 +45,11 @@ class EvaluatorResults:
     md_content += "## Test Details\n\n"
 
     for result in self._review_results:
-      is_correct = (self._expected_results[result.id].value == result.is_accepted)
+      is_correct = (self._expected_decisions[result.id] == result.decision)
 
       md_content += f"### {result.id} - {"PASSED" if is_correct else "FAILED"}\n"
-      md_content += f"- Expected: {self._expected_results[result.id].name}\n"
-      md_content += f"- Actual: {'ACCEPT' if result.is_accepted else 'REJECT'}\n"
+      md_content += f"- Expected: {self._expected_decisions[result.id].name}\n"
+      md_content += f"- Actual: {result.decision.name}\n"
       if not is_correct:
         md_content += f"- Reason:\n```\n{result.command_output.output}\n```\n"
       md_content += "\n"
@@ -82,12 +77,12 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
       for test_file in glob.glob(f'agent/review/{evaluator_name}/accept/*.txt'):
         with open(test_file, 'r') as f:
           content = f.read()
-        tests_to_run[f'{evaluator_name}/accept/{os.path.basename(test_file)}'] = _TestSpec(test_input=content, expect=EvaluatorOutputEnum.ACCEPT)
+        tests_to_run[f'{evaluator_name}/accept/{os.path.basename(test_file)}'] = _TestSpec(test_input=content, expect=ReviewDecision.ACCEPT)
 
       for test_file in glob.glob(f'agent/review/{evaluator_name}/reject/*.txt'):
         with open(test_file, 'r') as f:
           content = f.read()
-        tests_to_run[f'{evaluator_name}/reject/{os.path.basename(test_file)}'] = _TestSpec(test_input=content, expect=EvaluatorOutputEnum.REJECT)
+        tests_to_run[f'{evaluator_name}/reject/{os.path.basename(test_file)}'] = _TestSpec(test_input=content, expect=ReviewDecision.REJECT)
 
     if not tests_to_run:
       logging.info("No tests found for any evaluator. Exiting.")
@@ -100,7 +95,7 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
     logging.info("Review Evaluator Test Workflow completed.")
 
   def _process_results(self, all_review_results: List[ReviewResult],
-                       expected_results: Dict[str, EvaluatorOutputEnum]) -> None:
+                       expected_decisions: Dict[str, ReviewDecision]) -> None:
 
     evaluator_grouped_results: Dict[EvaluatorName, List[ReviewResult]] = collections.defaultdict(list)
     for result in all_review_results:
@@ -108,7 +103,7 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
 
     evaluator_stats: Dict[EvaluatorName, EvaluatorResults] = {}
     for evaluator_name, results in evaluator_grouped_results.items():
-      evaluator_stats[evaluator_name] = EvaluatorResults(results, expected_results)
+      evaluator_stats[evaluator_name] = EvaluatorResults(results, expected_decisions)
 
     # Print summary to stdout
     print("\n--- Evaluation Summary ---")

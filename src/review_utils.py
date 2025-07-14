@@ -4,6 +4,7 @@ import os
 import subprocess
 import threading
 from typing import Callable, List, Optional, NamedTuple, Dict, Any
+from enum import Enum
 
 from agent_command import CommandOutput
 from agent_loop import AgentLoop
@@ -15,6 +16,11 @@ from message import ContentSection, Message
 from file_access_policy import FileAccessPolicy
 from review_commands import AcceptChange, RejectChange
 from task_command import TaskInformation
+
+
+class ReviewDecision(Enum):
+  ACCEPT = "accept"
+  REJECT = "reject"
 
 
 def get_git_diff_content() -> str:
@@ -45,7 +51,7 @@ def read_review_prompt_file(file_path: str) -> str:
 class ReviewResult(NamedTuple):
   id: str
   command_output: CommandOutput
-  is_accepted: bool
+  decision: ReviewDecision
 
 
 def _run_single_review(
@@ -65,21 +71,21 @@ def _run_single_review(
   single_review_result: List[ReviewResult] = []
 
   def add_review_result_callback(command_output: CommandOutput,
-                                 is_accepted: bool) -> None:
+                                 decision: ReviewDecision) -> None:
     single_review_result.append(
         ReviewResult(
             id=review_id,
             command_output=command_output,
-            is_accepted=is_accepted))
+            decision=decision))
 
   review_registry = CreateReviewCommandRegistry(
       file_access_policy=parent_options.file_access_policy)
   review_registry.Register(
       AcceptChange(lambda command_output: add_review_result_callback(
-          command_output, True)))
+          command_output, ReviewDecision.ACCEPT)))
   review_registry.Register(
       RejectChange(lambda command_output: add_review_result_callback(
-          command_output, False)))
+          command_output, ReviewDecision.REJECT)))
 
   review_start_sections: List[ContentSection] = [
       ContentSection(
@@ -226,7 +232,7 @@ def reject_output_content_sections(
     logging.info("No review results provided.")
     return None
 
-  if all(result.is_accepted for result in all_review_results):
+  if all(result.decision == ReviewDecision.ACCEPT for result in all_review_results):
     logging.info("All reviews accepted the change.")
     return None
 
@@ -241,6 +247,6 @@ def reject_output_content_sections(
           content=f"Evaluator {r.id} found issues with your change:\n\n{r.command_output.output}",
           summary=f"Review rejection from {r.id}")
       for r in all_review_results
-      if not r.is_accepted
+      if r.decision == ReviewDecision.REJECT
   ])
   return feedback_sections
