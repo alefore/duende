@@ -19,6 +19,10 @@ from validate_command_input import ValidateCommandInput
 logging.basicConfig(level=logging.INFO)
 
 
+class CommandValidationError(Exception):
+  pass
+
+
 class AgentLoop:
 
   def __init__(self, options: AgentLoopOptions):
@@ -29,6 +33,21 @@ class AgentLoop:
     self._previous_validation_passed = True
     self.next_message: Optional[Message] = self.options.start_message
 
+  def _validate_command(self, cmd_input: CommandInput) -> None:
+    command = self.options.commands_registry.Get(cmd_input.command_name)
+    if not command:
+      error_msg = f"Error: Unknown command: {cmd_input.command_name}"
+      logging.error(error_msg)
+      raise CommandValidationError(error_msg)
+
+    warnings = ValidateCommandInput(command.Syntax(), cmd_input,
+                                    self.options.file_access_policy)
+    if warnings:
+      logging.info(f"Warnings: {','.join(warnings)}")
+      raise CommandValidationError("\n".join([
+          f"Warning {cmd_input.command_name}: {warning}" for warning in warnings
+      ]))
+
   def _process_ai_response(self,
                            response_message: Message) -> Optional[Message]:
     commands: List[CommandInput] = []
@@ -36,13 +55,23 @@ class AgentLoop:
 
     self.conversation.SetState(ConversationState.PARSING_COMMANDS)
 
+    next_message = Message(role='user')
+
     for section in response_message.GetContentSections():
       if section.command:
-        commands.append(section.command)
+        cmd_input = section.command
+        try:
+          self._validate_command(cmd_input)
+        except CommandValidationError as e:
+          non_command_lines.append(f"Invalid command invocation: {str(e)}")
+          next_message.PushSection(
+              ContentSection(
+                  content=str(e),
+                  summary=f"Validation warnings: '{cmd_input.command_name}'"))
+        else:
+          commands.append(cmd_input)
       else:
         non_command_lines.append(section.content)
-
-    next_message = Message(role='user')
 
     has_human_guidance = False
     if (self.options.confirm_regex and any(
@@ -133,27 +162,7 @@ class AgentLoop:
                            cmd_input: CommandInput) -> List[ContentSection]:
     command_name = cmd_input.command_name
     command = self.options.commands_registry.Get(command_name)
-    if not command:
-      unknown_command_error_msg = f"Error: Unknown command: {command_name}"
-      logging.error(unknown_command_error_msg)
-      return [
-          ContentSection(
-              content=unknown_command_error_msg,
-              summary=unknown_command_error_msg)
-      ]
-
-    warnings = ValidateCommandInput(command.Syntax(), cmd_input,
-                                    self.options.file_access_policy)
-    if warnings:
-      logging.info(f"Warnings: {','.join(warnings)}")
-      return [
-          ContentSection(
-              content="\n".join([
-                  f"Warning {command_name}: {warning}" for warning in warnings
-              ]),
-              summary=f"Command '{command_name}' validation warnings")
-      ]
-
+    assert command
     command_output = command.run(cmd_input.args)
 
     outputs: List[ContentSection] = []
