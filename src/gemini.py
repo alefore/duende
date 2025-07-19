@@ -5,10 +5,16 @@ import sys
 from typing import cast, Any, Coroutine, Dict, List, Optional
 
 from command_registry import CommandRegistry
-from agent_command import CommandInput, CommandSyntax
+from agent_command import ArgumentContentType, CommandInput, CommandSyntax
 from conversation import Conversation
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
+
+
+def _parse_arg_type(arg: ArgumentContentType) -> genai.types.Type:
+  if arg == ArgumentContentType.INTEGER:
+    return genai.types.Type.INTEGER
+  return genai.types.Type.STRING
 
 
 def _parse_syntax(syntax: CommandSyntax) -> genai.types.FunctionDeclaration:
@@ -20,8 +26,8 @@ def _parse_syntax(syntax: CommandSyntax) -> genai.types.FunctionDeclaration:
           properties={
               arg.name:
                   genai.types.Schema(
-                      type=genai.types.Type.STRING, description=arg.description)
-              for arg in syntax.arguments
+                      type=_parse_arg_type(arg.arg_type),
+                      description=arg.description) for arg in syntax.arguments
           },
           required=[arg.name for arg in syntax.arguments if arg.required]),
       response=genai.types.Schema(
