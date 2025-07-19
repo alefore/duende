@@ -30,6 +30,7 @@ class ArgumentContentType(Enum):
   PATH_UNVALIDATED = auto()
   REGEX = auto()
   STRING = auto()
+  INTEGER = auto()
 
 
 class Argument(NamedTuple):
