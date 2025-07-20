@@ -1,6 +1,20 @@
 # Duende
 
-Duende is a conversational AI agent designed to modify a git-backed source code repository based on your instructions. It allows you to provide a task, and the AI will work to complete it by interacting with your codebase.
+Duende is a Python/JS program providing a web-based interface
+designed to enable you to guide a conversational AI (such as Gemini)
+as it uses MCP to modify a source code repository
+following your instructions.
+
+You provide a task specifying requirements for the AI;
+Duende starts a conversation and allows you to provide guidance
+and observe all interactions.
+
+It supports multiple workflows besides a single conversation.
+Currently, the only additional workflow implemented is a `--review` mode,
+where multiple review conversations are spawned
+when the original conversation is done;
+relevant feedback from the review conversations
+is feed back to the main conversation.
 
 ![Duende Screenshot](/doc/duende.png?raw=true "Duende Screenshot")
 
@@ -15,7 +29,8 @@ Duende is a conversational AI agent designed to modify a git-backed source code 
     Currently only Gemini is supported
     (the integration with OpenAI is currently broken).
 
-3.  **Define a Task:** Create a text file outlining the task for the AI. For example, `conversations/my-task.txt`.
+3.  **Define a Task:** Create a text file outlining the task for the AI. For example, `conversations/my-task.txt`
+    (see [examples](https://github.com/alefore/duende/tree/main/conversations)).
 
 4.  **Configure File Access:** Create a file named `agent/file-access-regex.txt` and add a regex that matches the files you want the AI to have access to.
 
