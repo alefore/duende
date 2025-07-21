@@ -40,3 +40,6 @@ class CommandRegistry:
 
   def GetCommands(self) -> List[AgentCommand]:
     return list(self.commands.values())
+
+  def available_commands_str(self) -> str:
+    return "Available commands: " + ', '.join(self.list_all())

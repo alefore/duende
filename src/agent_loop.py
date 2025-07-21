@@ -36,7 +36,8 @@ class AgentLoop:
   def _validate_command(self, cmd_input: CommandInput) -> None:
     command = self.options.commands_registry.Get(cmd_input.command_name)
     if not command:
-      error_msg = f"Error: Unknown command: {cmd_input.command_name}"
+      error_msg = (f"Error: Unknown command: {cmd_input.command_name}. " +
+                   self.options.commands_registry.available_commands_str())
       logging.error(error_msg)
       raise CommandValidationError(error_msg)
 
@@ -123,8 +124,7 @@ class AgentLoop:
       next_message.PushSection(
           ContentSection(
               content=("Response is empty. " +
-                       "The following commands are available:" +
-                       ', '.join(self.options.commands_registry.list_all())),
+                       self.options.commands_registry.available_commands_str()),
               summary="Empty response placeholder."))
     return next_message
 
