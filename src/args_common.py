@@ -22,10 +22,9 @@ from message import Message, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from validate_command_input import ValidateCommandInput
+from principle_review_workflow import PrincipleReviewWorkflow
 
 
-# Used to tell if a flag was set explicitly (which argparse doesn't directly
-# support.
 class TrackedFlagStr(NamedTuple):
   value: str
   set_explicitly: bool
@@ -48,12 +47,26 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       dest='api_key',
       type=str,
       default=os.path.expanduser('~/.openai/api_key'))
-  parser.add_argument(
+
+  group = parser.add_mutually_exclusive_group(required=False)
+  group.add_argument(
       '--task',
       type=str,
-      required=True,
       help="File path for task prompt. The conversation will be stored in a corresponding .conversation.json file."
   )
+  group.add_argument(
+      '--input',
+      dest='input_path',
+      type=str,
+      help="File path for the input document to be reviewed against principles."
+  )
+
+  parser.add_argument(
+      'principle_paths',
+      nargs='*',
+      help="List of principle files (only applicable when --input is used)."
+  )
+
   parser.add_argument(
       '--model',
       type=str,
@@ -93,15 +106,13 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       dest='skip_implicit_validation',
       action='store_true',
       default=False,
-      help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI)."
-  )
+      help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI).")
   parser.add_argument(
       '--git-dirty-accept',
       dest='git_dirty_accept',
       action='store_true',
       default=False,
-      help="Allow the program to proceed even if the Git repository has uncommitted changes."
-  )
+      help="Allow the program to proceed even if the Git repository has uncommitted changes.")
   parser.add_argument(
       '--review',
       action='store_true',
@@ -154,6 +165,10 @@ def CreateAgentWorkflow(
     TestFileAccess(file_access_policy)
     sys.exit(0)
 
+  if not args.task and not args.input_path:
+    print("Error: Either --task or --input must be provided.", file=sys.stderr)
+    sys.exit(1)
+
   confirm_regex: Optional[Pattern[str]] = re.compile(
       args.confirm) if args.confirm else None
 
@@ -182,6 +197,34 @@ def CreateAgentWorkflow(
 
   conversation_factory = ConversationFactory(
       conversation_factory_options._replace(command_registry=registry))
+
+  if args.input_path:
+    return PrincipleReviewWorkflow(
+        options=AgentLoopOptions(
+            conversation=conversation_factory.New(
+                name="principle_review_dummy_conv",
+                path=os.path.join(os.getcwd(), "principle_review_dummy.conversation.json")
+            ),
+            start_message=Message(
+                'system',
+                content_sections=[ContentSection(
+                    content='Dummy message for PrincipleReviewWorkflow',
+                    summary=None)
+                ]),
+            commands_registry=registry,
+            confirmation_state=ConfirmationState(
+                confirmation_manager=confirmation_manager,
+                confirm_every=args.confirm_every),
+            file_access_policy=file_access_policy,
+            conversational_ai=GetConversationalAI(args, registry),
+            confirm_regex=confirm_regex,
+            skip_implicit_validation=args.skip_implicit_validation,
+            validation_manager=validation_manager,
+        ),
+        principle_paths=args.principle_paths,
+        input_path=args.input_path,
+        conversation_factory=conversation_factory
+    )
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation_name = os.path.basename(args.task).replace('.txt', '')
