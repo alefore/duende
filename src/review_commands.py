@@ -61,7 +61,7 @@ class RejectChange(AgentCommand):
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="reject",
-        description="Rejects the proposed code changes. Use this command if you find issues that prevent them from meeting the criteria.",
+        description="Rejects the proposed code changes. Use this command if you find issues that prevent them from meeting the criteria. Include a detailed explanation of those issues, ideally making it as actionable as possible (e.g., what is a possible way of addressing those issues).",
         arguments=[
             Argument(
                 name="reason",
