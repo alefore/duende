@@ -75,9 +75,7 @@ def _run_single_review(
                                  decision: ReviewDecision) -> None:
     single_review_result.append(
         ReviewResult(
-            id=review_id,
-            command_output=command_output,
-            decision=decision))
+            id=review_id, command_output=command_output, decision=decision))
 
   review_registry = CreateReviewCommandRegistry(
       file_access_policy=parent_options.file_access_policy)
@@ -121,8 +119,7 @@ def _run_single_review(
 
 
 def run_parallel_reviews(
-    reviews_to_run: Dict[str, str],
-    parent_options: AgentLoopOptions,
+    reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
     conversation_factory: ConversationFactory) -> List[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
@@ -201,7 +198,7 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
         "### REVIEW CRITERIA\n\n" + read_review_prompt_file(
             os.path.join('agent', 'review', evaluator_name, 'prompt.txt')) +
         "\n\n### EVALUATION\n\n" +
-        "You MUST use either `accept_change` or `reject_change` command (with an appropriate `reason`). Use `ReadFile` to read any files relevant to make a good assessment.\n\n"
+        "You MUST use either `accept` or `reject` command (with an appropriate `reason`). Use `ReadFile` to read any files relevant to make a good assessment.\n\n"
         + "### CHANGE\n\n" + "The change to review:\n\n" + git_diff_output +
         "\n\n### GOAL OF THIS CHANGE\n\n" +
         f"Original goal of this change:\n\n" + original_task_prompt_content)
@@ -233,7 +230,8 @@ def reject_output_content_sections(
     logging.info("No review results provided.")
     return None
 
-  if all(result.decision == ReviewDecision.ACCEPT for result in all_review_results):
+  if all(result.decision == ReviewDecision.ACCEPT
+         for result in all_review_results):
     logging.info("All reviews accepted the change.")
     return None
 

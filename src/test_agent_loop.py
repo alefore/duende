@@ -143,7 +143,11 @@ class TestAgentLoop(unittest.TestCase):
     )
 
     agent_workflow = ImplementAndReviewWorkflow(
-        options, original_task_prompt_content="Test task", conversation_factory=self.conv_factory, confirm_done=str(confirm_done), do_review=do_review)
+        options,
+        original_task_prompt_content="Test task",
+        conversation_factory=self.conv_factory,
+        confirm_done=str(confirm_done),
+        do_review=do_review)
     agent_workflow.run()
     return conversation.messages
 
@@ -384,7 +388,7 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(
-                            command_name="reject_change",
+                            command_name="reject",
                             args={'reason': 'Feedback from review 0.'}),
                         content="")
                 ]),
@@ -395,7 +399,7 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(
-                            command_name="reject_change",
+                            command_name="reject",
                             args={'reason': 'Feedback from review 1.'}),
                         content="")
                 ]),
@@ -406,7 +410,7 @@ class TestAgentLoop(unittest.TestCase):
                 content_sections=[
                     ContentSection(
                         command=CommandInput(
-                            command_name="accept_change",
+                            command_name="accept",
                             args={'reason': 'Accepted review 2.'}),
                         content="")
                 ]),

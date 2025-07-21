@@ -26,7 +26,7 @@ class AcceptChange(AgentCommand):
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
-        name="accept_change",
+        name="accept",
         description="Accepts the proposed code changes. Use after thoroughly reviewing the changes if they meet the evaluation criteria.",
         arguments=[
             Argument(
@@ -60,7 +60,7 @@ class RejectChange(AgentCommand):
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
-        name="reject_change",
+        name="reject",
         description="Rejects the proposed code changes. Use this command if you find issues that prevent them from meeting the criteria.",
         arguments=[
             Argument(
