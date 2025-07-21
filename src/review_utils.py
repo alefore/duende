@@ -11,7 +11,7 @@ from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from command_registry_factory import CreateReviewCommandRegistry
 from confirmation import ConfirmationState
-from conversation import Conversation
+from conversation import Conversation, ConversationFactory
 from message import ContentSection, Message
 from file_access_policy import FileAccessPolicy
 from review_commands import AcceptChange, RejectChange
@@ -58,10 +58,11 @@ def _run_single_review(
     review_id: str,
     review_prompt_content: str,
     parent_options: AgentLoopOptions,
+    conversation_factory: ConversationFactory,
 ) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
-  review_conversation = parent_options.conversation_factory.New(
+  review_conversation = conversation_factory.New(
       name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
       path=None)
 
@@ -100,7 +101,6 @@ def _run_single_review(
       confirm_every=None)
 
   review_options = AgentLoopOptions(
-      conversation_factory=parent_options.conversation_factory,
       conversation=review_conversation,
       start_message=review_start_message,
       commands_registry=review_registry,
@@ -122,7 +122,8 @@ def _run_single_review(
 
 def run_parallel_reviews(
     reviews_to_run: Dict[str, str],
-    parent_options: AgentLoopOptions) -> List[ReviewResult]:
+    parent_options: AgentLoopOptions,
+    conversation_factory: ConversationFactory) -> List[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
   Args:
@@ -150,6 +151,7 @@ def run_parallel_reviews(
         review_id=review_id,
         review_prompt_content=review_prompt_content,
         parent_options=parent_options,
+        conversation_factory=conversation_factory,
     )
     with lock:
       review_results.append(result)

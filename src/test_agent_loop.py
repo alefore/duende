@@ -131,7 +131,6 @@ class TestAgentLoop(unittest.TestCase):
         command_registry=self.registry)
 
     options = AgentLoopOptions(
-        conversation_factory=self.conv_factory,
         conversation=conversation,
         start_message=Message(
             role='user',
@@ -144,7 +143,7 @@ class TestAgentLoop(unittest.TestCase):
     )
 
     agent_workflow = ImplementAndReviewWorkflow(
-        options, original_task_prompt_content="Test task", confirm_done=str(confirm_done), do_review=do_review)
+        options, original_task_prompt_content="Test task", conversation_factory=self.conv_factory, confirm_done=str(confirm_done), do_review=do_review)
     agent_workflow.run()
     return conversation.messages
 

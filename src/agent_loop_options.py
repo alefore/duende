@@ -10,7 +10,6 @@ from validation import ValidationManager
 
 
 class AgentLoopOptions(NamedTuple):
-  conversation_factory: ConversationFactory
   conversation: Conversation
   start_message: Message
   commands_registry: CommandRegistry

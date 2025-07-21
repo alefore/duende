@@ -33,7 +33,11 @@ class TrackedFlagStr(NamedTuple):
 
 class TrackFlagStrAction(argparse.Action):
 
-  def __call__(self, parser: argparse.ArgumentParser, namespace: argparse.Namespace, values: Any, option_string: Optional[str] = None) -> None:
+  def __call__(self,
+               parser: argparse.ArgumentParser,
+               namespace: argparse.Namespace,
+               values: Any,
+               option_string: Optional[str] = None) -> None:
     setattr(namespace, self.dest, TrackedFlagStr(values, True))
 
 
@@ -199,7 +203,6 @@ def CreateAgentWorkflow(
       conversation_name)
 
   options = AgentLoopOptions(
-      conversation_factory=conversation_factory,
       conversation=conversation,
       start_message=start_message,
       commands_registry=registry,
@@ -210,11 +213,18 @@ def CreateAgentWorkflow(
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,
   )
-  
+
   if args.evaluate_evaluators:
-    return ReviewEvaluatorTestWorkflow(options)
+    return ReviewEvaluatorTestWorkflow(
+        options, conversation_factory=conversation_factory)
   else:
-    return ImplementAndReviewWorkflow(options, original_task_prompt_content=task_file_content, confirm_done=args.confirm, do_review=args.review, review_first=args.review_first)
+    return ImplementAndReviewWorkflow(
+        options,
+        original_task_prompt_content=task_file_content,
+        confirm_done=args.confirm,
+        do_review=args.review,
+        review_first=args.review_first,
+        conversation_factory=conversation_factory)
 
 
 def LoadOrCreateConversation(

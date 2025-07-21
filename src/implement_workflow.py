@@ -19,10 +19,11 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
   def __init__(self,
                options: AgentLoopOptions,
                original_task_prompt_content: str,
+               conversation_factory: ConversationFactory,
                confirm_done: str = '',
                do_review: bool = False,
                review_first: bool = False) -> None:
-    super().__init__(options.conversation_factory)
+    super().__init__(conversation_factory)
     self._options = options
     self._agent_loop = AgentLoop(options)
     self._confirm_done_regex: Optional[Pattern[str]] = re.compile(
@@ -41,7 +42,8 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
                 parent_options=self._options,
                 original_task_prompt_content=self._original_task_prompt_content,
                 git_diff_output=git_diff_output),
-            parent_options=self._options))
+            parent_options=self._options,
+            conversation_factory=self._conversation_factory))
 
   def _handle_initial_review(self) -> None:
     if self._review_first:

@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Tuple, Callable, NamedTuple
 from agent_workflow import AgentWorkflow
 from agent_loop_options import AgentLoopOptions
 from review_utils import run_parallel_reviews, ReviewResult, find_all_evaluators, ReviewDecision
+from conversation import ConversationFactory
 
 EvaluatorName = str
 
@@ -59,8 +60,8 @@ class EvaluatorResults:
 class ReviewEvaluatorTestWorkflow(AgentWorkflow):
   """A workflow to evaluate the quality of all review evaluators."""
 
-  def __init__(self, options: AgentLoopOptions):
-    super().__init__(options.conversation_factory)
+  def __init__(self, options: AgentLoopOptions, conversation_factory: ConversationFactory):
+    super().__init__(conversation_factory)
     self._options = options
 
   def run(self) -> None:
@@ -89,7 +90,7 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
       sys.exit(1)
 
     self._process_results(
-        run_parallel_reviews({test_id: spec.test_input for test_id, spec in tests_to_run.items()}, self._options), 
+        run_parallel_reviews({test_id: spec.test_input for test_id, spec in tests_to_run.items()}, self._options, self._conversation_factory), 
         {test_id: spec.expect for test_id, spec in tests_to_run.items()})
 
     logging.info("Review Evaluator Test Workflow completed.")
