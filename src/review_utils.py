@@ -100,7 +100,6 @@ def _run_single_review(
       confirm_every=None)
 
   review_options = AgentLoopOptions(
-      task_prompt_content=parent_options.task_prompt_content,
       conversation_factory=parent_options.conversation_factory,
       conversation=review_conversation,
       start_message=review_start_message,

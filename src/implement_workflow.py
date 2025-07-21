@@ -18,6 +18,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
 
   def __init__(self,
                options: AgentLoopOptions,
+               original_task_prompt_content: str,
                confirm_done: str = '',
                do_review: bool = False,
                review_first: bool = False) -> None:
@@ -28,6 +29,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         confirm_done) if confirm_done else None
     self._do_review = do_review
     self._review_first = review_first
+    self._original_task_prompt_content = original_task_prompt_content
 
   def _RunReviews(self, git_diff_output: str) -> Optional[List[ContentSection]]:
     self._options.conversation.SetState(
@@ -37,7 +39,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         review_utils.run_parallel_reviews(
             reviews_to_run=review_utils.implementation_review_spec(
                 parent_options=self._options,
-                original_task_prompt_content=self._options.task_prompt_content,
+                original_task_prompt_content=self._original_task_prompt_content,
                 git_diff_output=git_diff_output),
             parent_options=self._options))
 

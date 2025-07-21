@@ -199,7 +199,6 @@ def CreateAgentWorkflow(
       conversation_name)
 
   options = AgentLoopOptions(
-      task_prompt_content=task_file_content,
       conversation_factory=conversation_factory,
       conversation=conversation,
       start_message=start_message,
@@ -215,7 +214,7 @@ def CreateAgentWorkflow(
   if args.evaluate_evaluators:
     return ReviewEvaluatorTestWorkflow(options)
   else:
-    return ImplementAndReviewWorkflow(options, confirm_done=args.confirm, do_review=args.review, review_first=args.review_first)
+    return ImplementAndReviewWorkflow(options, original_task_prompt_content=task_file_content, confirm_done=args.confirm, do_review=args.review, review_first=args.review_first)
 
 
 def LoadOrCreateConversation(
