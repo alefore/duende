@@ -26,11 +26,11 @@ class PrincipleReviewWorkflow(AgentWorkflow):
 
     return f"""# Your task
 
-You must review if a given input abides by a principle.
+You must review if a given input abides by a principle (given below) and either:
 
-You must communicate your decision by running either the `accept` or the `reject` functions (which requires a reason parameter, explaining your decision).
+* If the input meets the principle: run the `accept` function (with a `reason` parameter).
 
-If you run the `reject` function (because the input does not meet the required principle), try to include details in the `reason` parameter about how the input could be extended to meet the principle. These details may be given to an AI asked to fix the input.
+* If the input does NOT meet the principle: run the `reject` function. In the `reason` parameter, explain your decision, including steps to improve the input. This info will be given to an AI tasked with fixing the input. That AI does not know this principle, so convey enough details to enable the AI to succesfully fixing the input (to meet the principle).
 
 # PRINCIPLE (REQUIREMENT)
 
