@@ -267,20 +267,22 @@ def CreateAgentWorkflow(
       registry, file_access_policy, validation_manager, confirmation_state,
       conversation_name)
 
+  common_agent_loop_options = AgentLoopOptions(
+      conversation=conversation,
+      start_message=start_message,
+      commands_registry=registry,
+      confirmation_state=confirmation_state,
+      file_access_policy=file_access_policy,
+      conversational_ai=GetConversationalAI(args, registry),
+      confirm_regex=confirm_regex,
+      skip_implicit_validation=args.skip_implicit_validation,
+      validation_manager=validation_manager,
+  )
+
   if args.evaluate_evaluators:
     return ReviewEvaluatorTestWorkflow(
         AgentWorkflowOptions(
-            agent_loop_options=AgentLoopOptions(
-                conversation=conversation,
-                start_message=start_message,
-                commands_registry=registry,
-                confirmation_state=confirmation_state,
-                file_access_policy=file_access_policy,
-                conversational_ai=GetConversationalAI(args, registry),
-                confirm_regex=confirm_regex,
-                skip_implicit_validation=args.skip_implicit_validation,
-                validation_manager=validation_manager,
-            ),
+            agent_loop_options=common_agent_loop_options,
             conversation_factory=conversation_factory,
             original_task_prompt_content=task_file_content,
             confirm_done=args.confirm,
@@ -290,17 +292,7 @@ def CreateAgentWorkflow(
   else:
     return ImplementAndReviewWorkflow(
         AgentWorkflowOptions(
-            agent_loop_options=AgentLoopOptions(
-                conversation=conversation,
-                start_message=start_message,
-                commands_registry=registry,
-                confirmation_state=confirmation_state,
-                file_access_policy=file_access_policy,
-                conversational_ai=GetConversationalAI(args, registry),
-                confirm_regex=confirm_regex,
-                skip_implicit_validation=args.skip_implicit_validation,
-                validation_manager=validation_manager,
-            ),
+            agent_loop_options=common_agent_loop_options,
             conversation_factory=conversation_factory,
             original_task_prompt_content=task_file_content,
             confirm_done=args.confirm,
