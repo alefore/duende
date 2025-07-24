@@ -13,14 +13,14 @@ class TestWriteFileCommand(unittest.TestCase):
     self.file_access_policy = MagicMock(spec=FileAccessPolicy)
     self.selection_manager = SelectionManager()
 
-  def test_write_file_success(self):
+  def test_write_file_success(self) -> None:
     command_input = CommandInput(
         "write_file", args={
             "path": "test.txt",
             "content": "line1\nline2"
         })
     write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager)
+                                          self.selection_manager, None)
 
     with patch("builtins.open", mock_open()) as mock_file, \
          patch("os.path.exists", return_value=False):
@@ -33,14 +33,14 @@ class TestWriteFileCommand(unittest.TestCase):
       handle = mock_file()
       handle.write.assert_called_once_with("line1\nline2")
 
-  def test_write_file_directory_creation(self):
+  def test_write_file_directory_creation(self) -> None:
     command_input = CommandInput(
         "write_file", args={
             "path": "dir/test.txt",
             "content": "line1"
         })
     write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager)
+                                          self.selection_manager, None)
 
     with patch("builtins.open", mock_open()) as mock_file, \
          patch("os.makedirs") as mock_makedirs, \
@@ -53,14 +53,14 @@ class TestWriteFileCommand(unittest.TestCase):
       mock_makedirs.assert_called_once_with("dir", exist_ok=True)
       mock_file.assert_called_once_with("dir/test.txt", "w")
 
-  def test_write_file_error(self):
+  def test_write_file_error(self) -> None:
     command_input = CommandInput(
         "write_file", args={
             "path": "test.txt",
             "content": "line1"
         })
     write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager)
+                                          self.selection_manager, None)
 
     with patch(
         "builtins.open", mock_open()) as mock_file, \
@@ -69,10 +69,9 @@ class TestWriteFileCommand(unittest.TestCase):
       result = write_file_command.run(command_input.args)
 
       self.assertEqual(result.output, "")
-      self.assertIn("Error writing to test.txt: File not found",
-                    result.errors)
+      self.assertIn("Error writing to test.txt: File not found", result.errors)
 
-  def test_write_file_with_small_diff(self):
+  def test_write_file_with_small_diff(self) -> None:
     path = "test.txt"
     original_content = "line1\nline2\nline3"
     new_content = ["line1", "line2_modified", "line3"]
@@ -82,7 +81,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "content": "\n".join(new_content)
         })
     write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager)
+                                          self.selection_manager, None)
 
     with patch("os.path.exists", return_value=True), \
          patch("builtins.open", mock_open(read_data=original_content)) as mock_file:
@@ -100,7 +99,7 @@ class TestWriteFileCommand(unittest.TestCase):
       mock_file.assert_any_call(path, "r")
       mock_file.assert_any_call(path, "w")
 
-  def test_write_file_with_large_diff(self):
+  def test_write_file_with_large_diff(self) -> None:
     path = "large_file.txt"
     original_content = [f"line{i}" for i in range(30)]
     new_content = [f"new_line{i}" for i in range(30)]
@@ -110,7 +109,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "content": "\n".join(new_content)
         })
     write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager)
+                                          self.selection_manager, None)
 
     with patch("os.path.exists", return_value=True), \
          patch("builtins.open", mock_open(read_data="\n".join(original_content))) as mock_file:

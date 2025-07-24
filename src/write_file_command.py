@@ -13,34 +13,42 @@ class WriteFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy,
                validation_manager: Optional[ValidationManager],
-               selection_manager: SelectionManager):
+               selection_manager: SelectionManager,
+               hard_coded_path: Optional[str]):
+    # TODO: Get rid of file_access_policy.
     self.file_access_policy = file_access_policy
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
+    self.hard_coded_path = hard_coded_path
 
   def Name(self) -> str:
     return self.Syntax().name
 
-  @classmethod
-  def Syntax(cls) -> CommandSyntax:
+  def _optional_arguments(self) -> List[Argument]:
+    if self.hard_coded_path:
+      return []
+    return [
+        Argument(
+            name="path",
+            arg_type=ArgumentContentType.PATH_OUTPUT,
+            description="The file path to write the content to."),
+        Argument(
+            name="reason",
+            arg_type=ArgumentContentType.STRING,
+            description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
+            required=False)
+    ]
+
+  def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="write_file",
         description="Writes the given content to a specified file.",
         arguments=[
             Argument(
-                name="path",
-                arg_type=ArgumentContentType.PATH_OUTPUT,
-                description="The file path to write the content to."),
-            Argument(
                 name="content",
                 arg_type=ArgumentContentType.STRING,
-                description="The content to write."),
-            Argument(
-                name="reason",
-                arg_type=ArgumentContentType.STRING,
-                description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
-                required=False)
-        ],
+                description="The content to write.")
+        ] + self._optional_arguments(),
         output_description='A string describing the result of the operation, possibly including a diff.'
     )
 
@@ -62,9 +70,9 @@ class WriteFileCommand(AgentCommand):
 
   def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
     output = {}
-    if inputs['path'] and inputs['content']:
-      output['content_diff'] = self._derive_diff(inputs['path'],
-                                                 inputs['content'])
+    path = self.hard_coded_path or inputs['path']
+    if path and inputs['content']:
+      output['content_diff'] = self._derive_diff(path, inputs['content'])
     return output
 
   def _derive_diff(self, path: str, new_content: str) -> str:
@@ -80,7 +88,7 @@ class WriteFileCommand(AgentCommand):
       return f"Could not compute diff: {e}"
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    path = inputs['path']
+    path = self.hard_coded_path or inputs['path']
     new_content = inputs['content']
     logging.info(f"Write: {path}")
 
