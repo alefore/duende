@@ -12,41 +12,39 @@ from conversation_state import ConversationState
 import review_utils
 
 from agent_workflow import AgentWorkflow
+from agent_workflow_options import AgentWorkflowOptions
 
 
 class ImplementAndReviewWorkflow(AgentWorkflow):
 
-  def __init__(self,
-               options: AgentLoopOptions,
-               original_task_prompt_content: str,
-               conversation_factory: ConversationFactory,
-               confirm_done: str = '',
-               do_review: bool = False,
-               review_first: bool = False) -> None:
-    super().__init__(conversation_factory)
-    self._options = options
-    self._agent_loop = AgentLoop(options)
+  def __init__(self, options: AgentWorkflowOptions) -> None:
+    super().__init__(options)
+
+    if not options.original_task_prompt_content:
+      raise ValueError(
+          "ImplementAndReviewWorkflow requires original_task_prompt_content in AgentWorkflowOptions."
+      )
+    self._original_task_prompt_content: str = options.original_task_prompt_content
+
+    self._agent_loop = AgentLoop(options.agent_loop_options)
     self._confirm_done_regex: Optional[Pattern[str]] = re.compile(
-        confirm_done) if confirm_done else None
-    self._do_review = do_review
-    self._review_first = review_first
-    self._original_task_prompt_content = original_task_prompt_content
+        options.confirm_done) if options.confirm_done else None
 
   def _RunReviews(self, git_diff_output: str) -> Optional[List[ContentSection]]:
-    self._options.conversation.SetState(
+    self._options.agent_loop_options.conversation.SetState(
         ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
 
     return review_utils.reject_output_content_sections(
         review_utils.run_parallel_reviews(
             reviews_to_run=review_utils.implementation_review_spec(
-                parent_options=self._options,
+                parent_options=self._options.agent_loop_options,
                 original_task_prompt_content=self._original_task_prompt_content,
                 git_diff_output=git_diff_output),
-            parent_options=self._options,
-            conversation_factory=self._conversation_factory))
+            parent_options=self._options.agent_loop_options,
+            conversation_factory=self._options.conversation_factory))
 
   def _handle_initial_review(self) -> None:
-    if self._review_first:
+    if self._options.review_first:
       logging.info("Running --review-first...")
       logging.info("Calling get_git_diff_content from _handle_initial_review")
       git_diff_output = review_utils.get_git_diff_content()
@@ -59,7 +57,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
       if review_feedback_content:
         logging.info(
             f"Found {len(review_feedback_content)} review suggestions.")
-        initial_message = self._options.start_message
+        initial_message = self._options.agent_loop_options.start_message
         if not initial_message:
           initial_message = Message(role='system', content_sections=[])
         self._agent_loop.set_next_message(
@@ -72,7 +70,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         sys.exit(0)
 
   def _get_review_message(self) -> Optional[Message]:
-    if not self._do_review:
+    if not self._options.do_review:
       return None
 
     logging.info("Calling get_git_diff_content from _get_review_message")
@@ -92,10 +90,10 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     if not self._confirm_done_regex:
       return None
 
-    self._options.conversation.SetState(
+    self._options.agent_loop_options.conversation.SetState(
         ConversationState.WAITING_FOR_CONFIRMATION)
-    guidance = self._options.confirmation_state.RequireConfirmation(
-        self._options.conversation.GetId(),
+    guidance = self._options.agent_loop_options.confirmation_state.RequireConfirmation(
+        self._options.agent_loop_options.conversation.GetId(),
         ("Confirm `done` command? "
          "Enter an empty string to accept and terminate, "
          "or some message to be sent to the AI asking it to continue."))

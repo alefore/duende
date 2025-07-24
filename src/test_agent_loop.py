@@ -17,8 +17,8 @@ from conversation import Conversation, ConversationFactory, Message, ContentSect
 from conversational_ai_test_utils import FakeConversationalAI
 from done_command import DoneCommand
 from file_access_policy import FileAccessPolicy, CurrentDirectoryFileAccessPolicy
-# Import real commands
 from review_commands import AcceptChange, RejectChange
+from agent_workflow_options import AgentWorkflowOptions 
 
 
 class TestAgentLoop(unittest.TestCase):
@@ -130,24 +130,23 @@ class TestAgentLoop(unittest.TestCase):
         path="/tmp/test_conversation.json",
         command_registry=self.registry)
 
-    options = AgentLoopOptions(
-        conversation=conversation,
-        start_message=Message(
-            role='user',
-            content_sections=[ContentSection(content="Test Task")]),
-        commands_registry=self.registry,
-        confirmation_state=self.mock_confirmation_state,
-        file_access_policy=self.file_access_policy,
-        conversational_ai=self.fake_ai,
-        skip_implicit_validation=True,
-    )
-
-    agent_workflow = ImplementAndReviewWorkflow(
-        options,
-        original_task_prompt_content="Test task",
+    agent_workflow = ImplementAndReviewWorkflow(AgentWorkflowOptions(
+        agent_loop_options=AgentLoopOptions(
+            conversation=conversation,
+            start_message=Message(
+                role='user',
+                content_sections=[ContentSection(content="Test Task")]),
+            commands_registry=self.registry,
+            confirmation_state=self.mock_confirmation_state,
+            file_access_policy=self.file_access_policy,
+            conversational_ai=self.fake_ai,
+            skip_implicit_validation=True,
+        ),
         conversation_factory=self.conv_factory,
+        original_task_prompt_content="Test task",
         confirm_done=str(confirm_done),
-        do_review=do_review)
+        do_review=do_review
+    ))
     agent_workflow.run()
     return conversation.messages
 

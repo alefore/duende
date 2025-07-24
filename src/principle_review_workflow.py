@@ -1,23 +1,27 @@
 import logging
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
 from message import ContentSection, Message
 import review_utils
 from conversation import ConversationFactory
+from agent_workflow_options import AgentWorkflowOptions 
 
 
 class PrincipleReviewWorkflow(AgentWorkflow):
 
-  def __init__(self, options: AgentLoopOptions, principle_paths: List[str],
-               input_path: str,
-               conversation_factory: ConversationFactory) -> None:
-    super().__init__(conversation_factory)
-    self._options = options
-    self._principle_paths = principle_paths
-    self._input_path = input_path
+  def __init__(self, options: AgentWorkflowOptions) -> None: 
+    super().__init__(options) 
+
+    if not options.principle_paths: 
+      raise ValueError("PrincipleReviewWorkflow requires principle_paths in AgentWorkflowOptions.")
+    self._principle_paths: List[str] = options.principle_paths
+
+    if not options.input_path: 
+      raise ValueError("PrincipleReviewWorkflow requires input_path in AgentWorkflowOptions.")
+    self._input_path: str = options.input_path
 
   def _get_principle_prompt(self, principle_file: str,
                             input_content: str) -> str:
@@ -60,8 +64,8 @@ You must review if a given input abides by a principle (given below) and either:
     logging.info(f"Running {len(reviews_to_run)} parallel principle reviews.")
     all_review_results = review_utils.run_parallel_reviews(
         reviews_to_run=reviews_to_run,
-        parent_options=self._options,
-        conversation_factory=self._conversation_factory)
+        parent_options=self._options.agent_loop_options,
+        conversation_factory=self._options.conversation_factory)
 
     logging.info("\n--- Principle Review Results ---")
     if not all_review_results:

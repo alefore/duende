@@ -11,12 +11,14 @@ from conversation import Conversation, ConversationId, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
 import review_utils
+from agent_workflow_options import AgentWorkflowOptions
 
 
 class AgentWorkflow(ABC):
 
-  def __init__(self, conversation_factory: ConversationFactory) -> None:
-    self._conversation_factory = conversation_factory
+  def __init__(self, options: AgentWorkflowOptions) -> None:
+    self._options = options
+    self._conversation_factory = options.conversation_factory
 
   @abstractmethod
   def run(self) -> None:
