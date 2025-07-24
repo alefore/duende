@@ -118,6 +118,24 @@ function handleListConversations(socket, conversations) {
   });
 }
 
+function switchSelectedConversationIndex(delta) {
+  const $conversationSelector = $('#conversation_selector');
+  const currentLength = $conversationSelector.children('option').length;
+  if (currentLength === 0) return; // No conversations to switch
+
+  let newIndex = $conversationSelector.prop('selectedIndex') + delta;
+
+  // Wrap around logic
+  if (newIndex < 0) {
+    newIndex = currentLength - 1;
+  } else if (newIndex >= currentLength) {
+    newIndex = 0;
+  }
+
+  $conversationSelector.prop('selectedIndex', newIndex);
+  $conversationSelector.trigger('change');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const socket = io();
   socket.on('update', (data) => handleUpdate(socket, data));
@@ -158,6 +176,14 @@ document.addEventListener('DOMContentLoaded', function() {
   $conversationSelector.on('change', function() {
     const id = parseInt($(this).val());
     if (conversationsById[id]) conversationsById[id].show();
+  });
+
+  $('#prev_conversation_button').on('click', function() {
+    switchSelectedConversationIndex(-1);
+  });
+
+  $('#next_conversation_button').on('click', function() {
+    switchSelectedConversationIndex(1);
   });
 
   console.log('Requesting conversation list.');
