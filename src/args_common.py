@@ -24,6 +24,7 @@ from gemini import Gemini
 from validate_command_input import ValidateCommandInput
 from principle_review_workflow import PrincipleReviewWorkflow
 from agent_workflow_options import AgentWorkflowOptions
+from selection_manager import SelectionManager
 
 from agent_plugin_loader import load_plugins, NoPluginFilesFoundError, NoPluginClassFoundError, InvalidPluginClassError
 from agent_plugin_interface import AgentPlugin
@@ -201,7 +202,8 @@ def CreateAgentWorkflow(
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
           command_name="task", output="", errors="", summary="Not implemented"),
-      git_dirty_accept=args.git_dirty_accept)
+      git_dirty_accept=args.git_dirty_accept,
+      hard_coded_write_path=None)
 
   if args.plugins:
     try:
@@ -244,6 +246,7 @@ def CreateAgentWorkflow(
                 validation_manager=validation_manager,
             ),
             conversation_factory=conversation_factory,
+            selection_manager=SelectionManager(),
             principle_paths=args.principle_paths,
             input_path=args.input_path,
         ))
@@ -279,11 +282,14 @@ def CreateAgentWorkflow(
       validation_manager=validation_manager,
   )
 
+  selection_manager = SelectionManager()
+
   if args.evaluate_evaluators:
     return ReviewEvaluatorTestWorkflow(
         AgentWorkflowOptions(
             agent_loop_options=common_agent_loop_options,
             conversation_factory=conversation_factory,
+            selection_manager=selection_manager,
             original_task_prompt_content=task_file_content,
             confirm_done=args.confirm,
             do_review=args.review,
@@ -294,6 +300,7 @@ def CreateAgentWorkflow(
         AgentWorkflowOptions(
             agent_loop_options=common_agent_loop_options,
             conversation_factory=conversation_factory,
+            selection_manager=selection_manager,
             original_task_prompt_content=task_file_content,
             confirm_done=args.confirm,
             do_review=args.review,

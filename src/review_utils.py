@@ -238,7 +238,7 @@ def reject_output_content_sections(
   logging.info("Some reviews rejected the change.")
   feedback_sections: List[ContentSection] = [
       ContentSection(
-          content="Please consider addressing the following issues that caused the evaluatores to reject your change and try again.",
+          content="Please consider addressing the following issues that caused the evaluators to reject your change and try again.",
           summary="Instructions about review results")
   ]
   feedback_sections.extend([
