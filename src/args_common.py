@@ -24,6 +24,9 @@ from gemini import Gemini
 from validate_command_input import ValidateCommandInput
 from principle_review_workflow import PrincipleReviewWorkflow
 
+from agent_plugin_loader import load_plugins, NoPluginFilesFoundError, NoPluginClassFoundError, InvalidPluginClassError
+from agent_plugin_interface import AgentPlugin
+
 
 class TrackedFlagStr(NamedTuple):
   value: str
@@ -64,8 +67,7 @@ def CreateCommonParser() -> argparse.ArgumentParser:
   parser.add_argument(
       'principle_paths',
       nargs='*',
-      help="List of principle files (only applicable when --input is used)."
-  )
+      help="List of principle files (only applicable when --input is used).")
 
   parser.add_argument(
       '--model',
@@ -106,13 +108,15 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       dest='skip_implicit_validation',
       action='store_true',
       default=False,
-      help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI).")
+      help="By default, we run the validation command each interaction. If this is given, only validates when explicitly request (by the AI)."
+  )
   parser.add_argument(
       '--git-dirty-accept',
       dest='git_dirty_accept',
       action='store_true',
       default=False,
-      help="Allow the program to proceed even if the Git repository has uncommitted changes.")
+      help="Allow the program to proceed even if the Git repository has uncommitted changes."
+  )
   parser.add_argument(
       '--review',
       action='store_true',
@@ -136,6 +140,12 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       action='store_true',
       default=False,
       help="If set, runs a series of tests to evaluate the performance of the AI review evaluators and outputs a summary of results."
+  )
+  parser.add_argument(
+      '--plugins',
+      action='append',
+      default=[],
+      help="Directory containing Duende plugins (duende_plugin_*.py files). Can be specified multiple times."
   )
   return parser
 
@@ -195,6 +205,17 @@ def CreateAgentWorkflow(
           summary="Not implemented"),
       git_dirty_accept=args.git_dirty_accept)
 
+  if args.plugins:
+    try:
+      for plugin in load_plugins(args.plugins):
+        for command in plugin.get_commands():
+          logging.info(f"Registering plugin command: {command.Name()}")
+          registry.Register(command)
+    except (NoPluginFilesFoundError, NoPluginClassFoundError,
+            InvalidPluginClassError) as e:
+      print(f"Error loading plugins: {e}", file=sys.stderr)
+      sys.exit(1)
+
   conversation_factory = ConversationFactory(
       conversation_factory_options._replace(command_registry=registry))
 
@@ -203,13 +224,14 @@ def CreateAgentWorkflow(
         options=AgentLoopOptions(
             conversation=conversation_factory.New(
                 name="principle_review_dummy_conv",
-                path=os.path.join(os.getcwd(), "principle_review_dummy.conversation.json")
-            ),
+                path=os.path.join(os.getcwd(),
+                                  "principle_review_dummy.conversation.json")),
             start_message=Message(
                 'system',
-                content_sections=[ContentSection(
-                    content='Dummy message for PrincipleReviewWorkflow',
-                    summary=None)
+                content_sections=[
+                    ContentSection(
+                        content='Dummy message for PrincipleReviewWorkflow',
+                        summary=None)
                 ]),
             commands_registry=registry,
             confirmation_state=ConfirmationState(
@@ -223,8 +245,7 @@ def CreateAgentWorkflow(
         ),
         principle_paths=args.principle_paths,
         input_path=args.input_path,
-        conversation_factory=conversation_factory
-    )
+        conversation_factory=conversation_factory)
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation_name = os.path.basename(args.task).replace('.txt', '')
