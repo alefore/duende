@@ -76,7 +76,8 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
     all_review_results = review_utils.run_parallel_reviews(
         reviews_to_run=reviews_to_run,
         parent_options=self._options.agent_loop_options,
-        conversation_factory=self._options.conversation_factory)
+        conversation_factory=self._options.conversation_factory,
+        expose_read_commands=False)
 
     logging.info("\n--- Principle Review Results ---")
     if not all_review_results:

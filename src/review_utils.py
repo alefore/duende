@@ -9,6 +9,7 @@ from enum import Enum
 from agent_command import CommandOutput
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
+from command_registry import CommandRegistry
 from command_registry_factory import CreateReviewCommandRegistry
 from confirmation import ConfirmationState
 from conversation import Conversation, ConversationFactory
@@ -54,12 +55,10 @@ class ReviewResult(NamedTuple):
   decision: ReviewDecision
 
 
-def _run_single_review(
-    review_id: str,
-    review_prompt_content: str,
-    parent_options: AgentLoopOptions,
-    conversation_factory: ConversationFactory,
-) -> ReviewResult:
+def _run_single_review(review_id: str, review_prompt_content: str,
+                       parent_options: AgentLoopOptions,
+                       conversation_factory: ConversationFactory,
+                       expose_read_commands: bool) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
   review_conversation = conversation_factory.New(
@@ -77,8 +76,12 @@ def _run_single_review(
         ReviewResult(
             id=review_id, command_output=command_output, decision=decision))
 
-  review_registry = CreateReviewCommandRegistry(
-      file_access_policy=parent_options.file_access_policy)
+  if expose_read_commands:
+    review_registry = CreateReviewCommandRegistry(
+        file_access_policy=parent_options.file_access_policy)
+  else:
+    review_registry = CommandRegistry()
+
   review_registry.Register(
       AcceptChange(lambda command_output: add_review_result_callback(
           command_output, ReviewDecision.ACCEPT)))
@@ -118,9 +121,10 @@ def _run_single_review(
   return single_review_result[0]
 
 
-def run_parallel_reviews(
-    reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
-    conversation_factory: ConversationFactory) -> List[ReviewResult]:
+def run_parallel_reviews(reviews_to_run: Dict[str, str],
+                         parent_options: AgentLoopOptions,
+                         conversation_factory: ConversationFactory,
+                         expose_read_commands: bool) -> List[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
   Args:
@@ -149,7 +153,7 @@ def run_parallel_reviews(
         review_prompt_content=review_prompt_content,
         parent_options=parent_options,
         conversation_factory=conversation_factory,
-    )
+        expose_read_commands=expose_read_commands)
     with lock:
       review_results.append(result)
 

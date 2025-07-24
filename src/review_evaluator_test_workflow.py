@@ -87,8 +87,12 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
       sys.exit(1)
 
     self._process_results(
-        run_parallel_reviews({test_id: spec.test_input for test_id, spec in tests_to_run.items()}, self._options.agent_loop_options, self._options.conversation_factory), 
-        {test_id: spec.expect for test_id, spec in tests_to_run.items()})
+        run_parallel_reviews(
+            {test_id: spec.test_input for test_id, spec in tests_to_run.items()},
+            self._options.agent_loop_options,
+            self._options.conversation_factory,
+            expose_read_commands=True),
+            {test_id: spec.expect for test_id, spec in tests_to_run.items()})
 
     logging.info("Review Evaluator Test Workflow completed.")
 

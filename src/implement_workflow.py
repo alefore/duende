@@ -41,7 +41,8 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
                 original_task_prompt_content=self._original_task_prompt_content,
                 git_diff_output=git_diff_output),
             parent_options=self._options.agent_loop_options,
-            conversation_factory=self._options.conversation_factory))
+            conversation_factory=self._options.conversation_factory,
+            expose_read_commands=True))
 
   def _handle_initial_review(self) -> None:
     if self._options.review_first:
