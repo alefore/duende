@@ -10,6 +10,7 @@ class CommandOutput(NamedTuple):
   errors: str
   summary: str
   task_done: bool = False
+  thought_signature: Optional[bytes] = None
 
 
 class CommandInput(NamedTuple):
@@ -19,6 +20,7 @@ class CommandInput(NamedTuple):
   # They are mostly used to communicate additional debugging information
   # to the frontend.
   derived_args: Dict[str, Any] = {}
+  thought_signature: Optional[bytes] = None
 
 
 class ArgumentContentType(Enum):
