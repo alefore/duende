@@ -6,8 +6,7 @@ from conversation_state import ConversationState
 from typing import cast, Generator, List, Optional, Tuple, Union
 
 from validation import ValidationManager
-from agent_command import CommandInput
-from agent_command import CommandOutput
+from agent_command import CommandInput, CommandOutput
 from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
 from command_registry_factory import CreateCommandRegistry
@@ -163,7 +162,8 @@ class AgentLoop:
     command_name = cmd_input.command_name
     command = self.options.commands_registry.Get(command_name)
     assert command
-    command_output = command.run(cmd_input.args)
+    command_output: CommandOutput = command.run(
+        cmd_input.args)._replace(thought_signature=cmd_input.thought_signature)
 
     outputs: List[ContentSection] = []
     if command_output.output:
