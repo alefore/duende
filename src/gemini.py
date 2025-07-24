@@ -71,10 +71,13 @@ class GeminiConversation(ConversationalAIConversation):
         response_dict = {"output": section.command_output.output}
         if section.command_output.errors:
           response_dict['errors'] = section.command_output.errors
+
         gemini_parts.append(
-            genai.types.Part.from_function_response(
-                name=section.command_output.command_name,
-                response=response_dict))
+            genai.types.Part(
+                function_response=genai.types.FunctionResponse(
+                    name=section.command_output.command_name,
+                    response=response_dict),
+                thought_signature=section.command_output.thought_signature))
 
     log_content = "\n".join(
         [s.content for s in message.GetContentSections() if s.content])
@@ -103,13 +106,16 @@ class GeminiConversation(ConversationalAIConversation):
             function_call: genai.types.FunctionCall = part.function_call
             logging.info(function_call)
             logging.info(function_call.args)
+
             reply_message.PushSection(
                 ContentSection(
                     content="",
                     summary=f'MCP call: {function_call}',
                     command=CommandInput(
                         command_name=(function_call.name or "unknown"),
-                        args=(function_call.args or {}))))
+                        args=(function_call.args or {}),
+                        thought_signature=(part.thought_signature if hasattr(
+                            part, 'thought_signature') else None))))
     else:
       logging.fatal(f'Invalid response: {response}')
 
