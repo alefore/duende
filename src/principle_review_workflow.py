@@ -45,6 +45,8 @@ You must review if a given input abides by a principle (given below) and either:
 
 * If the input does NOT meet the principle: run the `reject` function. In the `reason` parameter, explain your decision, including steps to improve the input. This info will be given to an AI tasked with fixing the input. That AI does not know this principle, so convey enough details to enable the AI to succesfully fixing the input (to meet the principle).
 
+You MUST run the function `accept` or the function `reject`. Anything else (other than the `reason` parameter) will be ignored.
+
 # PRINCIPLE (REQUIREMENT)
 
 {principle_content}
