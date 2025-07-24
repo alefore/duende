@@ -21,11 +21,15 @@ class PrincipleReviewWorkflow(AgentWorkflow):
     super().__init__(options)
 
     if not options.principle_paths:
-      raise ValueError("PrincipleReviewWorkflow requires principle_paths in AgentWorkflowOptions.")
+      raise ValueError(
+          "PrincipleReviewWorkflow requires principle_paths in AgentWorkflowOptions."
+      )
     self._principle_paths: List[str] = options.principle_paths
 
     if not options.input_path:
-      raise ValueError("PrincipleReviewWorkflow requires input_path in AgentWorkflowOptions.")
+      raise ValueError(
+          "PrincipleReviewWorkflow requires input_path in AgentWorkflowOptions."
+      )
     self._input_path: str = options.input_path
 
   def _get_principle_prompt(self, principle_file: str,
@@ -92,36 +96,37 @@ You must review if a given input abides by a principle (given below) and either:
       return
 
     logging.info("Starting AI conversation to fix input based on rejections.")
+    commands_registry = CommandRegistry()
+    commands_registry.Register(
+        WriteFileCommand(self._options.agent_loop_options.validation_manager,
+                         self._options.selection_manager, self._input_path))
 
-    AgentLoop(AgentLoopOptions(
-        conversation=self._options.conversation_factory.New(
-            name=f"AI Fixer: {self._options.agent_loop_options.conversation.GetName()}",
-            path=None),
-        start_message=Message(
-            'system',
-            content_sections=([ContentSection(
-                content="You are going to receive some suggestions for improvements to a file. Rewrite the file to address these suggestions using the `write_file` command. The `write_file` command has been pre-configured to write to the correct file.",
-                summary="Instructions for fixing the file.")] +
-                              feedback_sections +
-                              [ContentSection(
-                                  content=f"Original file content:\n```\n{input_content}\n```",
-                                  summary="Original file content")])),
-        commands_registry=CreateCommandRegistry(
-            file_access_policy=self._options.agent_loop_options.file_access_policy,
-            validation_manager=self._options.agent_loop_options.validation_manager,
-            start_new_task=lambda task_info: CommandOutput(
-                command_name="task",
-                output="",
-                errors="",
-                summary="Not implemented"),
-            hard_coded_write_path=self._input_path,
-            can_write=True,
-            can_start_tasks=False),
-        confirmation_state=self._options.agent_loop_options.confirmation_state,
-        file_access_policy=self._options.agent_loop_options.file_access_policy,
-        conversational_ai=self._options.agent_loop_options.conversational_ai,
-        confirm_regex=None,
-        skip_implicit_validation=True,
-        validation_manager=self._options.agent_loop_options.validation_manager,
-    )).run()
+    AgentLoop(
+        AgentLoopOptions(
+            conversation=self._options.conversation_factory.New(
+                name=f"AI Fixer: {self._options.agent_loop_options.conversation.GetName()}",
+                path=None),
+            start_message=Message(
+                'system',
+                content_sections=([
+                    ContentSection(
+                        content="You are going to receive some suggestions for improvements to a file. Rewrite the file to address these suggestions using the `write_file` command. The `write_file` command has been pre-configured to write to the correct file.",
+                        summary="Instructions for fixing the file.")
+                ] + feedback_sections + [
+                    ContentSection(
+                        content=f"Original file content:\n```\n{input_content}\n```",
+                        summary="Original file content")
+                ])),
+            commands_registry=commands_registry,
+            confirmation_state=self._options.agent_loop_options
+            .confirmation_state,
+            file_access_policy=self._options.agent_loop_options
+            .file_access_policy,
+            conversational_ai=self._options.agent_loop_options
+            .conversational_ai,
+            confirm_regex=None,
+            skip_implicit_validation=True,
+            validation_manager=self._options.agent_loop_options
+            .validation_manager,
+        )).run()
     logging.info("AI fix loop finished.")

@@ -5,27 +5,23 @@ import difflib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from validation import ValidationManager
-from file_access_policy import FileAccessPolicy
 from selection_manager import SelectionManager
 
 
 class WriteFileCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy,
-               validation_manager: Optional[ValidationManager],
+  def __init__(self, validation_manager: Optional[ValidationManager],
                selection_manager: SelectionManager,
                hard_coded_path: Optional[str]):
-    # TODO: Get rid of file_access_policy.
-    self.file_access_policy = file_access_policy
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
-    self.hard_coded_path = hard_coded_path
+    self._hard_coded_path = hard_coded_path
 
   def Name(self) -> str:
     return self.Syntax().name
 
   def _optional_arguments(self) -> List[Argument]:
-    if self.hard_coded_path:
+    if self._hard_coded_path:
       return []
     return [
         Argument(
@@ -70,8 +66,8 @@ class WriteFileCommand(AgentCommand):
 
   def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
     output = {}
-    path = self.hard_coded_path or inputs['path']
-    if path and inputs['content']:
+    path = self._hard_coded_path or inputs.get('path')
+    if path and inputs.get('content'):
       output['content_diff'] = self._derive_diff(path, inputs['content'])
     return output
 
@@ -88,7 +84,7 @@ class WriteFileCommand(AgentCommand):
       return f"Could not compute diff: {e}"
 
   def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    path = self.hard_coded_path or inputs['path']
+    path = self._hard_coded_path or inputs['path']
     new_content = inputs['content']
     logging.info(f"Write: {path}")
 
@@ -139,7 +135,8 @@ class WriteFileCommand(AgentCommand):
           output="\n".join(output_messages),
           errors="",
           summary=f"Wrote to file {path} with {len(new_content_lines)} lines.",
-          command_name=self.Name())
+          command_name=self.Name(),
+          task_done=bool(self._hard_coded_path))
     except Exception as e:
       return CommandOutput(
           output="",

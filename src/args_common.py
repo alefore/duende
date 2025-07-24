@@ -202,8 +202,7 @@ def CreateAgentWorkflow(
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
           command_name="task", output="", errors="", summary="Not implemented"),
-      git_dirty_accept=args.git_dirty_accept,
-      hard_coded_write_path=None)
+      git_dirty_accept=args.git_dirty_accept)
 
   if args.plugins:
     try:

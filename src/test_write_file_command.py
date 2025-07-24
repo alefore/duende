@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import MagicMock, mock_open, patch
 
 from agent_command import CommandInput
-from file_access_policy import FileAccessPolicy
 from selection_manager import SelectionManager
 from write_file_command import WriteFileCommand
 
@@ -10,7 +9,6 @@ from write_file_command import WriteFileCommand
 class TestWriteFileCommand(unittest.TestCase):
 
   def setUp(self):
-    self.file_access_policy = MagicMock(spec=FileAccessPolicy)
     self.selection_manager = SelectionManager()
 
   def test_write_file_success(self) -> None:
@@ -19,8 +17,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "path": "test.txt",
             "content": "line1\nline2"
         })
-    write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager, None)
+    write_file_command = WriteFileCommand(None, self.selection_manager, None)
 
     with patch("builtins.open", mock_open()) as mock_file, \
          patch("os.path.exists", return_value=False):
@@ -39,8 +36,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "path": "dir/test.txt",
             "content": "line1"
         })
-    write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager, None)
+    write_file_command = WriteFileCommand(None, self.selection_manager, None)
 
     with patch("builtins.open", mock_open()) as mock_file, \
          patch("os.makedirs") as mock_makedirs, \
@@ -59,8 +55,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "path": "test.txt",
             "content": "line1"
         })
-    write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager, None)
+    write_file_command = WriteFileCommand(None, self.selection_manager, None)
 
     with patch(
         "builtins.open", mock_open()) as mock_file, \
@@ -80,8 +75,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "path": path,
             "content": "\n".join(new_content)
         })
-    write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager, None)
+    write_file_command = WriteFileCommand(None, self.selection_manager, None)
 
     with patch("os.path.exists", return_value=True), \
          patch("builtins.open", mock_open(read_data=original_content)) as mock_file:
@@ -108,8 +102,7 @@ class TestWriteFileCommand(unittest.TestCase):
             "path": path,
             "content": "\n".join(new_content)
         })
-    write_file_command = WriteFileCommand(self.file_access_policy, None,
-                                          self.selection_manager, None)
+    write_file_command = WriteFileCommand(None, self.selection_manager, None)
 
     with patch("os.path.exists", return_value=True), \
          patch("builtins.open", mock_open(read_data="\n".join(original_content))) as mock_file:

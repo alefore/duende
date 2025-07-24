@@ -38,8 +38,7 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
                                                    CommandOutput],
                           git_dirty_accept: bool = False,
                           can_write: bool = True,
-                          can_start_tasks: bool = True,
-                          hard_coded_write_path: Optional[str] = None) -> CommandRegistry:
+                          can_start_tasks: bool = True) -> CommandRegistry:
   registry = _create_base_registry(file_access_policy)
 
   registry.Register(DoneCommand())
@@ -64,8 +63,7 @@ def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
   selection_manager = SelectionManager()
   if can_write:
     registry.Register(
-        WriteFileCommand(file_access_policy, validation_manager,
-                         selection_manager, hard_coded_write_path))
+        WriteFileCommand(validation_manager, selection_manager, None))
 
   if enable_select:
     for use_regex in [True, False]:
