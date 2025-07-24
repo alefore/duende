@@ -8,8 +8,6 @@ from typing import cast, Generator, List, Optional, Tuple, Union
 from validation import ValidationManager
 from agent_command import CommandInput, CommandOutput
 from agent_loop_options import AgentLoopOptions
-from command_registry import CommandRegistry
-from command_registry_factory import CreateCommandRegistry
 from confirmation import ConfirmationState
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
