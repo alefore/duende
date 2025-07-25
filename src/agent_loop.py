@@ -120,7 +120,7 @@ class AgentLoop:
     if not next_message.GetContentSections():
       next_message.PushSection(
           ContentSection(
-              content=("Response is empty. " +
+              content=("Response did not call any functions. " +
                        self.options.commands_registry.available_commands_str()),
               summary="Empty response placeholder."))
     return next_message
