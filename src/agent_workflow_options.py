@@ -10,7 +10,7 @@ class AgentWorkflowOptions(NamedTuple):
   conversation_factory: ConversationFactory
   selection_manager: SelectionManager
   principle_paths: Optional[List[str]] = None
-  input_path: Optional[str] = None
+  input_paths: Optional[List[str]] = None
   original_task_prompt_content: Optional[str] = None
   confirm_done: str = ''
   do_review: bool = False

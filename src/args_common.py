@@ -61,9 +61,9 @@ def CreateCommonParser() -> argparse.ArgumentParser:
   )
   group.add_argument(
       '--input',
-      dest='input_path',
-      type=str,
-      help="File path for the input document to be reviewed against principles."
+      dest='input_paths',
+      nargs='*',
+      help="File path(s) for the input document(s) to be reviewed against principles."
   )
 
   parser.add_argument(
@@ -177,7 +177,7 @@ async def CreateAgentWorkflow(
     await TestFileAccess(file_access_policy)
     sys.exit(0)
 
-  if not args.task and not args.input_path:
+  if not args.task and not args.input_paths:
     print("Error: Either --task or --input must be provided.", file=sys.stderr)
     sys.exit(1)
 
@@ -218,7 +218,7 @@ async def CreateAgentWorkflow(
   conversation_factory = ConversationFactory(
       conversation_factory_options._replace(command_registry=registry))
 
-  if args.input_path:
+  if args.input_paths:
     return PrincipleReviewWorkflow(
         AgentWorkflowOptions(
             agent_loop_options=AgentLoopOptions(
@@ -247,7 +247,7 @@ async def CreateAgentWorkflow(
             conversation_factory=conversation_factory,
             selection_manager=SelectionManager(),
             principle_paths=args.principle_paths,
-            input_path=args.input_path,
+            input_paths=args.input_paths,
         ))
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)

@@ -26,11 +26,14 @@ class PrincipleReviewWorkflow(AgentWorkflow):
       )
     self._principle_paths: List[str] = options.principle_paths
 
-    if not options.input_path:
+    if not options.input_paths:
       raise ValueError(
-          "PrincipleReviewWorkflow requires input_path in AgentWorkflowOptions."
+          "PrincipleReviewWorkflow requires input_paths in AgentWorkflowOptions."
       )
-    self._input_path: str = options.input_path
+    self._input_paths: List[str] = options.input_paths
+
+  def _path_to_id(self, path: str) -> str:
+    return os.path.basename(path).replace('.md', '')
 
   def _get_principle_prompt(self, principle_file: str,
                             input_content: str) -> str:
@@ -55,14 +58,14 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
 
 {input_content}"""
 
-  async def run(self) -> None:
-    logging.info(f"Starting Principle Review Workflow: {self._input_path}")
+  async def _process_single_input_path(self, input_path: str) -> None:
+    logging.info(f"Starting Principle Review for: {input_path}")
 
-    with open(self._input_path, 'r') as f:
+    with open(input_path, 'r') as f:
       input_content = f.read()
 
     reviews_to_run: Dict[str, str] = {
-        os.path.basename(p).replace('.md', ''):
+        f"{self._path_to_id(input_path)}-{self._path_to_id(p)}":
             self._get_principle_prompt(p, input_content)
         for p in self._principle_paths
     }
@@ -72,14 +75,16 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
       )
       return
 
-    logging.info(f"Running {len(reviews_to_run)} parallel principle reviews.")
+    logging.info(
+        f"Running {len(reviews_to_run)} parallel principle reviews for {input_path}."
+    )
     all_review_results = await review_utils.run_parallel_reviews(
         reviews_to_run=reviews_to_run,
         parent_options=self._options.agent_loop_options,
         conversation_factory=self._options.conversation_factory,
         expose_read_commands=False)
 
-    logging.info("\n--- Principle Review Results ---")
+    logging.info(f"\n--- Principle Review Results for {input_path} ---")
     if not all_review_results:
       logging.info("No review results received.")
     else:
@@ -90,7 +95,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
           logging.info(f"  Reason: {result.command_output.output}")
         if result.command_output.errors:
           logging.error(f"  Errors: {result.command_output.errors}")
-    logging.info("--- End of Principle Review Results ---")
+    logging.info(f"--- End of Principle Review Results for {input_path} ---")
 
     feedback_sections = review_utils.reject_output_content_sections(
         all_review_results)
@@ -98,16 +103,17 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
     if not feedback_sections:
       return
 
-    logging.info("Starting AI conversation to fix input based on rejections.")
+    logging.info(
+        f"Starting AI conversation to fix {input_path} based on rejections.")
     commands_registry = CommandRegistry()
     commands_registry.Register(
         WriteFileCommand(self._options.agent_loop_options.validation_manager,
-                         self._options.selection_manager, self._input_path))
+                         self._options.selection_manager, input_path))
 
     await AgentLoop(
         AgentLoopOptions(
             conversation=await self._options.conversation_factory.New(
-                name=f"AI Fixer: {self._options.agent_loop_options.conversation.GetName()}",
+                name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
                 path=None),
             start_message=Message(
                 'system',
@@ -132,4 +138,12 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
             validation_manager=self._options.agent_loop_options
             .validation_manager,
         )).run()
-    logging.info("AI fix loop finished.")
+    logging.info(f"AI fix loop for {input_path} finished.")
+
+  async def run(self) -> None:
+    logging.info("Starting Principle Review Workflow.")
+    await asyncio.gather(*[
+        asyncio.create_task(self._process_single_input_path(input_path))
+        for input_path in self._input_paths
+    ])
+    logging.info("All Principle Review Workflow tasks completed.")
