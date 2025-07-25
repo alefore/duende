@@ -42,4 +42,4 @@ class CommandRegistry:
     return list(self.commands.values())
 
   def available_commands_str(self) -> str:
-    return "Available commands: " + ', '.join(self.list_all())
+    return "Available MCP functions: " + ', '.join(self.list_all())
