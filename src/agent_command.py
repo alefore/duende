@@ -73,10 +73,10 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     pass
 
-  def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+  async def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
     """
     Computes additional, display-only properties for the command.
     These properties are attached to the CommandInput object.

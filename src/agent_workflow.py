@@ -21,7 +21,7 @@ class AgentWorkflow(ABC):
     self._conversation_factory = options.conversation_factory
 
   @abstractmethod
-  def run(self) -> None:
+  async def run(self) -> None:
     pass
 
   def get_conversation_by_id(self,

@@ -7,7 +7,7 @@ from message import Message
 class ConversationalAIConversation(ABC):
 
   @abstractmethod
-  def SendMessage(self, message: Message) -> Message:
+  async def SendMessage(self, message: Message) -> Message:
     """Sends a new message to the AI and returns the response."""
     pass
 

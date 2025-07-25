@@ -18,7 +18,7 @@ class TaskCommand(AgentCommand):
     return self.Syntax().name
 
 
-  def run(self, params: Dict[str, Any]) -> CommandOutput:
+  async def run(self, params: Dict[str, Any]) -> CommandOutput:
     task_name = params.get("task_name")
     task_spec = params["task_spec"]
 
@@ -27,6 +27,8 @@ class TaskCommand(AgentCommand):
         f"Forking sub-task: {task_info.task_name}: {task_info.task_spec}")
 
     try:
+      # self.start_new_task is not an async function yet, so we don't await it.
+      # If it becomes async in the future, it would need to be awaited.
       result = self.start_new_task(task_info)
       return CommandOutput(
           output=result.output,

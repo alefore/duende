@@ -1,9 +1,11 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
-from typing import Iterable, List, Optional, Dict, Any
+from typing import AsyncIterable, Iterable, List, Optional, Dict, Any
 import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 import os
+import aiofiles
+import asyncio
 
 
 class SearchFileCommand(AgentCommand):
@@ -32,7 +34,7 @@ class SearchFileCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     search_term: str = inputs['content']
     input_path: Optional[str] = inputs.get('path')
     logging.info(
@@ -46,18 +48,24 @@ class SearchFileCommand(AgentCommand):
     global_line_count = 0
     global_match_count = 0
 
-    paths_to_search: Iterable[str] = [input_path
-                                     ] if input_path else list_all_files(
-                                         ".", self.file_access_policy)
+    paths_to_search: AsyncIterable[str]
+    if input_path:
+      # If a specific path is provided, convert it to an async iterable for consistency
+      async def _single_file_iterator() -> AsyncIterable[str]:
+        yield input_path
+
+      paths_to_search = _single_file_iterator()
+    else:
+      paths_to_search = list_all_files(".", self.file_access_policy)
 
     files_data: List[str] = []
 
     match_limit = 200
-    for file_path in paths_to_search:
+    async for file_path in paths_to_search:
       try:
         global_file_count += 1
-        with open(file_path, 'r', encoding='utf-8') as file:
-          lines = file.readlines()
+        async with aiofiles.open(file_path, mode='r', encoding='utf-8') as file:
+          lines = await file.readlines()
           file_line_count: int = len(lines)
           global_line_count += file_line_count
 

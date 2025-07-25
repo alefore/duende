@@ -17,8 +17,8 @@ class ChatGPTConversation(ConversationalAIConversation):
     logging.info(f"Starting conversation, "
                  f"messages: {len(self.conversation.GetMessagesList())}")
 
-  def SendMessage(self, message: Message) -> Message:
-    self.conversation.AddMessage(message)
+  async def SendMessage(self, message: Message) -> Message:
+    await self.conversation.AddMessage(message)
 
     openai_messages: list[ChatCompletionMessageParam] = [
         cast(
@@ -43,10 +43,8 @@ class ChatGPTConversation(ConversationalAIConversation):
     reply_content = response.choices[0].message.content or ""
     reply_message = Message(
         role="assistant",
-        content_sections=[
-            ContentSection(content=reply_content, summary=None)
-        ])
-    self.conversation.AddMessage(reply_message)
+        content_sections=[ContentSection(content=reply_content, summary=None)])
+    await self.conversation.AddMessage(reply_message)
     return reply_message
 
 

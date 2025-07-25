@@ -46,12 +46,12 @@ class AgentLoop:
           f"Warning {cmd_input.command_name}: {warning}" for warning in warnings
       ]))
 
-  def _process_ai_response(self,
-                           response_message: Message) -> Optional[Message]:
+  async def _process_ai_response(
+      self, response_message: Message) -> Optional[Message]:
     commands: List[CommandInput] = []
     non_command_lines: List[str] = []
 
-    self.conversation.SetState(ConversationState.PARSING_COMMANDS)
+    await self.conversation.SetState(ConversationState.PARSING_COMMANDS)
 
     next_message = Message(role='user')
 
@@ -75,17 +75,18 @@ class AgentLoop:
     if (self.options.confirm_regex and any(
         self.options.confirm_regex.match(ci.command_name)
         for ci in commands)) or non_command_lines:
-      has_human_guidance = self._get_human_guidance(
+      has_human_guidance = await self._get_human_guidance(
           prompt="Accept input?",
           summary="Human guidance for AI",
           content_prefix="Message from human",
           next_message=next_message)
 
-    self.options.confirmation_state.RegisterInteraction(
+    await self.options.confirmation_state.RegisterInteraction(
         self.conversation.GetId())
 
-    self.conversation.SetState(ConversationState.RUNNING_COMMANDS)
-    command_outputs, done_command_received = self._execute_commands(commands)
+    await self.conversation.SetState(ConversationState.RUNNING_COMMANDS)
+    command_outputs, done_command_received = await self._execute_commands(
+        commands)
     for content_section in command_outputs:
       next_message.PushSection(content_section)
 
@@ -93,10 +94,10 @@ class AgentLoop:
       return None
 
     if not self.options.skip_implicit_validation:
-      self.conversation.SetState(
+      await self.conversation.SetState(
           ConversationState.EXECUTING_IMPLICIT_VALIDATION)
       assert self.options.validation_manager
-      validation_result = self.options.validation_manager.Validate()
+      validation_result = await self.options.validation_manager.Validate()
       if not validation_result.success:
         if self._previous_validation_passed:
           logging.info(f"Validation failed: {validation_result.error}")
@@ -128,22 +129,24 @@ class AgentLoop:
   def set_next_message(self, message: Message) -> None:
     self.next_message = message
 
-  def run(self) -> None:
+  async def run(self) -> None:
     logging.info("Starting AgentLoop run method...")
     next_message: Optional[Message] = self.next_message
     self.next_message = None
 
     while next_message:
       logging.info("Querying AI...")
-      self.conversation.SetState(ConversationState.WAITING_FOR_AI_RESPONSE)
-      next_message = self._process_ai_response(
-          self.ai_conversation.SendMessage(next_message))
-    self.conversation.SetState(ConversationState.DONE)
+      await self.conversation.SetState(ConversationState.WAITING_FOR_AI_RESPONSE
+                                      )
+      next_message = await self._process_ai_response(
+          await self.ai_conversation.SendMessage(next_message))
+    await self.conversation.SetState(ConversationState.DONE)
 
-  def _get_human_guidance(self, prompt: str, summary: str, content_prefix: str,
-                          next_message: Message) -> bool:
-    self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
-    guidance = self.options.confirmation_state.RequireConfirmation(
+  async def _get_human_guidance(self, prompt: str, summary: str,
+                                content_prefix: str,
+                                next_message: Message) -> bool:
+    await self.conversation.SetState(ConversationState.WAITING_FOR_CONFIRMATION)
+    guidance = await self.options.confirmation_state.RequireConfirmation(
         self.conversation.GetId(), prompt)
     if not guidance:
       logging.info("No guidance.")
@@ -155,13 +158,13 @@ class AgentLoop:
             content=f"{content_prefix}: {guidance}", summary=summary))
     return True
 
-  def _execute_one_command(self,
-                           cmd_input: CommandInput) -> List[ContentSection]:
+  async def _execute_one_command(
+      self, cmd_input: CommandInput) -> List[ContentSection]:
     command_name = cmd_input.command_name
     command = self.options.commands_registry.Get(command_name)
     assert command
-    command_output: CommandOutput = command.run(
-        cmd_input.args)._replace(thought_signature=cmd_input.thought_signature)
+    command_output: CommandOutput = (await command.run(
+        cmd_input.args))._replace(thought_signature=cmd_input.thought_signature)
 
     outputs: List[ContentSection] = []
     if command_output.output:
@@ -190,11 +193,11 @@ class AgentLoop:
     return outputs
 
   # Return value indicates whether `done` was received.
-  def _execute_commands(
+  async def _execute_commands(
       self, commands: List[CommandInput]) -> Tuple[List[ContentSection], bool]:
     outputs: List[ContentSection] = []
     for cmd_input in commands:
-      outputs.extend(self._execute_one_command(cmd_input))
+      outputs.extend(await self._execute_one_command(cmd_input))
 
     return outputs, any(
         o.command_output and o.command_output.task_done for o in outputs)

@@ -2,7 +2,8 @@ from google import genai
 import logging
 import asyncio
 import sys
-from typing import cast, Any, Coroutine, Dict, List, Optional
+import PIL
+from typing import cast, Any, Coroutine, Dict, List, Optional, List
 
 from command_registry import CommandRegistry
 from agent_command import ArgumentContentType, CommandInput, CommandSyntax
@@ -57,12 +58,16 @@ class GeminiConversation(ConversationalAIConversation):
     logging.info(f"Starting Gemini conversation")
     config = _get_config(registry)
     logging.info(config)
-    self.chat = self.client.chats.create(model=model_name, config=config)
+    self.chat = self.client.aio.chats.create(model=model_name, config=config)
 
-  def SendMessage(self, message: Message) -> Message:
-    self.conversation.AddMessage(message)
+  async def SendMessage(self, message: Message) -> Message:
+    await self.conversation.AddMessage(message)
 
-    gemini_parts: List[str | genai.types.Part] = []
+    # We have to use this full type because genai uses List[…] (rather than
+    # Sequence[…] and lists are not covariant:
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+    gemini_parts: List[genai.types.File | genai.types.Part | PIL.Image.Image
+                       | str | genai.types.PartDict] = []
     for section in message.GetContentSections():
       if section.content:
         gemini_parts.append(section.content)
@@ -86,8 +91,8 @@ class GeminiConversation(ConversationalAIConversation):
     )
 
     try:
-      response = self.chat.send_message(gemini_parts)  # type: ignore[arg-type]
-      logging.info(f"XXX Response: {response}")
+      response = await self.chat.send_message(gemini_parts)
+      logging.info(f"Response: {response}")
     except Exception as e:
       logging.exception("Failed to communicate with Gemini API.")
       raise e
@@ -97,29 +102,31 @@ class GeminiConversation(ConversationalAIConversation):
       logging.info(f"Text received from Gemini: '{response.text[:50]}...'")
       reply_message.PushSection(
           ContentSection(content=response.text, summary=None))
-    if response.candidates:
-      if response.candidates[0].content and response.candidates[0].content.parts:
-        for part in response.candidates[0].content.parts:
-          logging.info(part)
-          if part.function_call:
-            logging.info(f"Commands received from Gemini")
-            function_call: genai.types.FunctionCall = part.function_call
-            logging.info(function_call)
-            logging.info(function_call.args)
-
-            reply_message.PushSection(
-                ContentSection(
-                    content="",
-                    summary=f'MCP call: {function_call}',
-                    command=CommandInput(
-                        command_name=(function_call.name or "unknown"),
-                        args=(function_call.args or {}),
-                        thought_signature=(part.thought_signature if hasattr(
-                            part, 'thought_signature') else None))))
-    else:
+    if not response.candidates:
       logging.fatal(f'Invalid response: {response}')
+      return reply_message  # Never executed.
 
-    self.conversation.AddMessage(reply_message)
+    if response.candidates[0].content and response.candidates[0].content.parts:
+      for part in response.candidates[0].content.parts:
+        logging.info(part)
+        if not part.function_call:
+          continue
+        logging.info(f"Commands received from Gemini")
+        function_call: genai.types.FunctionCall = part.function_call
+        logging.info(function_call)
+        logging.info(function_call.args)
+
+        reply_message.PushSection(
+            ContentSection(
+                content="",
+                summary=f'MCP call: {function_call}',
+                command=CommandInput(
+                    command_name=(function_call.name or "unknown"),
+                    args=(function_call.args or {}),
+                    thought_signature=(part.thought_signature if hasattr(
+                        part, 'thought_signature') else None))))
+
+    await self.conversation.AddMessage(reply_message)
     return reply_message
 
 

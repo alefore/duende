@@ -61,7 +61,7 @@ class EvaluatorResults:
 class ReviewEvaluatorTestWorkflow(AgentWorkflow):
   """A workflow to evaluate the quality of all review evaluators."""
 
-  def run(self) -> None:
+  async def run(self) -> None:
     logging.info("Starting Review Evaluator Test Workflow...")
 
     all_evaluators = find_all_evaluators()
@@ -87,7 +87,7 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
       sys.exit(1)
 
     self._process_results(
-        run_parallel_reviews(
+        await run_parallel_reviews(
             {test_id: spec.test_input for test_id, spec in tests_to_run.items()},
             self._options.agent_loop_options,
             self._options.conversation_factory,

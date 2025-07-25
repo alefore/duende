@@ -5,6 +5,7 @@ from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
 from typing import List, Optional, Dict, Any
 from validation import ValidationManager
+import asyncio
 
 
 class GitRepositoryState(Enum):
@@ -23,16 +24,25 @@ class ResetFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path: str = inputs['path']
     errors: List[str] = []
 
     try:
-      subprocess.run(["git", "checkout", path], check=True)
+      process = await asyncio.create_subprocess_exec(
+          "git",
+          "checkout",
+          path,
+          stdout=asyncio.subprocess.PIPE,
+          stderr=asyncio.subprocess.PIPE)
+      stdout, stderr = await process.communicate()
+
+      if process.returncode != 0:
+        errors.append(stderr.decode().strip())
+
       if self.validation_manager:
         self.validation_manager.RegisterChange()
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
       errors.append(str(e))
 
     if errors:
@@ -68,22 +78,30 @@ class ResetFileCommand(AgentCommand):
         ])
 
 
-def CheckGitRepositoryState() -> GitRepositoryState:
+async def CheckGitRepositoryState() -> GitRepositoryState:
   try:
-    subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
-                   check=True,
-                   stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE)
+    proc1 = await asyncio.create_subprocess_exec(
+        "git",
+        "rev-parse",
+        "--is-inside-work-tree",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
+    stdout1, stderr1 = await proc1.communicate()
+    if proc1.returncode != 0:
+      return GitRepositoryState.NOT_A_GIT_REPO
 
-    for cmd in [["git", "diff", "--quiet"],
-                ["git", "diff", "--cached", "--quiet"]]:
-      result = subprocess.run(
-          cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    cmds_to_check = [["git", "diff", "--quiet"],
+                     ["git", "diff", "--cached", "--quiet"]]
 
-      if result.returncode != 0:
+    for cmd in cmds_to_check:
+      proc = await asyncio.create_subprocess_exec(
+          *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+      stdout, stderr = await proc.communicate()
+
+      if proc.returncode != 0:
         return GitRepositoryState.NOT_CLEAN
 
     return GitRepositoryState.CLEAN
 
-  except subprocess.CalledProcessError:
+  except Exception:
     return GitRepositoryState.NOT_A_GIT_REPO

@@ -1,3 +1,5 @@
+import asyncio
+
 from typing import Dict, Optional, Callable, List
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
@@ -32,18 +34,18 @@ def _create_base_registry(
   return registry
 
 
-def CreateCommandRegistry(file_access_policy: FileAccessPolicy,
-                          validation_manager: Optional[ValidationManager],
-                          start_new_task: Callable[[TaskInformation],
-                                                   CommandOutput],
-                          git_dirty_accept: bool = False,
-                          can_write: bool = True,
-                          can_start_tasks: bool = True) -> CommandRegistry:
+async def create_command_registry(
+    file_access_policy: FileAccessPolicy,
+    validation_manager: Optional[ValidationManager],
+    start_new_task: Callable[[TaskInformation], CommandOutput],
+    git_dirty_accept: bool = False,
+    can_write: bool = True,
+    can_start_tasks: bool = True) -> CommandRegistry:
   registry = _create_base_registry(file_access_policy)
 
   registry.Register(DoneCommand())
 
-  git_state = CheckGitRepositoryState()
+  git_state = await CheckGitRepositoryState()
   if git_state == GitRepositoryState.CLEAN:
     registry.Register(ResetFileCommand(file_access_policy, validation_manager))
   elif git_state == GitRepositoryState.NOT_CLEAN:

@@ -1,5 +1,5 @@
 import unittest
-import threading
+import asyncio
 from confirmation import AsyncConfirmationManager
 
 
@@ -15,24 +15,23 @@ class TestAsyncConfirmationManager(unittest.TestCase):
         self.manager.get_pending_message(self.conversation_id),
         "Initial message should be None.")
 
-  def provide_confirmation(self, message) -> None:
+  async def provide_confirmation(self, message) -> None:
     self.manager.provide_confirmation(self.conversation_id, message)
 
-  def test_provide_confirmation(self) -> None:
+  async def test_provide_confirmation(self) -> None:
     """Test providing confirmation."""
-    confirmation_thread = threading.Thread(
-        target=self.provide_confirmation, args=("Yes",))
-    confirmation_thread.start()
+    confirmation_task = asyncio.create_task(self.provide_confirmation("Yes"))
+    await asyncio.sleep(0.01) # Give the task a chance to run
 
     test_message = "Are you sure?"
-    confirmation = self.manager.RequireConfirmation(self.conversation_id,
+    confirmation = await self.manager.RequireConfirmation(self.conversation_id,
                                                     test_message)
 
     self.assertEqual(confirmation, "Yes",
                      "Confirmation should match the provided input.")
-    confirmation_thread.join()
+    await confirmation_task
 
-  def test_pending_message(self) -> None:
+  async def test_pending_message(self) -> None:
     """Test that a message is pending until confirmation is given."""
     test_message = "Confirm this action."
     pending_message_before = self.manager.get_pending_message(
@@ -40,17 +39,16 @@ class TestAsyncConfirmationManager(unittest.TestCase):
     self.assertIsNone(pending_message_before,
                       "Pending message should initially be None.")
 
-    # Start thread to set the confirmation
-    confirmation_thread = threading.Thread(
-        target=self.provide_confirmation, args=("Proceed",))
-    confirmation_thread.start()
+    # Start task to set the confirmation
+    confirmation_task = asyncio.create_task(self.provide_confirmation("Proceed"))
+    await asyncio.sleep(0.01) # Give the task a chance to run
 
     # Message should be set before confirmation is provided
-    pending_message = self.manager.RequireConfirmation(0, test_message)
+    pending_message = await self.manager.RequireConfirmation(0, test_message)
 
     self.assertEqual(pending_message, "Proceed",
                      "Confirmation should be 'Proceed'.")
-    confirmation_thread.join()
+    await confirmation_task
 
 
 if __name__ == '__main__':

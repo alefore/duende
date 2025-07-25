@@ -1,6 +1,7 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 import logging
 from typing import Any, Dict, List
+import aiofiles
 
 
 from file_access_policy import FileAccessPolicy
@@ -37,7 +38,7 @@ class ReadFileCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path = inputs['path']
     start_line = inputs.get('start_line')
     end_line = inputs.get('end_line')
@@ -69,8 +70,8 @@ class ReadFileCommand(AgentCommand):
     logging.info(f"Read: {path=}, {start_line=}, {end_line=}")
 
     try:
-      with open(path, "r") as f:
-        lines = f.readlines()
+      async with aiofiles.open(path, mode="r") as f:
+        lines = await f.readlines()
 
         # Adjust for 0-based indexing if start_line is provided
         # If start_line is 1, it means index 0. So, start_index = start_line - 1

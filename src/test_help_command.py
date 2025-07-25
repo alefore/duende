@@ -2,14 +2,14 @@ import unittest
 from unittest.mock import MagicMock
 
 from agent_command import CommandInput
-from command_registry_factory import CreateCommandRegistry
+from command_registry_factory import create_command_registry
 from file_access_policy import RegexFileAccessPolicy
 
 
 class TestHelpCommand(unittest.TestCase):
 
-  def setUp(self):
-    self.registry = CreateCommandRegistry(
+  async def setUp(self):
+    self.registry = await create_command_registry(
         file_access_policy=RegexFileAccessPolicy('.*'),
         validation_manager=None,
         start_new_task=MagicMock(),

@@ -2,20 +2,23 @@ from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSynt
 from typing import List, Tuple, Optional, Dict, Any
 import logging
 import os
+import aiofiles
+
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
 
-def _ListFileDetails(directory: str,
-                     file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
+async def _ListFileDetails(directory: str,
+                            file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
   details: List[str] = []
   errors: List[str] = []
-  for file in list_all_files(directory, file_access_policy):
+  async for file in list_all_files(directory, file_access_policy):
     file_path = os.path.join(directory, file)
     try:
-      with open(file_path, 'r') as f:
-        lines = f.readlines()
+      async with aiofiles.open(file_path, 'r') as f:
+        lines = await f.readlines()
         line_count = len(lines)
+        # os.path.getsize is synchronous, should be fine for now, or use aiofiles.os.stat
         byte_count = os.path.getsize(file_path)
         details.append(f"{file}: {line_count} lines, {byte_count} bytes")
     except Exception as e:
@@ -44,11 +47,11 @@ class ListFilesCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     directory = inputs.get('directory', ".")
 
     try:
-      output, errors = _ListFileDetails(directory, self.file_access_policy)
+      output, errors = await _ListFileDetails(directory, self.file_access_policy)
 
       return CommandOutput(
           output=output,

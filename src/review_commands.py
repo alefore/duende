@@ -12,7 +12,7 @@ class AcceptChange(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     reason = inputs["reason"]
     logging.info(f"Change accepted with reason: {reason[:50]}...")
     command_output = CommandOutput(
@@ -46,7 +46,7 @@ class RejectChange(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     reason = inputs["reason"]
     logging.info(f"Change rejected with reason: {reason[:50]}...")
     command_output = CommandOutput(

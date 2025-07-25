@@ -1,6 +1,8 @@
 from typing import List, Optional
 import os
 import re
+import aiofiles
+import asyncio
 
 
 class StartPatternNotFound(ValueError):
@@ -18,50 +20,49 @@ class Selection:
     self.start_index = start_index
     self.end_index = end_index
 
-  def Read(self) -> List[str]:
+  async def Read(self) -> List[str]:
     """Reads corresponding lines from the file and returns them."""
-    if not os.path.exists(self.path):
+    if not await asyncio.to_thread(os.path.exists, self.path):
       raise FileNotFoundError(f"File not found: {self.path}")
 
-    with open(self.path, "r") as file:
-      lines: List[str] = [l.rstrip('\n') for l in file.readlines()]
+    async with aiofiles.open(self.path, "r") as file:
+      lines: List[str] = [l.rstrip('\n') for l in await file.readlines()]
 
     if self.start_index < 0 or self.end_index >= len(lines):
       raise ValueError("Start or end index out of range.")
 
     return lines[self.start_index:self.end_index + 1]
 
-  def Overwrite(self, new_contents: str) -> None:
+  async def Overwrite(self, new_contents: str) -> None:
     """
     Replaces the selection with new contents (deleting previous contents).
     The file (self.path) will be updated on disk.
     """
-    if not os.path.exists(self.path):
+    if not await asyncio.to_thread(os.path.exists, self.path):
       raise FileNotFoundError(f"File not found: {self.path}")
 
-    with open(self.path, "r") as file:
-      lines = file.readlines()
+    async with aiofiles.open(self.path, "r") as file:
+      lines = (await file.readlines())
 
     if self.start_index < 0 or self.end_index >= len(lines):
       raise ValueError("Start or end index out of range.")
 
     # Replace lines between start_index and end_index
-    lines = lines[:self.start_index] + [new_contents
-                                       ] + lines[self.end_index + 1:]
+    lines = lines[:self.start_index] + [new_contents + '\n'] + lines[self.end_index + 1:]
 
-    with open(self.path, "w") as file:
-      file.writelines(lines)
+    async with aiofiles.open(self.path, "w") as file:
+      await file.writelines(lines)
 
   @classmethod
-  def FromLinePattern(cls, path: str, start_line_pattern: str,
+  async def FromLinePattern(cls, path: str, start_line_pattern: str,
                       end_line_pattern: Optional[str]) -> 'Selection':
     """Creates a Selection object based on line patterns using regex.
     If end_line_pattern is None, only the start line is selected."""
-    if not os.path.exists(path):
+    if not await asyncio.to_thread(os.path.exists, path):
       raise FileNotFoundError(f"File not found: {path}")
 
-    with open(path, "r") as file:
-      lines: List[str] = file.readlines()
+    async with aiofiles.open(path, "r") as file:
+      lines: List[str] = await file.readlines()
 
     start_index = None
     for index, line in enumerate(lines):

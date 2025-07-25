@@ -2,6 +2,7 @@ import os
 import subprocess
 import logging
 from typing import Optional, NamedTuple
+import asyncio
 
 
 class ValidationResult(NamedTuple):
@@ -19,9 +20,9 @@ class ValidationManager:
   def RegisterChange(self) -> None:
     self.validation_output = None
 
-  def Validate(self) -> ValidationResult:
+  async def Validate(self) -> ValidationResult:
     if self.validation_output is None:
-      self.validation_output = self._execute_validation_script()
+      self.validation_output = await self._execute_validation_script()
 
       if not self.validation_output.success:
         logging.error(
@@ -31,15 +32,18 @@ class ValidationManager:
 
     return self.validation_output
 
-  def _execute_validation_script(self) -> ValidationResult:
+  async def _execute_validation_script(self) -> ValidationResult:
     try:
-      process = subprocess.run([self.validation_script],
-                               capture_output=True,
-                               text=True)
+      process = await asyncio.create_subprocess_exec(
+          self.validation_script,
+          stdout=asyncio.subprocess.PIPE,
+          stderr=asyncio.subprocess.PIPE,
+      )
+      stdout, stderr = await process.communicate()
       return ValidationResult(
           success=process.returncode == 0,
-          output=process.stdout,
-          error=process.stderr)
+          output=stdout.decode().strip(),
+          error=stderr.decode().strip())
     except Exception as e:
       logging.error(f"Error executing validation script: {str(e)}")
       return ValidationResult(success=False, output="", error=str(e))

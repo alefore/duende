@@ -1,16 +1,30 @@
+import asyncio
 import argparse
-from flask import Flask, request
-from flask_socketio import SocketIO
 import logging
+import socketio
+import uvicorn
 from typing import Any, Dict
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from starlette.staticfiles import StaticFiles
+from pathlib import Path
 
 from args_common import CreateCommonParser
 from conversation import ConversationId
-from web_server_state import WebServerState
+from web_server_state import create_web_server_state, WebServerState
 from random_key import GenerateRandomKey
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = GenerateRandomKey(24)
+app = FastAPI()
+sio = socketio.AsyncServer(async_mode='asgi')
+sio_app = socketio.ASGIApp(sio)
+
+app.mount("/socket.io", sio_app)
+
+current_script_dir = Path(__file__).parent.resolve()
+app.mount(
+    "/static",
+    StaticFiles(directory=current_script_dir / "static"),
+    name="static")
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -20,12 +34,13 @@ def parse_arguments() -> argparse.Namespace:
   return parser.parse_args()
 
 
-@app.route("/", methods=["GET"])
-def Interact() -> Any:
-  return app.send_static_file('index.html')
+@app.get("/")
+async def read_root() -> FileResponse:
+  return FileResponse(current_script_dir / "static/index.html")
 
 
-def SendUpdate(server_state: WebServerState, data: Dict[str, Any]) -> None:
+async def send_update(server_state: WebServerState, data: Dict[str,
+                                                               Any]) -> None:
   message_count = data.get('message_count', 0)
   conversation_id = data.get('conversation_id')
   if conversation_id is None:
@@ -33,17 +48,16 @@ def SendUpdate(server_state: WebServerState, data: Dict[str, Any]) -> None:
     return
 
   logging.info(f"Received: request_update, message_count: {message_count}")
-  server_state.SendUpdate(
+  await server_state.send_update(
       conversation_id, message_count, confirmation_required=None)
 
 
-def run_server() -> None:
+async def main() -> None:
   args = parse_arguments()
-  socketio = SocketIO(app)
-  server_state = WebServerState(args, socketio)
+  server_state = await create_web_server_state(args, sio)
 
-  @socketio.on('confirm')
-  def handle_confirmation(data: Dict[str, Any]) -> None:
+  @sio.on('confirm')  # type: ignore[misc]
+  async def handle_confirmation(sid: str, data: Dict[str, Any]) -> None:
     logging.info("Received: confirm.")
     confirmation = data.get('confirmation')
     conversation_id = data.get('conversation_id')
@@ -54,19 +68,20 @@ def run_server() -> None:
       logging.error("handle_confirmation: conversation_id is missing")
       return
     server_state.ReceiveConfirmation(confirmation, conversation_id)
-    SendUpdate(server_state, data)
+    await send_update(server_state, data)
 
-  @socketio.on('request_update')
-  def start_update(data: Dict[str, Any]) -> None:
-    SendUpdate(server_state, data)
+  @sio.on('request_update')  # type: ignore[misc]
+  async def start_update(sid: str, data: Dict[str, Any]) -> None:
+    await send_update(server_state, data)
 
-  @socketio.on('list_conversations')
-  def list_conversations() -> None:
+  @sio.on('list_conversations')  # type: ignore[misc]
+  async def list_conversations(sid: str) -> None:
     logging.info("Received: list_conversations request")
-    server_state.ListConversations()
+    await server_state.list_conversations()
 
-  socketio.run(app, port=args.port)
+  server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=args.port))
+  await asyncio.gather(server.serve(), server_state.wait_for_background_tasks())
 
 
 if __name__ == "__main__":
-  run_server()
+  asyncio.run(main())

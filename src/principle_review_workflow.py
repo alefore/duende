@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from typing import List, Dict, Optional
@@ -12,7 +13,6 @@ from agent_loop import AgentLoop
 from command_registry import CommandRegistry
 from write_file_command import WriteFileCommand
 from agent_command import AgentCommand, CommandOutput
-from command_registry_factory import CreateCommandRegistry
 
 
 class PrincipleReviewWorkflow(AgentWorkflow):
@@ -55,7 +55,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
 
 {input_content}"""
 
-  def run(self) -> None:
+  async def run(self) -> None:
     logging.info(f"Starting Principle Review Workflow: {self._input_path}")
 
     with open(self._input_path, 'r') as f:
@@ -73,7 +73,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
       return
 
     logging.info(f"Running {len(reviews_to_run)} parallel principle reviews.")
-    all_review_results = review_utils.run_parallel_reviews(
+    all_review_results = await review_utils.run_parallel_reviews(
         reviews_to_run=reviews_to_run,
         parent_options=self._options.agent_loop_options,
         conversation_factory=self._options.conversation_factory,
@@ -104,9 +104,9 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
         WriteFileCommand(self._options.agent_loop_options.validation_manager,
                          self._options.selection_manager, self._input_path))
 
-    AgentLoop(
+    await AgentLoop(
         AgentLoopOptions(
-            conversation=self._options.conversation_factory.New(
+            conversation=await self._options.conversation_factory.New(
                 name=f"AI Fixer: {self._options.agent_loop_options.conversation.GetName()}",
                 path=None),
             start_message=Message(

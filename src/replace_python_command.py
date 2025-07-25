@@ -17,7 +17,6 @@ class ReplacePythonCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -46,13 +45,13 @@ class ReplacePythonCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     identifier: str = inputs['identifier']
     new_content: str = inputs['content']
     validated_path: Optional[str] = inputs.get('path')
 
     try:
-      selections: List[Selection] = FindPythonDefinition(
+      selections: List[Selection] = await FindPythonDefinition(
           self.file_access_policy, validated_path, identifier)
     except Exception as e:
       return CommandOutput(
@@ -75,11 +74,12 @@ class ReplacePythonCommand(AgentCommand):
       return CommandOutput(
           command_name=self.Name(),
           output="",
-          errors="\n".join([f"Multiple matches found for identifier '{identifier}':"] +
-          locations + ["#end (matches)"]),
+          errors="\n".join(
+              [f"Multiple matches found for identifier '{identifier}':"] +
+              locations + ["#end (matches)"]),
           summary="Multiple matches found.")
 
-    selections[0].Overwrite(new_content)
+    await selections[0].Overwrite(new_content)
 
     if self.validation_manager:
       self.validation_manager.RegisterChange()

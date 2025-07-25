@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 import os
 import re
+import asyncio
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from validation import ValidationManager
@@ -43,7 +44,7 @@ class SelectCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
     path = inputs['path']
@@ -59,9 +60,9 @@ class SelectCommand(AgentCommand):
           end_line_pattern_raw) if end_line_pattern_raw is not None else None
 
     try:
-      selection = Selection.FromLinePattern(path, start_line_pattern,
-                                            end_line_pattern)
-      selected_lines = selection.Read()
+      selection = await Selection.FromLinePattern(path, start_line_pattern,
+                                                  end_line_pattern)
+      selected_lines = await selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(
           output="select <<\n" + "\n".join(selected_lines) + f"\n#end ({path})",
@@ -116,7 +117,7 @@ class SelectOverwriteCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     content = inputs['content']
 
     current_selection = self.selection_manager.get_selection()
@@ -129,7 +130,7 @@ class SelectOverwriteCommand(AgentCommand):
           command_name=self.Name())
 
     try:
-      current_selection.Overwrite(content)
+      await current_selection.Overwrite(content)
       if self.validation_manager:
         self.validation_manager.RegisterChange()
       line_count = len(content.splitlines())

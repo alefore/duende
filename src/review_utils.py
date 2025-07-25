@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import logging
 import os
@@ -55,13 +56,13 @@ class ReviewResult(NamedTuple):
   decision: ReviewDecision
 
 
-def _run_single_review(review_id: str, review_prompt_content: str,
-                       parent_options: AgentLoopOptions,
-                       conversation_factory: ConversationFactory,
-                       expose_read_commands: bool) -> ReviewResult:
+async def _run_single_review(review_id: str, review_prompt_content: str,
+                             parent_options: AgentLoopOptions,
+                             conversation_factory: ConversationFactory,
+                             expose_read_commands: bool) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
-  review_conversation = conversation_factory.New(
+  review_conversation = await conversation_factory.New(
       name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
       path=None)
 
@@ -114,17 +115,17 @@ def _run_single_review(review_id: str, review_prompt_content: str,
   )
 
   logging.info(f"Starting review for {review_id}.")
-  AgentLoop(review_options).run()
+  await AgentLoop(review_options).run()
   logging.info(f"Nested review agent loop for {review_id} done.")
 
   assert single_review_result, "Review agent did not call accept/reject. This should never happen."
   return single_review_result[0]
 
 
-def run_parallel_reviews(reviews_to_run: Dict[str, str],
-                         parent_options: AgentLoopOptions,
-                         conversation_factory: ConversationFactory,
-                         expose_read_commands: bool) -> List[ReviewResult]:
+async def run_parallel_reviews(
+    reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
+    conversation_factory: ConversationFactory,
+    expose_read_commands: bool) -> List[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
   Args:
@@ -143,35 +144,14 @@ def run_parallel_reviews(reviews_to_run: Dict[str, str],
     return []
 
   review_results: List[ReviewResult] = []
-  lock = threading.Lock()
-  threads = []
-
-  def run_and_collect_single_review(review_id: str,
-                                    review_prompt_content: str) -> None:
-    result = _run_single_review(
-        review_id=review_id,
-        review_prompt_content=review_prompt_content,
-        parent_options=parent_options,
-        conversation_factory=conversation_factory,
-        expose_read_commands=expose_read_commands)
-    with lock:
-      review_results.append(result)
-
-  for review_id, review_prompt_content in reviews_to_run.items():
-    thread = threading.Thread(
-        target=run_and_collect_single_review,
-        args=(review_id, review_prompt_content),
-    )
-    threads.append(thread)
-    thread.start()
-
-  for thread in threads:
-    thread.join()
-
-  logging.info("All review threads finished.")
-  logging.info(f"AI review found {len(review_results)} results.")
-
-  return review_results
+  return await asyncio.gather(
+      *(_run_single_review(
+          review_id=review_id,
+          review_prompt_content=review_prompt_content,
+          parent_options=parent_options,
+          conversation_factory=conversation_factory,
+          expose_read_commands=expose_read_commands)
+        for review_id, review_prompt_content in reviews_to_run.items()))
 
 
 def implementation_review_spec(parent_options: AgentLoopOptions,

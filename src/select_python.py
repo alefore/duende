@@ -4,6 +4,8 @@ from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
+import aiofiles
+import asyncio
 
 
 class SelectPythonCommand(AgentCommand):
@@ -36,14 +38,14 @@ class SelectPythonCommand(AgentCommand):
                 required=False)
         ])
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
     identifier: str = inputs['identifier']
     validated_path: Optional[str] = inputs.get('path')
 
     try:
-      selections = FindPythonDefinition(self.file_access_policy, validated_path,
+      selections = await FindPythonDefinition(self.file_access_policy, validated_path,
                                         identifier)
 
       if len(selections) == 0:
@@ -62,7 +64,7 @@ class SelectPythonCommand(AgentCommand):
 
       self.selection_manager.set_selection(selections[0])
       return CommandOutput(
-          output="select <<\n" + "\n".join(selections[0].Read()) +
+          output="select <<\n" + "\n".join(await selections[0].Read()) +
           f"\n#end (selection in {selections[0].path})",
           errors="",
           summary=selections[0].ProvideSummary(),
@@ -105,7 +107,7 @@ def _find_nested_definition_nodes(
   return matching_nodes
 
 
-def FindPythonDefinition(file_access_policy: FileAccessPolicy,
+async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
                          validated_path: Optional[str],
                          identifier: str) -> List[Selection]:
   """Finds all Python code elements by identifier and returns the selections.
@@ -124,24 +126,31 @@ def FindPythonDefinition(file_access_policy: FileAccessPolicy,
   if validated_path:
     file_list = [validated_path]
   else:
-    file_list = [
-        file for file in list_all_files(".", file_access_policy)
-        if file.endswith(".py")
-    ]
+    file_list = []
+    async for file in list_all_files(".", file_access_policy):
+      if file.endswith(".py") and file_access_policy.allow_access(file):
+        file_list.append(file)
 
   selections = []
   identifier_parts = identifier.split('.')
 
   for file_path in file_list:
-    with open(file_path, "r") as file:
-      tree: ast.Module = ast.parse(file.read(), filename=file_path)
+    try:
+      async with aiofiles.open(file_path, "r") as file_obj: # Renamed 'file' to 'file_obj'
+        file_content = await file_obj.read()
+      tree: ast.Module = ast.parse(file_content, filename=file_path)
 
-    # Start the recursive search from the top-level nodes of the AST
-    found_nodes = _find_nested_definition_nodes(tree.body, identifier_parts)
+      # Start the recursive search from the top-level nodes of the AST
+      found_nodes = _find_nested_definition_nodes(tree.body, identifier_parts)
 
-    for node in found_nodes:
-      if node.lineno is not None and node.end_lineno is not None:
-        selections.append(
-            Selection(file_path, node.lineno - 1, node.end_lineno - 1))
+      for node in found_nodes:
+        if node.lineno is not None and node.end_lineno is not None:
+          selections.append(
+              Selection(file_path, node.lineno - 1, node.end_lineno - 1))
+    except Exception as e:
+      # Log error or add to a list of errors if file cannot be parsed
+      # For now, just continue to the next file
+      print(f"Error parsing {file_path}: {e}")
+      continue
 
   return selections

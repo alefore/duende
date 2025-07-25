@@ -1,8 +1,8 @@
+import asyncio
 from typing import List, Optional
 import argparse
 import logging
-from flask_socketio import SocketIO
-from threading import Thread
+import socketio
 
 from args_common import CreateAgentWorkflow
 from agent_loop import AgentLoop
@@ -16,31 +16,39 @@ from message import Message
 
 class WebServerState:
 
-  def __init__(self, args: argparse.Namespace, socketio: SocketIO) -> None:
+  def __init__(self, socketio: socketio.AsyncServer) -> None:
     self.socketio = socketio
-    self.confirmation_manager = AsyncConfirmationManager(
-        self._confirmation_requested)
     self.session_key = GenerateRandomKey()
+    self._background_tasks: list[asyncio.Task[None]] = []
 
+  async def start(self, args: argparse.Namespace) -> None:
     conversation_factory_options = ConversationFactoryOptions(
         on_message_added_callback=self._on_conversation_updated,
         on_state_changed_callback=self._on_conversation_updated)
+    self.confirmation_manager = AsyncConfirmationManager(
+        self._confirmation_requested)
     try:
-      self.agent_workflow: AgentWorkflow = CreateAgentWorkflow(
+      self.agent_workflow: AgentWorkflow = await CreateAgentWorkflow(
           args, self.confirmation_manager, conversation_factory_options)
     except RuntimeError as e:
       logging.error(e)
       raise e
 
-    Thread(target=self.agent_workflow.run).start()
+    logging.info(str(self.agent_workflow))
+    self._background_tasks.append(
+        asyncio.create_task(self.agent_workflow.run()))
 
-  def _on_conversation_updated(self, conversation_id: ConversationId) -> None:
+  async def wait_for_background_tasks(self) -> None:
+    await asyncio.gather(*self._background_tasks)
+
+  async def _on_conversation_updated(self,
+                                     conversation_id: ConversationId) -> None:
     logging.info(f"Conversation {conversation_id} updated.")
-    self.SendUpdate(conversation_id, None, confirmation_required=None)
+    await self.send_update(conversation_id, None, confirmation_required=None)
 
-  def SendUpdate(self, conversation_id: ConversationId,
-                 client_message_count: Optional[int],
-                 confirmation_required: Optional[str]) -> None:
+  async def send_update(self, conversation_id: ConversationId,
+                        client_message_count: Optional[int],
+                        confirmation_required: Optional[str]) -> None:
     try:
       conversation = self.agent_workflow.get_conversation_by_id(conversation_id)
     except KeyError:
@@ -84,12 +92,12 @@ class WebServerState:
         'first_message_index':
             client_message_count or 0
     }
-    self.socketio.emit('update', data)
+    await self.socketio.emit('update', data)
 
-  def _confirmation_requested(self, conversation_id: ConversationId,
-                              message: str) -> None:
+  async def _confirmation_requested(self, conversation_id: ConversationId,
+                                    message: str) -> None:
     logging.info("Confirmation requested.")
-    self.SendUpdate(conversation_id, None, confirmation_required=message)
+    await self.send_update(conversation_id, None, confirmation_required=message)
 
   def ReceiveConfirmation(self, confirmation_message: str,
                           conversation_id: int) -> None:
@@ -97,7 +105,7 @@ class WebServerState:
     self.confirmation_manager.provide_confirmation(conversation_id,
                                                    confirmation_message)
 
-  def ListConversations(self) -> None:
+  async def list_conversations(self) -> None:
     logging.info("Listing conversations.")
     conversations_data = []
     for conversation in self.agent_workflow.get_all_conversations():
@@ -116,4 +124,11 @@ class WebServerState:
           'last_state_change_time':
               conversation.last_state_change_time.isoformat()
       })
-    self.socketio.emit('list_conversations', conversations_data)
+    await self.socketio.emit('list_conversations', conversations_data)
+
+
+async def create_web_server_state(args: argparse.Namespace,
+                                  sio: socketio.AsyncServer) -> WebServerState:
+  output = WebServerState(sio)
+  await output.start(args)
+  return output

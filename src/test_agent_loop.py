@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call, patch
 from typing import Dict, List, Union
 import glob
 import logging
+import asyncio
 
 import review_utils
 from agent_command import (AgentCommand, CommandInput, CommandOutput,
@@ -34,11 +35,14 @@ class TestAgentLoop(unittest.TestCase):
         description="Lists all files in the given directories.",
         arguments=[],
     )
-    self.mock_list_files_command.run.return_value = CommandOutput(
-        command_name="list_files",
-        output="src/agent_loop.py",
-        errors="",
-        summary="Listed 1 file.")
+    # mock run method to be a coroutine
+    async def mock_list_files_run(*args, **kwargs):
+      return CommandOutput(
+          command_name="list_files",
+          output="src/agent_loop.py",
+          errors="",
+          summary="Listed 1 file.")
+    self.mock_list_files_command.run.side_effect = mock_list_files_run
 
     self.mock_read_file_command = MagicMock(spec=AgentCommand)
     self.mock_read_file_command.Name.return_value = "read_file"
@@ -56,11 +60,13 @@ class TestAgentLoop(unittest.TestCase):
                 required=True)
         ],
     )
-    self.mock_read_file_command.run.return_value = CommandOutput(
-        command_name="read_file",
-        output="file content",
-        errors="",
-        summary="Read 1 file.")
+    async def mock_read_file_run(*args, **kwargs):
+      return CommandOutput(
+          command_name="read_file",
+          output="file content",
+          errors="",
+          summary="Read 1 file.")
+    self.mock_read_file_command.run.side_effect = mock_read_file_run
 
     self.mock_write_file_command = MagicMock(spec=AgentCommand)
     self.mock_write_file_command.Name.return_value = "write_file"
@@ -80,11 +86,13 @@ class TestAgentLoop(unittest.TestCase):
                 required=True),
         ],
     )
-    self.mock_write_file_command.run.return_value = CommandOutput(
-        command_name="write_file",
-        output="",
-        errors="",
-        summary="Wrote to file.")
+    async def mock_write_file_run(*args, **kwargs):
+      return CommandOutput(
+          command_name="write_file",
+          output="",
+          errors="",
+          summary="Wrote to file.")
+    self.mock_write_file_command.run.side_effect = mock_write_file_run
 
     self.registry = CommandRegistry()
     self.registry.Register(self.mock_list_files_command)
@@ -102,7 +110,9 @@ class TestAgentLoop(unittest.TestCase):
     self.registry.Register(RejectChange(dummy_review_callback))
 
     self.mock_confirmation_state = MagicMock()
-    self.mock_confirmation_state.RequireConfirmation.return_value = ""
+    async def mock_require_confirmation(*args, **kwargs):
+      return ""
+    self.mock_confirmation_state.RequireConfirmation.side_effect = mock_require_confirmation
 
     self.conv_factory = ConversationFactory(
         ConversationFactoryOptions(command_registry=self.registry))
@@ -119,7 +129,7 @@ class TestAgentLoop(unittest.TestCase):
       if os.path.exists(review_file):
         os.remove(review_file)
 
-  def _run_agent_loop_for_test(self,
+  async def _run_agent_loop_for_test(self,
                                scripted_responses: Dict[str, List[Message]],
                                confirm_done: bool = False,
                                do_review: bool = False) -> List[Message]:
@@ -149,15 +159,15 @@ class TestAgentLoop(unittest.TestCase):
             original_task_prompt_content="Test task",
             confirm_done=str(confirm_done),
             do_review=do_review))
-    agent_workflow.run()
+    await agent_workflow.run()
     return conversation.messages
 
-  def test_run_loop_with_simple_command_and_done(self):
+  async def test_run_loop_with_simple_command_and_done(self):
     """
     Tests a simple interaction where the AI issues one command and then #done.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test({
+    messages = await self._run_agent_loop_for_test({
         "test-name": [
             Message(
                 role='assistant',
@@ -199,12 +209,12 @@ class TestAgentLoop(unittest.TestCase):
 
     self.mock_list_files_command.run.assert_called_once_with({})
 
-  def test_run_loop_with_no_commands_in_response(self):
+  async def test_run_loop_with_no_commands_in_response(self):
     """
     Tests that the loop sends an error back to the AI if it responds with no commands.
     """
     # 1. Setup and run the agent loop.
-    messages = self._run_agent_loop_for_test({
+    messages = await self._run_agent_loop_for_test({
         "test-name": [
             Message(
                 role='assistant',
@@ -237,13 +247,13 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(messages[3].GetContentSections()[0].command.command_name,
                      "done")
 
-  def test_run_loop_with_multiple_commands(self):
+  async def test_run_loop_with_multiple_commands(self):
     """
     Tests that the loop correctly executes multiple commands from one response.
     """
     # 1. Setup and run the agent loop.
     # The scripted response contains two command lines in a single message.
-    messages = self._run_agent_loop_for_test({
+    messages = await self._run_agent_loop_for_test({
         "test-name": [
             Message(
                 role='assistant',
@@ -282,16 +292,19 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(sections[0].summary, "Listed 1 file.")
     self.assertEqual(sections[1].summary, "Read 1 file.")
 
-  def test_done_confirmation_with_rejection(self):
+  async def test_done_confirmation_with_rejection(self):
     """
     Tests that the loop continues if the user rejects the #done command.
     """
     # Setup mocks and run the loop
+    async def mock_require_confirmation_side_effect(*args, **kwargs):
+      return "You are not done, please list files."
+
     self.mock_confirmation_state.RequireConfirmation.side_effect = [
         "You are not done, please list files.", ""
     ]
 
-    messages = self._run_agent_loop_for_test(
+    messages = await self._run_agent_loop_for_test(
         scripted_responses={
             "test-name": [
                 Message(
@@ -349,7 +362,7 @@ class TestAgentLoop(unittest.TestCase):
     self.assertEqual(messages[-1].GetContentSections()[0].command.command_name,
                      "done")
 
-  def test_do_review_parallel(self):
+  async def test_do_review_parallel(self):
     """Tests that do_review can trigger three parallel reviews."""
     main_conv_name = "test-name"
     review_0_conv_name = "AI Review (review_0): test-name"
@@ -435,7 +448,7 @@ class TestAgentLoop(unittest.TestCase):
           '',  # After feedback, agent issues #done, no new changes
       ]
 
-      messages = self._run_agent_loop_for_test(
+      messages = await self._run_agent_loop_for_test(
           scripted_responses=scripted_responses, do_review=True)
 
     logging.info([m.Serialize() for m in messages])

@@ -13,7 +13,7 @@ from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmation
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry
-from command_registry_factory import CreateCommandRegistry
+from command_registry_factory import create_command_registry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from chatgpt import ChatGPT
@@ -161,20 +161,20 @@ def GetConversationalAI(args: argparse.Namespace,
   raise Exception(f"Unknown AI: {args.model}")
 
 
-def CreateAgentWorkflow(
+async def CreateAgentWorkflow(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory_options: ConversationFactoryOptions) -> AgentWorkflow:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
                                               args.file_access_regex_path)
 
-  matched_files = list(list_all_files('.', file_access_policy))
+  matched_files = [f async for f in list_all_files('.', file_access_policy)]
   logging.info(f"File matched by access policy: {len(matched_files)}")
   if not matched_files:
     print("No files match the given file access policy. Aborting execution.")
     sys.exit(1)
 
   if args.test_file_access:
-    TestFileAccess(file_access_policy)
+    await TestFileAccess(file_access_policy)
     sys.exit(0)
 
   if not args.task and not args.input_path:
@@ -192,12 +192,12 @@ def CreateAgentWorkflow(
     )
 
   if validation_manager and not args.skip_implicit_validation:
-    initial_validation_result = validation_manager.Validate()
+    initial_validation_result = await validation_manager.Validate()
     if initial_validation_result and not initial_validation_result.success:
       raise RuntimeError(
           "Initial validation failed, aborting further operations.")
 
-  registry = CreateCommandRegistry(
+  registry = await create_command_registry(
       file_access_policy,
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
@@ -222,7 +222,7 @@ def CreateAgentWorkflow(
     return PrincipleReviewWorkflow(
         AgentWorkflowOptions(
             agent_loop_options=AgentLoopOptions(
-                conversation=conversation_factory.New(
+                conversation=await conversation_factory.New(
                     name="principle_review_dummy_conv",
                     path=os.path.join(
                         os.getcwd(),
@@ -264,7 +264,7 @@ def CreateAgentWorkflow(
   task_file_content += _read_prompt_include_files(args.prompt_include,
                                                   file_access_policy)
 
-  conversation, start_message = LoadOrCreateConversation(
+  conversation, start_message = await LoadOrCreateConversation(
       task_file_content, args.task, conversation_factory, conversation_path,
       registry, file_access_policy, validation_manager, confirmation_state,
       conversation_name)
@@ -307,7 +307,7 @@ def CreateAgentWorkflow(
         ))
 
 
-def LoadOrCreateConversation(
+async def LoadOrCreateConversation(
     task_file_content: str,
     task_file_path: str,
     conversation_factory: ConversationFactory,
@@ -318,8 +318,7 @@ def LoadOrCreateConversation(
     confirmation_state: ConfirmationState,
     conversation_name: str,
 ) -> Tuple[Conversation, Message]:
-
-  conversation = conversation_factory.New(
+  conversation = await conversation_factory.New(
       name=conversation_name, path=conversation_path)
   if conversation.messages:
     next_message = Message(
@@ -384,8 +383,8 @@ def CreateFileAccessPolicy(
   return CompositeFileAccessPolicy(policies)
 
 
-def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
-  for file in list_all_files('.', file_access_policy):
+async def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
+  async for file in list_all_files('.', file_access_policy):
     print(file)
 
 

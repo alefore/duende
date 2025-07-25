@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional
 import logging
 import os
 import difflib
+import aiofiles
+import asyncio
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from validation import ValidationManager
@@ -48,12 +50,13 @@ class WriteFileCommand(AgentCommand):
         output_description='A string describing the result of the operation, possibly including a diff.'
     )
 
-  def _get_full_diff(self, path: str, new_content: str) -> Optional[List[str]]:
-    if not os.path.exists(path):
+  async def _get_full_diff(self, path: str,
+                           new_content: str) -> Optional[List[str]]:
+    if not await asyncio.to_thread(os.path.exists, path):
       return None
 
-    with open(path, "r") as f:
-      original_content_lines: List[str] = f.read().splitlines()
+    async with aiofiles.open(path, "r") as f:
+      original_content_lines: List[str] = (await f.read()).splitlines()
     diff = list(
         difflib.unified_diff(
             original_content_lines,
@@ -64,16 +67,16 @@ class WriteFileCommand(AgentCommand):
         ))
     return diff
 
-  def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+  async def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
     output = {}
     path = self._hard_coded_path or inputs.get('path')
     if path and inputs.get('content'):
-      output['content_diff'] = self._derive_diff(path, inputs['content'])
+      output['content_diff'] = await self._derive_diff(path, inputs['content'])
     return output
 
-  def _derive_diff(self, path: str, new_content: str) -> str:
+  async def _derive_diff(self, path: str, new_content: str) -> str:
     try:
-      diff = self._get_full_diff(path, new_content)
+      diff = await self._get_full_diff(path, new_content)
       if diff is None:
         return "File is new."
       elif not diff:
@@ -83,7 +86,7 @@ class WriteFileCommand(AgentCommand):
     except Exception as e:
       return f"Could not compute diff: {e}"
 
-  def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     path = self._hard_coded_path or inputs['path']
     new_content = inputs['content']
     logging.info(f"Write: {path}")
@@ -97,12 +100,12 @@ class WriteFileCommand(AgentCommand):
     try:
       directory = os.path.dirname(path)
       if directory:
-        os.makedirs(directory, exist_ok=True)
+        await asyncio.to_thread(os.makedirs, directory, exist_ok=True)
 
-      diff = self._get_full_diff(path, new_content)
+      diff = await self._get_full_diff(path, new_content)
 
-      with open(path, "w") as f:
-        f.write(new_content)
+      async with aiofiles.open(path, mode="w") as f:
+        await f.write(new_content)
       if self.validation_manager:
         self.validation_manager.RegisterChange()
 

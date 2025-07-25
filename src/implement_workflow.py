@@ -30,12 +30,13 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     self._confirm_done_regex: Optional[Pattern[str]] = re.compile(
         options.confirm_done) if options.confirm_done else None
 
-  def _RunReviews(self, git_diff_output: str) -> Optional[List[ContentSection]]:
-    self._options.agent_loop_options.conversation.SetState(
+  async def _RunReviews(self,
+                        git_diff_output: str) -> Optional[List[ContentSection]]:
+    await self._options.agent_loop_options.conversation.SetState(
         ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
 
     return review_utils.reject_output_content_sections(
-        review_utils.run_parallel_reviews(
+        await review_utils.run_parallel_reviews(
             reviews_to_run=review_utils.implementation_review_spec(
                 parent_options=self._options.agent_loop_options,
                 original_task_prompt_content=self._original_task_prompt_content,
@@ -44,7 +45,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
             conversation_factory=self._options.conversation_factory,
             expose_read_commands=True))
 
-  def _handle_initial_review(self) -> None:
+  async def _handle_initial_review(self) -> None:
     if self._options.review_first:
       logging.info("Running --review-first...")
       logging.info("Calling get_git_diff_content from _handle_initial_review")
@@ -54,7 +55,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
             "Cannot run --review-first with no uncommitted changes. Aborting.")
         sys.exit(1)
 
-      review_feedback_content = self._RunReviews(git_diff_output)
+      review_feedback_content = await self._RunReviews(git_diff_output)
       if review_feedback_content:
         logging.info(
             f"Found {len(review_feedback_content)} review suggestions.")
@@ -70,7 +71,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         logging.info("No review suggestions found. Exiting.")
         sys.exit(0)
 
-  def _get_review_message(self) -> Optional[Message]:
+  async def _get_review_message(self) -> Optional[Message]:
     if not self._options.do_review:
       return None
 
@@ -80,20 +81,20 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
       logging.info("No uncommitted changes; skipping review.")
       return None
 
-    review_feedback_content = self._RunReviews(git_diff_output)
+    review_feedback_content = await self._RunReviews(git_diff_output)
     if not review_feedback_content:
       logging.info("No review feedback.")
       return None
 
     return Message(role='user', content_sections=review_feedback_content)
 
-  def _get_confirm_guidance(self) -> Optional[Message]:
+  async def _get_confirm_guidance(self) -> Optional[Message]:
     if not self._confirm_done_regex:
       return None
 
-    self._options.agent_loop_options.conversation.SetState(
+    await self._options.agent_loop_options.conversation.SetState(
         ConversationState.WAITING_FOR_CONFIRMATION)
-    guidance = self._options.agent_loop_options.confirmation_state.RequireConfirmation(
+    guidance = await self._options.agent_loop_options.confirmation_state.RequireConfirmation(
         self._options.agent_loop_options.conversation.GetId(),
         ("Confirm `done` command? "
          "Enter an empty string to accept and terminate, "
@@ -110,11 +111,12 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
                 summary="Human decision to continue")
         ])
 
-  def run(self) -> None:
-    self._handle_initial_review()
+  async def run(self) -> None:
+    await self._handle_initial_review()
 
     while self._agent_loop.next_message:
-      self._agent_loop.run()
-      next_message = self._get_review_message() or self._get_confirm_guidance()
+      await self._agent_loop.run()
+      next_message = await self._get_review_message(
+      ) or await self._get_confirm_guidance()
       if next_message:
         self._agent_loop.set_next_message(next_message)
