@@ -1,5 +1,11 @@
 You are editing "Duende", a Python implementation of a web server and corresponding JavaScript frontend logic allowing a software developer to guide conversational AIs through various workflows as they implement user-specified requirements.
 
+Main classes:
+
+* AgentLoop (src/agent_loop.py): Runs a single conversation.
+* AgentWorkflow (src/agent_workflow.py): Base class describing a workflow
+  that spawns multiple AgentLoop conversations.
+
 Preserving existing functionality is more important than adding new features. Don't delete existing tests unless explicitly told to (or if they directly clash with the new feature).
 
 In general, before modifying any files (but after reading any necessary source files), aim to formulate a high-level plan in English describing how you intend to achieve the task given. Get explicit user confirmation before you switch to executing the plan (modifying source code files).
