@@ -122,17 +122,17 @@ class WebServerState:
             conversation.last_state_change_time.isoformat()
     }
 
-  async def list_conversations(self, limit: int, start_id: int = 0) -> None:
-    logging.info(
-        f"Listing conversations with start_id={start_id}, limit={limit}.")
+  async def list_conversations(self, start_id: int = 0) -> None:
+    logging.info(f"Listing conversations with start_id={start_id}.")
     all_conversations = self.agent_workflow.get_all_conversations()
+    MAX_CONVERSATIONS_PER_UPDATE = 10
     await self.socketio.emit(
         'list_conversations', {
             'conversations':
                 sorted((self._conversation_dict(c)
                         for c in all_conversations
                         if c.GetId() >= start_id),
-                       key=lambda c: c['id'])[:limit],
+                       key=lambda c: c['id'])[:MAX_CONVERSATIONS_PER_UPDATE],
             'max_conversation_id':
                 max(c.GetId() for c in all_conversations)
         })

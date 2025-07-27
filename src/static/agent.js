@@ -121,7 +121,7 @@ function handleListConversations(socket, response_data) {
 function switchSelectedConversationIndex(delta) {
   const $conversationSelector = $('#conversation_selector');
   const currentLength = $conversationSelector.children('option').length;
-  if (currentLength === 0) return; // No conversations to switch
+  if (currentLength === 0) return;  // No conversations to switch
 
   let newIndex = $conversationSelector.prop('selectedIndex') + delta;
 
@@ -192,7 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (confirmationForm.style.display === 'none') {
       confirmButton.style.display = 'none';
     } else {
-      confirmButton.style.display = 'inline-block'; // Or 'block' depending on desired layout
+      confirmButton.style.display =
+          'inline-block';  // Or 'block' depending on desired layout
     }
   }
 
@@ -205,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  observer.observe(confirmationForm, { attributes: true });
+  observer.observe(confirmationForm, {attributes: true});
 
   // Initial check for button visibility
   updateConfirmationButtonVisibility();
@@ -219,5 +220,5 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   console.log('Requesting conversation list.');
-  socket.emit('list_conversations');
+  socket.emit('list_conversations', {});
 });

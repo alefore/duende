@@ -80,7 +80,7 @@ async def main() -> None:
     MAX_CONVERSATIONS_PER_LIST_UPDATE = 10
     start_id = data.get('start_id', 0)
     limit = data.get('limit', MAX_CONVERSATIONS_PER_LIST_UPDATE)
-    await server_state.list_conversations(limit, start_id=start_id)
+    await server_state.list_conversations(start_id=start_id)
 
   server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=args.port))
   await asyncio.gather(server.serve(), server_state.wait_for_background_tasks())
