@@ -1,10 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Coroutine, Dict, Optional
-import threading
 import asyncio
-import queue
+import logging
+from dataclasses import dataclass
 
 from conversation import ConversationId
+
+
+@dataclass
+class ConfirmationEntry:
+  future: asyncio.Future[str]
+  message: str
 
 
 class ConfirmationManager(ABC):
@@ -24,35 +30,41 @@ class AsyncConfirmationManager(ConfirmationManager):
                                                    Coroutine[Any, Any,
                                                              None]]] = None
   ) -> None:
-    self.confirm_queue: Dict[ConversationId, queue.Queue[str]] = {}
-    self.message_lock = threading.Lock()
-    self.current_message: Dict[ConversationId, str] = {}
+    self.confirmations: Dict[ConversationId, ConfirmationEntry] = {}
     self.on_confirmation_requested = on_confirmation_requested
+    self._lock = asyncio.Lock()
 
   async def RequireConfirmation(self, conversation_id: ConversationId,
                                 message: str) -> Optional[str]:
-    with self.message_lock:
-      if conversation_id not in self.confirm_queue:
-        self.confirm_queue[conversation_id] = queue.Queue()
-      self.current_message[conversation_id] = message
-      if self.on_confirmation_requested is not None:
-        await self.on_confirmation_requested(conversation_id, message)
-      conversation_queue = self.confirm_queue[conversation_id]
-    return await asyncio.to_thread(conversation_queue.get)
+    async with self._lock:
+      if conversation_id in self.confirmations:
+        logging.fatal(
+            f"RequireConfirmation called for conversation_id "
+            f"{conversation_id} but a confirmation is already pending.")
+        raise RuntimeError(
+            f"Duplicate RequireConfirmation for {conversation_id}")
+
+      future = asyncio.Future[str]()
+      self.confirmations[conversation_id] = ConfirmationEntry(future, message)
+    if self.on_confirmation_requested is not None:
+      await self.on_confirmation_requested(conversation_id, message)
+    return await future
 
   def provide_confirmation(self, conversation_id: ConversationId,
                            confirmation: str) -> None:
-    with self.message_lock:
-      if conversation_id not in self.confirm_queue:
-        self.confirm_queue[conversation_id] = queue.Queue()
-      conversation_queue = self.confirm_queue[conversation_id]
-      self.current_message.pop(conversation_id, None)
-    conversation_queue.put(confirmation)
+
+    async def _set_result() -> None:
+      async with self._lock:
+        entry = self.confirmations.pop(conversation_id, None)
+        if entry and not entry.future.done():
+          entry.future.set_result(confirmation)
+
+    asyncio.create_task(_set_result())
 
   def get_pending_message(self,
                           conversation_id: ConversationId) -> Optional[str]:
-    with self.message_lock:
-      return self.current_message.get(conversation_id)
+    entry = self.confirmations.get(conversation_id)
+    return entry.message if entry else None
 
 
 class ConfirmationState:
