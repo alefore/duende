@@ -107,9 +107,9 @@ function handleUpdate(socket, data) {
   maybeRequestMessages(socket, data.message_count, conversation);
 }
 
-function handleListConversations(socket, conversations) {
-  console.log('Received conversation list:', conversations);
-  conversations.forEach(data => {
+function handleListConversations(socket, response_data) {
+  console.log('Received conversation list:', response_data);
+  response_data.conversations.forEach(data => {
     const conversation = createOrUpdateConversation(
         data.id, data.name, data.state, data.state_emoji,
         new Date(data.last_state_change_time).getTime());

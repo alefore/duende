@@ -124,7 +124,7 @@ class WebServerState:
           'last_state_change_time':
               conversation.last_state_change_time.isoformat()
       })
-    await self.socketio.emit('list_conversations', conversations_data)
+    await self.socketio.emit('list_conversations', {'conversations': conversations_data})
 
 
 async def create_web_server_state(args: argparse.Namespace,
