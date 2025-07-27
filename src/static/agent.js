@@ -12,6 +12,14 @@ function getShownConversation() {
   return conversationsById[shownConversationId];
 }
 
+function getMaxConversationId() {
+  const conversationIds = Object.keys(conversationsById);
+  if (conversationIds.length === 0) {
+    throw new Error('conversationsById is empty.');
+  }
+  return Math.max(...conversationIds.map(id => parseInt(id)));
+}
+
 function createOrUpdateConversation(
     id, name, state, stateEmoji, lastStateChangeTime) {
   if (conversationsById[id])
@@ -107,6 +115,14 @@ function handleUpdate(socket, data) {
   maybeRequestMessages(socket, data.message_count, conversation);
 }
 
+function emitListConversations(socket) {
+  const data = {};
+  if (Object.keys(conversationsById).length > 0) {
+    data.start_id = getMaxConversationId() + 1;
+  }
+  socket.emit('list_conversations', data);
+}
+
 function handleListConversations(socket, response_data) {
   console.log('Received conversation list:', response_data);
   response_data.conversations.forEach(data => {
@@ -116,6 +132,11 @@ function handleListConversations(socket, response_data) {
     conversation.updateView();
     maybeRequestMessages(socket, data.message_count, conversation);
   });
+
+  if (Object.keys(conversationsById).length === 0 ||
+      response_data.max_conversation_id > getMaxConversationId()) {
+    emitListConversations(socket);
+  }
 }
 
 function switchSelectedConversationIndex(delta) {
@@ -220,5 +241,5 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   console.log('Requesting conversation list.');
-  socket.emit('list_conversations', {});
+  emitListConversations(socket);
 });
