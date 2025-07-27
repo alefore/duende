@@ -144,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const confirmationForm = document.getElementById('confirmation_form');
   const confirmationInput = document.getElementById('confirmation_input');
+  const confirmButton = document.getElementById('confirm_button');
   const $conversationSelector = $('#conversation_selector');
 
   loadAutoConfirmState();
@@ -168,6 +169,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
+  $(confirmButton).on('click', function() {
+    const shownConversation = getShownConversation();
+    if (shownConversation != null &&
+        shownConversation.isWaitingForConfirmation())
+      $(confirmationForm).submit();
+  });
+
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
     sendConfirmation(socket, confirmationInput.value);
@@ -177,6 +185,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const id = parseInt($(this).val());
     if (conversationsById[id]) conversationsById[id].show();
   });
+
+  // Function to show/hide the confirmation button
+  function updateConfirmationButtonVisibility() {
+    const confirmationForm = document.getElementById('confirmation_form');
+    if (confirmationForm.style.display === 'none') {
+      confirmButton.style.display = 'none';
+    } else {
+      confirmButton.style.display = 'inline-block'; // Or 'block' depending on desired layout
+    }
+  }
+
+  // Observe changes to the style attribute of the confirmation_form
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.attributeName === 'style') {
+        updateConfirmationButtonVisibility();
+      }
+    });
+  });
+
+  observer.observe(confirmationForm, { attributes: true });
+
+  // Initial check for button visibility
+  updateConfirmationButtonVisibility();
 
   $('#prev_conversation_button').on('click', function() {
     switchSelectedConversationIndex(-1);
