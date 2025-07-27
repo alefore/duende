@@ -9,7 +9,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
 from implement_workflow import ImplementAndReviewWorkflow
 from review_evaluator_test_workflow import ReviewEvaluatorTestWorkflow
-from confirmation import ConfirmationState, ConfirmationManager, CLIConfirmationManager
+from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry

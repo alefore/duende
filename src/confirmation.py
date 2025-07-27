@@ -16,13 +16,6 @@ class ConfirmationManager(ABC):
     pass
 
 
-class CLIConfirmationManager(ConfirmationManager):
-
-  async def RequireConfirmation(self, conversation_id: ConversationId,
-                                message: str) -> Optional[str]:
-    return await asyncio.to_thread(input, message)
-
-
 class AsyncConfirmationManager(ConfirmationManager):
 
   def __init__(
