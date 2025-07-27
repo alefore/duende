@@ -75,9 +75,12 @@ async def main() -> None:
     await send_update(server_state, data)
 
   @sio.on('list_conversations')  # type: ignore[misc]
-  async def list_conversations(sid: str) -> None:
+  async def list_conversations(sid: str, data: Dict[str, Any]) -> None:
     logging.info("Received: list_conversations request")
-    await server_state.list_conversations()
+    MAX_CONVERSATIONS_PER_LIST_UPDATE = 10
+    start_id = data.get('start_id', 0)
+    limit = data.get('limit', MAX_CONVERSATIONS_PER_LIST_UPDATE)
+    await server_state.list_conversations(limit, start_id=start_id)
 
   server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=args.port))
   await asyncio.gather(server.serve(), server_state.wait_for_background_tasks())

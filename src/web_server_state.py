@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 import argparse
 import logging
 import socketio
@@ -10,7 +10,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
 from confirmation import AsyncConfirmationManager
 from random_key import GenerateRandomKey
-from conversation import ConversationFactory, ConversationId, ConversationFactoryOptions
+from conversation import Conversation, ConversationFactory, ConversationId, ConversationFactoryOptions
 from message import Message
 
 
@@ -105,26 +105,37 @@ class WebServerState:
     self.confirmation_manager.provide_confirmation(conversation_id,
                                                    confirmation_message)
 
-  async def list_conversations(self) -> None:
-    logging.info("Listing conversations.")
-    conversations_data = []
-    for conversation in self.agent_workflow.get_all_conversations():
-      state = conversation.GetState()
-      conversations_data.append({
-          'id':
-              conversation.GetId(),
-          'name':
-              conversation.GetName(),
-          'message_count':
-              len(conversation.GetMessagesList()),
-          'state':
-              state.name,
-          'state_emoji':
-              state.to_emoji(),
-          'last_state_change_time':
-              conversation.last_state_change_time.isoformat()
-      })
-    await self.socketio.emit('list_conversations', {'conversations': conversations_data})
+  def _conversation_dict(self, conversation: Conversation) -> Dict[str, Any]:
+    state = conversation.GetState()
+    return {
+        'id':
+            conversation.GetId(),
+        'name':
+            conversation.GetName(),
+        'message_count':
+            len(conversation.GetMessagesList()),
+        'state':
+            state.name,
+        'state_emoji':
+            state.to_emoji(),
+        'last_state_change_time':
+            conversation.last_state_change_time.isoformat()
+    }
+
+  async def list_conversations(self, limit: int, start_id: int = 0) -> None:
+    logging.info(
+        f"Listing conversations with start_id={start_id}, limit={limit}.")
+    all_conversations = self.agent_workflow.get_all_conversations()
+    await self.socketio.emit(
+        'list_conversations', {
+            'conversations':
+                sorted((self._conversation_dict(c)
+                        for c in all_conversations
+                        if c.GetId() >= start_id),
+                       key=lambda c: c['id'])[:limit],
+            'max_conversation_id':
+                max(c.GetId() for c in all_conversations)
+        })
 
 
 async def create_web_server_state(args: argparse.Namespace,
