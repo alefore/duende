@@ -21,6 +21,8 @@ from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositor
 from task_command import TaskInformation
 from done_command import DoneCommand
 from answer_command import AnswerCommand
+from shell_command_command import ShellCommandCommand
+import sys
 
 
 def _create_base_registry(
@@ -48,7 +50,8 @@ async def create_command_registry(
     start_new_task: Callable[[TaskInformation], CommandOutput],
     git_dirty_accept: bool = False,
     can_write: bool = True,
-    can_start_tasks: bool = True) -> CommandRegistry:
+    can_start_tasks: bool = True,
+    shell_command_execution: bool = False) -> CommandRegistry:
   registry = _create_base_registry(file_access_policy)
 
   registry.Register(DoneCommand())
@@ -67,6 +70,9 @@ async def create_command_registry(
 
   if validation_manager:
     registry.Register(ValidateCommand(validation_manager))
+
+  if shell_command_execution:
+    registry.Register(ShellCommandCommand())
 
   enable_select = False
 

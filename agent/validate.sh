@@ -30,7 +30,7 @@ fi
 
 run_command "~/bin/mypy --strict src/agent_server.py"
 
-for file in src/test_{args_common,async_confirmation_manager,command_registry,validate_command_input,write_file_command,agent_loop,read_file_command}.py; do
+for file in src/test_{args_common,async_confirmation_manager,command_registry,validate_command_input,write_file_command,agent_loop,read_file_command,shell_command_command}.py; do
   run_command "${VALIDATE_PYTHON} $file"
 done
 

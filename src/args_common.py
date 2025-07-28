@@ -151,6 +151,13 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default=[],
       help="Directory containing Duende plugins (duende_plugin_*.py files). Can be specified multiple times."
   )
+  parser.add_argument(
+      '--shell-command-execution',
+      dest='shell_command_execution',
+      action='store_true',
+      default=False,
+      help='If set, enables the ShellCommandCommand, allowing the AI to execute shell commands. Defaults to False for security reasons.'
+  )
   return parser
 
 
@@ -204,7 +211,8 @@ async def CreateAgentWorkflow(
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
           command_name="task", output="", errors="", summary="Not implemented"),
-      git_dirty_accept=args.git_dirty_accept)
+      git_dirty_accept=args.git_dirty_accept,
+      shell_command_execution=args.shell_command_execution)
 
   if args.plugins:
     try:

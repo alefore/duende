@@ -15,7 +15,8 @@ class TestHelpCommand(unittest.TestCase):
         start_new_task=MagicMock(),
         can_write=True,
         can_start_tasks=True,
-        git_dirty_accept=True)
+        git_dirty_accept=True,
+        shell_command_execution=False)
     self.help_command = self.registry.Get("help")
     self.assertIsNotNone(self.help_command)
 
