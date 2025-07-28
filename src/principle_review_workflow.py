@@ -119,7 +119,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
                 'system',
                 content_sections=([
                     ContentSection(
-                        content="You are going to receive some suggestions for improvements to a file. Rewrite the file to address these suggestions using the `write_file` command. The `write_file` command has been pre-configured to write to the correct file.",
+                        content="You are going to receive some suggestions for improvements to a file. Rewrite the file to address these suggestions using the `write_file` command.\n\nThe `write_file` command has been pre-configured to write to the correct file (so it does NOT expect a `path` nor a `reason`).",
                         summary="Instructions for fixing the file.")
                 ] + feedback_sections + [
                     ContentSection(
