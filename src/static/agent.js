@@ -45,13 +45,13 @@ function requestMessages(socket, conversation) {
   socket.emit('request_update', data);
 }
 
-function sendConfirmation(socket, confirmationMessage) {
+function sendConfirmation(socket, confirmationMessage, conversationId) {
   socket.emit('confirm', {
     confirmation: confirmationMessage,
-    message_count: getShownConversation().countMessages(),
-    conversation_id: shownConversationId
+    message_count: conversationsById[conversationId].countMessages(),
+    conversation_id: conversationId
   });
-  getShownConversation().notifyConfirmationSent().updateView();
+  conversationsById[conversationId].notifyConfirmationSent().updateView();
 }
 
 function loadAutoConfirmState() {
@@ -66,12 +66,18 @@ function saveAutoConfirmState() {
 }
 
 function maybeAutoConfirm(socket) {
-  if (getShownConversation().isWaitingForConfirmation() &&
-      autoConfirmCheckbox().checked) {
-    console.log('Automatic confirmation enabled. Sending empty confirmation.');
-    sendConfirmation(socket, '');
-    showActiveConversationState();
+  if (!autoConfirmCheckbox().checked) {
+    return;
   }
+  console.log('Automatic confirmation enabled. Sending empty confirmation.');
+  for (const id in conversationsById) {
+    const conversation = conversationsById[id];
+    if (!conversation.isWaitingForConfirmation()) {
+      continue;
+    }
+    sendConfirmation(socket, '', conversation.id);
+  }
+  showActiveConversationState();
 }
 
 function maybeRequestMessages(socket, serverMessages, conversation) {
@@ -111,7 +117,7 @@ function handleUpdate(socket, data) {
       });
 
   conversation.updateView();
-  if (conversation.isShown()) maybeAutoConfirm(socket);
+  maybeAutoConfirm(socket);
   maybeRequestMessages(socket, data.message_count, conversation);
 }
 
@@ -199,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
-    sendConfirmation(socket, confirmationInput.value);
+    sendConfirmation(socket, confirmationInput.value, shownConversationId);
   });
 
   $conversationSelector.on('change', function() {
