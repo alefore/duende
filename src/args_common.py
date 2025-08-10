@@ -13,7 +13,7 @@ from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry
-from command_registry_factory import create_command_registry
+from command_registry_factory import create_command_registry, create_ask_command_registry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from chatgpt import ChatGPT
@@ -25,6 +25,7 @@ from validate_command_input import ValidateCommandInput
 from principle_review_workflow import PrincipleReviewWorkflow
 from agent_workflow_options import AgentWorkflowOptions
 from selection_manager import SelectionManager
+from ask_command import AskCommand
 
 from agent_plugin_loader import load_plugins, NoPluginFilesFoundError, NoPluginClassFoundError, InvalidPluginClassError
 from agent_plugin_interface import AgentPlugin
@@ -219,6 +220,19 @@ async def CreateAgentWorkflow(
   conversation_factory = ConversationFactory(
       conversation_factory_options._replace(command_registry=registry))
 
+  confirmation_state = ConfirmationState(
+      confirmation_manager=confirmation_manager,
+      confirm_every=args.confirm_every)
+
+  ask_registry = create_ask_command_registry(file_access_policy)
+  registry.Register(
+      AskCommand(
+          conversation_factory=conversation_factory,
+          conversational_ai=GetConversationalAI(args, ask_registry),
+          confirmation_state=confirmation_state,
+          file_access_policy=file_access_policy,
+          command_registry=ask_registry))
+
   if args.input:
     return PrincipleReviewWorkflow(
         AgentWorkflowOptions(
@@ -236,9 +250,7 @@ async def CreateAgentWorkflow(
                             summary=None)
                     ]),
                 commands_registry=registry,
-                confirmation_state=ConfirmationState(
-                    confirmation_manager=confirmation_manager,
-                    confirm_every=args.confirm_every),
+                confirmation_state=confirmation_state,
                 file_access_policy=file_access_policy,
                 conversational_ai=GetConversationalAI(args, registry),
                 confirm_regex=confirm_regex,
@@ -253,10 +265,6 @@ async def CreateAgentWorkflow(
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation_name = os.path.basename(args.task).replace('.txt', '')
-
-  confirmation_state = ConfirmationState(
-      confirmation_manager=confirmation_manager,
-      confirm_every=args.confirm_every)
 
   task_file_content: str = ""
   with open(args.task, 'r') as f:

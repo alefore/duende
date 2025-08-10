@@ -1,9 +1,10 @@
 import asyncio
 
 from typing import Dict, Optional, Callable, List
+import sys
+
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
-
 from command_registry import CommandRegistry
 from file_access_policy import FileAccessPolicy
 from validation import ValidationManager
@@ -12,17 +13,14 @@ from read_file_command import ReadFileCommand
 from list_files_command import ListFilesCommand
 from write_file_command import WriteFileCommand
 from search_file_command import SearchFileCommand
-from select_commands import (
-    SelectCommand,
-    SelectOverwriteCommand,
-)
+from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
-from task_command import TaskCommand, TaskInformation
+from task_command import TaskInformation
 from done_command import DoneCommand
-import sys
+from answer_command import AnswerCommand
 
 
 def _create_base_registry(
@@ -31,6 +29,16 @@ def _create_base_registry(
   registry.Register(ReadFileCommand(file_access_policy))
   registry.Register(ListFilesCommand(file_access_policy))
   registry.Register(SearchFileCommand(file_access_policy))
+  return registry
+
+
+def create_ask_command_registry(
+    file_access_policy: FileAccessPolicy) -> CommandRegistry:
+  registry = CommandRegistry()
+  registry.Register(ReadFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(file_access_policy))
+  registry.Register(SearchFileCommand(file_access_policy))
+  registry.Register(AnswerCommand())
   return registry
 
 
