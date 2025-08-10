@@ -22,7 +22,7 @@ is feed back to the main conversation.
 
 1.  **Install Dependencies:**
     ```bash
-    pip install openai flask google-generativeai flask-socketio types-flask-socketio
+    pip install openai google-generativeai uvicorn fastapi
     ```
 
 2.  **Get an API Key:** Obtain an API key from either OpenAI or Google Gemini and save it to a file. For example, `~/.gemini/api_key`.
