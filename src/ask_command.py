@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, Optional
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType
@@ -49,7 +50,7 @@ class AskCommand(AgentCommand):
   async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     question = inputs["question"]
 
-    new_conversation = await self._conversation_factory.New(
+    sub_conversation = await self._conversation_factory.New(
         name="ask_conversation",
         path=None,
         command_registry=self._command_registry)
@@ -64,7 +65,7 @@ class AskCommand(AgentCommand):
     )
 
     sub_agent_options = AgentLoopOptions(
-        conversation=new_conversation,
+        conversation=sub_conversation,
         start_message=start_message,
         commands_registry=self._command_registry,
         confirmation_state=self._confirmation_state,
@@ -77,17 +78,18 @@ class AskCommand(AgentCommand):
     await agent_loop.run()
 
     answer_content: Optional[str] = None
-    for message in reversed(new_conversation.GetMessagesList()):
+    for message in reversed(sub_conversation.GetMessagesList()):
       for section in message.GetContentSections():
-        if section.command_output and section.command_output.command_name == "answer":
-          answer_content = section.command_output.output
+        if section.command and section.command.command_name == "answer":
+          answer_content = section.command.args["answer"]
+          logging.info(f"Found answer: {answer_content}")
           break
       if answer_content is not None:
         break
 
     if answer_content is None:
-      answer_content = "Could not retrieve answer from sub-agent."
-
+      logging.fatal("Could not retrieve answer from sub-agent.")
+    assert answer_content
     return CommandOutput(
         command_name=self.Name(),
         output=answer_content,
