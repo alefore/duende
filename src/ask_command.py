@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Pattern
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from conversation import ConversationFactory
@@ -20,13 +20,15 @@ class AskCommand(AgentCommand):
                confirmation_state: ConfirmationState,
                file_access_policy: FileAccessPolicy,
                command_registry: CommandRegistry,
-               validation_manager: Optional[ValidationManager]):
+               validation_manager: Optional[ValidationManager],
+               confirm_regex: Optional[Pattern[str]]):
     self._conversation_factory = conversation_factory
     self._conversational_ai = conversational_ai
     self._confirmation_state = confirmation_state
     self._file_access_policy = file_access_policy
     self._command_registry = command_registry
     self._validation_manager = validation_manager
+    self._confirm_regex = confirm_regex
 
   def Name(self) -> str:
     return "ask"
@@ -72,6 +74,7 @@ class AskCommand(AgentCommand):
         file_access_policy=self._file_access_policy,
         conversational_ai=self._conversational_ai,
         validation_manager=self._validation_manager,
+        confirm_regex=self._confirm_regex,
     )
 
     agent_loop = AgentLoop(sub_agent_options)

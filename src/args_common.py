@@ -239,7 +239,8 @@ async def CreateAgentWorkflow(
           confirmation_state=confirmation_state,
           file_access_policy=file_access_policy,
           command_registry=ask_registry,
-          validation_manager=validation_manager))
+          validation_manager=validation_manager,
+          confirm_regex=confirm_regex))
 
   if args.input:
     return PrincipleReviewWorkflow(
