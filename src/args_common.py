@@ -225,9 +225,6 @@ async def CreateAgentWorkflow(
       print(f"Error loading plugins: {e}", file=sys.stderr)
       sys.exit(1)
 
-  conversation_factory = ConversationFactory(
-      conversation_factory_options._replace(command_registry=registry))
-
   confirmation_state = ConfirmationState(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
@@ -235,11 +232,16 @@ async def CreateAgentWorkflow(
   ask_registry = create_ask_command_registry(file_access_policy)
   registry.Register(
       AskCommand(
-          conversation_factory=conversation_factory,
+          conversation_factory=ConversationFactory(
+              conversation_factory_options._replace(
+                  command_registry=ask_registry)),
           conversational_ai=GetConversationalAI(args, ask_registry),
           confirmation_state=confirmation_state,
           file_access_policy=file_access_policy,
           command_registry=ask_registry))
+
+  conversation_factory = ConversationFactory(
+      conversation_factory_options._replace(command_registry=registry))
 
   if args.input:
     return PrincipleReviewWorkflow(
