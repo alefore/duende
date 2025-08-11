@@ -9,6 +9,7 @@ from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from message import Message, ContentSection
 from command_registry import CommandRegistry
+from validation import ValidationManager
 
 
 class AskCommand(AgentCommand):
@@ -17,12 +18,14 @@ class AskCommand(AgentCommand):
                conversational_ai: ConversationalAI,
                confirmation_state: ConfirmationState,
                file_access_policy: FileAccessPolicy,
-               command_registry: CommandRegistry):
+               command_registry: CommandRegistry,
+               validation_manager: Optional[ValidationManager]):
     self._conversation_factory = conversation_factory
     self._conversational_ai = conversational_ai
     self._confirmation_state = confirmation_state
     self._file_access_policy = file_access_policy
     self._command_registry = command_registry
+    self._validation_manager = validation_manager
 
   def Name(self) -> str:
     return "ask"
@@ -47,7 +50,7 @@ class AskCommand(AgentCommand):
     question = inputs["question"]
 
     new_conversation = await self._conversation_factory.New(
-        name="sub_conversation", path=None)
+        name="ask_conversation", path=None)
 
     start_message = Message(
         role='user',
@@ -65,6 +68,7 @@ class AskCommand(AgentCommand):
         confirmation_state=self._confirmation_state,
         file_access_policy=self._file_access_policy,
         conversational_ai=self._conversational_ai,
+        validation_manager=self._validation_manager,
     )
 
     agent_loop = AgentLoop(sub_agent_options)

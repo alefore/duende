@@ -238,7 +238,8 @@ async def CreateAgentWorkflow(
           conversational_ai=GetConversationalAI(args, ask_registry),
           confirmation_state=confirmation_state,
           file_access_policy=file_access_policy,
-          command_registry=ask_registry))
+          command_registry=ask_registry,
+          validation_manager=validation_manager))
 
   conversation_factory = ConversationFactory(
       conversation_factory_options._replace(command_registry=registry))
