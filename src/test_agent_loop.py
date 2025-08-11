@@ -35,6 +35,7 @@ class TestAgentLoop(unittest.TestCase):
         description="Lists all files in the given directories.",
         arguments=[],
     )
+
     # mock run method to be a coroutine
     async def mock_list_files_run(*args, **kwargs):
       return CommandOutput(
@@ -42,6 +43,7 @@ class TestAgentLoop(unittest.TestCase):
           output="src/agent_loop.py",
           errors="",
           summary="Listed 1 file.")
+
     self.mock_list_files_command.run.side_effect = mock_list_files_run
 
     self.mock_read_file_command = MagicMock(spec=AgentCommand)
@@ -60,12 +62,14 @@ class TestAgentLoop(unittest.TestCase):
                 required=True)
         ],
     )
+
     async def mock_read_file_run(*args, **kwargs):
       return CommandOutput(
           command_name="read_file",
           output="file content",
           errors="",
           summary="Read 1 file.")
+
     self.mock_read_file_command.run.side_effect = mock_read_file_run
 
     self.mock_write_file_command = MagicMock(spec=AgentCommand)
@@ -86,12 +90,14 @@ class TestAgentLoop(unittest.TestCase):
                 required=True),
         ],
     )
+
     async def mock_write_file_run(*args, **kwargs):
       return CommandOutput(
           command_name="write_file",
           output="",
           errors="",
           summary="Wrote to file.")
+
     self.mock_write_file_command.run.side_effect = mock_write_file_run
 
     self.registry = CommandRegistry()
@@ -110,12 +116,13 @@ class TestAgentLoop(unittest.TestCase):
     self.registry.Register(RejectChange(dummy_review_callback))
 
     self.mock_confirmation_state = MagicMock()
+
     async def mock_require_confirmation(*args, **kwargs):
       return ""
+
     self.mock_confirmation_state.RequireConfirmation.side_effect = mock_require_confirmation
 
-    self.conv_factory = ConversationFactory(
-        ConversationFactoryOptions(command_registry=self.registry))
+    self.conv_factory = ConversationFactory(ConversationFactoryOptions())
 
     self.file_access_policy = CurrentDirectoryFileAccessPolicy()
 
@@ -130,9 +137,10 @@ class TestAgentLoop(unittest.TestCase):
         os.remove(review_file)
 
   async def _run_agent_loop_for_test(self,
-                               scripted_responses: Dict[str, List[Message]],
-                               confirm_done: bool = False,
-                               do_review: bool = False) -> List[Message]:
+                                     scripted_responses: Dict[str,
+                                                              List[Message]],
+                                     confirm_done: bool = False,
+                                     do_review: bool = False) -> List[Message]:
     """Creates and runs an AgentLoop instance, returning the conversation."""
     self.fake_ai = FakeConversationalAI(scripted_responses=scripted_responses)
     conversation = Conversation(
@@ -296,6 +304,7 @@ class TestAgentLoop(unittest.TestCase):
     """
     Tests that the loop continues if the user rejects the #done command.
     """
+
     # Setup mocks and run the loop
     async def mock_require_confirmation_side_effect(*args, **kwargs):
       return "You are not done, please list files."

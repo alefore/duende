@@ -21,7 +21,6 @@ class ConversationFactoryOptions(NamedTuple):
   on_state_changed_callback: Optional[Callable[[ConversationId],
                                                Coroutine[Any, Any,
                                                          None]]] = None
-  command_registry: Optional[CommandRegistry] = None
 
 
 class Conversation:
@@ -47,7 +46,7 @@ class Conversation:
     self._state: ConversationState = ConversationState.STARTING
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
     self.path = path
-    self._command_registry = command_registry
+    self.command_registry = command_registry
 
   @classmethod
   async def create(
@@ -88,7 +87,7 @@ class Conversation:
     for section in message.GetContentSections():
       if section.command:
         command_name = section.command.command_name
-        command = self._command_registry.Get(command_name)
+        command = self.command_registry.Get(command_name)
         if command:
           output_content_sections.append(
               ContentSection(
@@ -155,17 +154,14 @@ class ConversationFactory:
     self._conversations: Dict[ConversationId, Conversation] = {}
     self.on_message_added_callback = options.on_message_added_callback
     self.on_state_changed_callback = options.on_state_changed_callback
-    if options.command_registry is None:
-      raise ValueError(
-          "CommandRegistry must be set on ConversationFactoryOptions.")
-    self._command_registry: CommandRegistry = options.command_registry
 
-  async def New(self, name: str, path: Optional[str]) -> Conversation:
+  async def New(self, name: str, path: Optional[str],
+                command_registry: CommandRegistry) -> Conversation:
     with self._lock:
       reserved_id = self._next_id
       self._next_id += 1
     output = await Conversation.create(reserved_id, name, path,
-                                       self._command_registry,
+                                       command_registry,
                                        self.on_message_added_callback,
                                        self.on_state_changed_callback)
     self._conversations[reserved_id] = output

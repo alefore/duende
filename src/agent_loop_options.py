@@ -12,6 +12,7 @@ from validation import ValidationManager
 class AgentLoopOptions(NamedTuple):
   conversation: Conversation
   start_message: Message
+  # TODO: Rename to command_registry (and fix all customers)
   commands_registry: CommandRegistry
   confirmation_state: ConfirmationState
   file_access_policy: FileAccessPolicy

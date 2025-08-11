@@ -12,9 +12,9 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
 
-  def SendMessage(self, message: Message) -> Message:
+  async def SendMessage(self, message: Message) -> Message:
     # Add the incoming message to the conversation history.
-    self.conversation.AddMessage(message)
+    await self.conversation.AddMessage(message)
 
     if not self.scripted_responses:
       raise StopIteration(
@@ -25,7 +25,7 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
     response_message = self.scripted_responses.pop(0)
 
     # Add the assistant's response to the conversation history.
-    self.conversation.AddMessage(response_message)
+    await self.conversation.AddMessage(response_message)
     return response_message
 
 

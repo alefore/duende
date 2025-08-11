@@ -166,7 +166,7 @@ def GetConversationalAI(args: argparse.Namespace,
   if args.model.startswith('gpt'):
     return ChatGPT(args.api_key, args.model)
   if args.model.startswith('gemini'):
-    return Gemini(args.api_key, args.model, command_registry)
+    return Gemini(args.api_key, args.model)
   raise Exception(f"Unknown AI: {args.model}")
 
 
@@ -229,20 +229,17 @@ async def CreateAgentWorkflow(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
+  conversation_factory = ConversationFactory(conversation_factory_options)
+
   ask_registry = create_ask_command_registry(file_access_policy)
   registry.Register(
       AskCommand(
-          conversation_factory=ConversationFactory(
-              conversation_factory_options._replace(
-                  command_registry=ask_registry)),
+          conversation_factory=conversation_factory,
           conversational_ai=GetConversationalAI(args, ask_registry),
           confirmation_state=confirmation_state,
           file_access_policy=file_access_policy,
           command_registry=ask_registry,
           validation_manager=validation_manager))
-
-  conversation_factory = ConversationFactory(
-      conversation_factory_options._replace(command_registry=registry))
 
   if args.input:
     return PrincipleReviewWorkflow(
@@ -252,7 +249,8 @@ async def CreateAgentWorkflow(
                     name="principle_review_dummy_conv",
                     path=os.path.join(
                         os.getcwd(),
-                        "principle_review_dummy.conversation.json")),
+                        "principle_review_dummy.conversation.json"),
+                    command_registry=registry),
                 start_message=Message(
                     'system',
                     content_sections=[
@@ -332,14 +330,16 @@ async def LoadOrCreateConversation(
     task_file_path: str,
     conversation_factory: ConversationFactory,
     conversation_path: str,
-    registry: CommandRegistry,
+    command_registry: CommandRegistry,
     file_access_policy: FileAccessPolicy,
     validation_manager: Optional[ValidationManager],
     confirmation_state: ConfirmationState,
     conversation_name: str,
 ) -> Tuple[Conversation, Message]:
   conversation = await conversation_factory.New(
-      name=conversation_name, path=conversation_path)
+      name=conversation_name,
+      path=conversation_path,
+      command_registry=command_registry)
   if conversation.messages:
     next_message = Message(
         'system',

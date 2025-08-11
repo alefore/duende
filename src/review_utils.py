@@ -62,10 +62,6 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
                              expose_read_commands: bool) -> ReviewResult:
   logging.info(f"Starting review for ID: {review_id}...")
 
-  review_conversation = await conversation_factory.New(
-      name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
-      path=None)
-
   # A list is used here to capture the result from the callbacks, as
   # Python closures for outer scope variables require mutable objects to
   # be modified within nested functions.
@@ -89,6 +85,11 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
   review_registry.Register(
       RejectChange(lambda command_output: add_review_result_callback(
           command_output, ReviewDecision.REJECT)))
+
+  review_conversation = await conversation_factory.New(
+      name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
+      path=None,
+      command_registry=review_registry)
 
   review_start_sections: List[ContentSection] = [
       ContentSection(

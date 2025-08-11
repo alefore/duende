@@ -105,8 +105,8 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
 
     logging.info(
         f"Starting AI conversation to fix {input_path} based on rejections.")
-    commands_registry = CommandRegistry()
-    commands_registry.Register(
+    command_registry = CommandRegistry()
+    command_registry.Register(
         WriteFileCommand(self._options.agent_loop_options.validation_manager,
                          self._options.selection_manager, input_path))
 
@@ -114,7 +114,8 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
         AgentLoopOptions(
             conversation=await self._options.conversation_factory.New(
                 name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
-                path=None),
+                path=None,
+                command_registry=command_registry),
             start_message=Message(
                 'system',
                 content_sections=([
@@ -126,7 +127,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
                         content=f"Original file content:\n```\n{input_content}\n```",
                         summary="Original file content")
                 ])),
-            commands_registry=commands_registry,
+            commands_registry=command_registry,
             confirmation_state=self._options.agent_loop_options
             .confirmation_state,
             file_access_policy=self._options.agent_loop_options

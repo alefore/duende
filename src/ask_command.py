@@ -50,7 +50,9 @@ class AskCommand(AgentCommand):
     question = inputs["question"]
 
     new_conversation = await self._conversation_factory.New(
-        name="ask_conversation", path=None)
+        name="ask_conversation",
+        path=None,
+        command_registry=self._command_registry)
 
     start_message = Message(
         role='user',

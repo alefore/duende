@@ -50,13 +50,13 @@ def _get_config(registry: CommandRegistry) -> genai.types.GenerateContentConfig:
 
 class GeminiConversation(ConversationalAIConversation):
 
-  def __init__(self, client: genai.Client, registry: CommandRegistry,
-               model_name: str, conversation: Conversation) -> None:
+  def __init__(self, client: genai.Client, model_name: str,
+               conversation: Conversation) -> None:
     self.client = client
     self.conversation = conversation
 
     logging.info(f"Starting Gemini conversation")
-    config = _get_config(registry)
+    config = _get_config(conversation.command_registry)
     logging.info(config)
     self.chat = self.client.aio.chats.create(model=model_name, config=config)
 
@@ -132,8 +132,11 @@ class GeminiConversation(ConversationalAIConversation):
 
 class Gemini(ConversationalAI):
 
-  def __init__(self, api_key_path: str, model_name: str,
-               registry: CommandRegistry) -> None:
+  def __init__(
+      self,
+      api_key_path: str,
+      model_name: str,
+  ) -> None:
     with open(api_key_path, 'r') as f:
       api_key = f.read().strip()
     self.client = genai.Client(api_key=api_key)
@@ -142,16 +145,12 @@ class Gemini(ConversationalAI):
       self._ListModels()
       sys.exit(0)
     self.model_name = model_name
-    self.command_registry = registry
     logging.info(f"Initialized Gemini AI with model: {self.model_name}")
 
   def StartConversation(
       self, conversation: Conversation) -> ConversationalAIConversation:
     return GeminiConversation(
-        self.client,
-        self.command_registry,
-        self.model_name,
-        conversation=conversation)
+        self.client, self.model_name, conversation=conversation)
 
   def _ListModels(self) -> None:
     for m in genai.list_models():  # type: ignore[attr-defined]
