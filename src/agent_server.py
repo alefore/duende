@@ -8,10 +8,11 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 from pathlib import Path
+from pydantic import BaseModel, ValidationError
 
 from args_common import CreateCommonParser
 from conversation import ConversationId
-from web_server_state import create_web_server_state, WebServerState
+from web_server_state import create_web_server_state, CreateAgentWorkflowData, WebServerState
 from random_key import GenerateRandomKey
 
 app = FastAPI()
@@ -81,6 +82,15 @@ async def main() -> None:
     start_id = data.get('start_id', 0)
     limit = data.get('limit', MAX_CONVERSATIONS_PER_LIST_UPDATE)
     await server_state.list_conversations(start_id=start_id)
+
+  @sio.on('create_agent_workflow')  # type:ignore[misc]
+  async def create_agent_workflow(sid: str, data: Dict[str, Any]) -> None:
+    logging.info("Received: create_agent_workflow request")
+    try:
+      validated_data = CreateAgentWorkflowData.model_validate(data)
+      await server_state.create_agent_workflow(validated_data)
+    except ValidationError as e:
+      logging.info(f"Invalid data: {e}")
 
   server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=args.port))
   await asyncio.gather(server.serve(), server_state.wait_for_background_tasks())

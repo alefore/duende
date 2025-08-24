@@ -7,8 +7,6 @@ from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Tuple
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
-from implement_workflow import ImplementAndReviewWorkflow
-from review_evaluator_test_workflow import ReviewEvaluatorTestWorkflow
 from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
@@ -22,7 +20,6 @@ from message import Message, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from validate_command_input import ValidateCommandInput
-from principle_review_workflow import PrincipleReviewWorkflow
 from agent_workflow_options import AgentWorkflowOptions
 from selection_manager import SelectionManager
 from ask_command import AskCommand
@@ -170,9 +167,9 @@ def GetConversationalAI(args: argparse.Namespace,
   raise Exception(f"Unknown AI: {args.model}")
 
 
-async def CreateAgentWorkflow(
+async def CreateAgentWorkflowOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
-    conversation_factory_options: ConversationFactoryOptions) -> AgentWorkflow:
+    conversation_factory: ConversationFactory) -> AgentWorkflowOptions:
   file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
                                               args.file_access_regex_path)
 
@@ -185,10 +182,6 @@ async def CreateAgentWorkflow(
   if args.test_file_access:
     await TestFileAccess(file_access_policy)
     sys.exit(0)
-
-  if not args.task and not args.input:
-    print("Error: Either --task or --input must be provided.", file=sys.stderr)
-    sys.exit(1)
 
   confirm_regex: Optional[Pattern[str]] = re.compile(
       args.confirm) if args.confirm else None
@@ -229,8 +222,6 @@ async def CreateAgentWorkflow(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
-  conversation_factory = ConversationFactory(conversation_factory_options)
-
   ask_registry = create_ask_command_registry(file_access_policy)
   registry.Register(
       AskCommand(
@@ -243,35 +234,33 @@ async def CreateAgentWorkflow(
           confirm_regex=confirm_regex))
 
   if args.input:
-    return PrincipleReviewWorkflow(
-        AgentWorkflowOptions(
-            agent_loop_options=AgentLoopOptions(
-                conversation=await conversation_factory.New(
-                    name="principle_review_dummy_conv",
-                    path=os.path.join(
-                        os.getcwd(),
-                        "principle_review_dummy.conversation.json"),
-                    command_registry=registry),
-                start_message=Message(
-                    'system',
-                    content_sections=[
-                        ContentSection(
-                            content='Dummy message for PrincipleReviewWorkflow',
-                            summary=None)
-                    ]),
-                commands_registry=registry,
-                confirmation_state=confirmation_state,
-                file_access_policy=file_access_policy,
-                conversational_ai=GetConversationalAI(args, registry),
-                confirm_regex=confirm_regex,
-                skip_implicit_validation=args.skip_implicit_validation,
-                validation_manager=validation_manager,
-            ),
-            conversation_factory=conversation_factory,
-            selection_manager=SelectionManager(),
-            principle_paths=args.principle,
-            input_paths=args.input,
-        ))
+    return AgentWorkflowOptions(
+        agent_loop_options=AgentLoopOptions(
+            conversation=await conversation_factory.New(
+                name="principle_review_dummy_conv",
+                path=os.path.join(os.getcwd(),
+                                  "principle_review_dummy.conversation.json"),
+                command_registry=registry),
+            start_message=Message(
+                'system',
+                content_sections=[
+                    ContentSection(
+                        content='Dummy message for PrincipleReviewWorkflow',
+                        summary=None)
+                ]),
+            commands_registry=registry,
+            confirmation_state=confirmation_state,
+            file_access_policy=file_access_policy,
+            conversational_ai=GetConversationalAI(args, registry),
+            confirm_regex=confirm_regex,
+            skip_implicit_validation=args.skip_implicit_validation,
+            validation_manager=validation_manager,
+        ),
+        conversation_factory=conversation_factory,
+        selection_manager=SelectionManager(),
+        principle_paths=args.principle,
+        input_paths=args.input,
+    )
 
   conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
   conversation_name = os.path.basename(args.task).replace('.txt', '')
@@ -302,28 +291,14 @@ async def CreateAgentWorkflow(
 
   selection_manager = SelectionManager()
 
-  if args.evaluate_evaluators:
-    return ReviewEvaluatorTestWorkflow(
-        AgentWorkflowOptions(
-            agent_loop_options=common_agent_loop_options,
-            conversation_factory=conversation_factory,
-            selection_manager=selection_manager,
-            original_task_prompt_content=task_file_content,
-            confirm_done=args.confirm,
-            do_review=args.review,
-            review_first=args.review_first,
-        ))
-  else:
-    return ImplementAndReviewWorkflow(
-        AgentWorkflowOptions(
-            agent_loop_options=common_agent_loop_options,
-            conversation_factory=conversation_factory,
-            selection_manager=selection_manager,
-            original_task_prompt_content=task_file_content,
-            confirm_done=args.confirm,
-            do_review=args.review,
-            review_first=args.review_first,
-        ))
+  return AgentWorkflowOptions(
+      agent_loop_options=common_agent_loop_options,
+      conversation_factory=conversation_factory,
+      selection_manager=selection_manager,
+      original_task_prompt_content=task_file_content,
+      confirm_done=args.confirm,
+      do_review=args.review,
+      review_first=args.review_first)
 
 
 async def LoadOrCreateConversation(

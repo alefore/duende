@@ -2,7 +2,7 @@ import logging
 import re
 import sys
 from abc import ABC, abstractmethod
-from typing import List, Optional, Pattern
+from typing import Dict, List, Optional, Pattern
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
@@ -24,9 +24,30 @@ class AgentWorkflow(ABC):
   async def run(self) -> None:
     pass
 
-  def get_conversation_by_id(self,
-                             conversation_id: ConversationId) -> Conversation:
-    return self._conversation_factory.Get(conversation_id)
 
-  def get_all_conversations(self) -> List[Conversation]:
-    return self._conversation_factory.GetAll()
+class AgentWorkflowFactory(ABC):
+
+  @abstractmethod
+  def name(self) -> str:
+    pass
+
+  @abstractmethod
+  def new(self, agent_workflow_options: AgentWorkflowOptions,
+          args: Dict[str, str]) -> AgentWorkflow:
+    pass
+
+
+class AgentWorkflowFactoryContainer:
+
+  def __init__(self) -> None:
+    self._workflow_factories: Dict[str, AgentWorkflowFactory] = {}
+
+  def add(self, factory: AgentWorkflowFactory) -> None:
+    assert factory.name() not in self._workflow_factories
+    self._workflow_factories[factory.name()] = factory
+
+  def factory_names(self) -> List[str]:
+    return list(self._workflow_factories)
+
+  def get(self, name: str) -> Optional[AgentWorkflowFactory]:
+    return self._workflow_factories.get(name)

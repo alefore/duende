@@ -2,16 +2,27 @@ import asyncio
 from typing import Any, Dict, List, Optional
 import argparse
 import logging
+from pydantic import BaseModel
 import socketio
 
-from args_common import CreateAgentWorkflow
+from args_common import CreateAgentWorkflowOptions
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
+from agent_workflow_options import AgentWorkflowOptions
 from confirmation import AsyncConfirmationManager
-from random_key import GenerateRandomKey
 from conversation import Conversation, ConversationFactory, ConversationId, ConversationFactoryOptions
+from implement_workflow import ImplementAndReviewWorkflow
 from message import Message
+from principle_review_workflow import PrincipleReviewWorkflow
+from random_key import GenerateRandomKey
+from review_evaluator_test_workflow import ReviewEvaluatorTestWorkflow
+from workflow_registry import StandardWorkflowFactoryContainer
+
+
+class CreateAgentWorkflowData(BaseModel):
+  name: str
+  args: Dict[str, str]
 
 
 class WebServerState:
@@ -20,26 +31,45 @@ class WebServerState:
     self.socketio = socketio
     self.session_key = GenerateRandomKey()
     self._background_tasks: list[asyncio.Task[None]] = []
+    self._workflow_factory_container = StandardWorkflowFactoryContainer()
+    self._conversation_factory = ConversationFactory(
+        ConversationFactoryOptions(
+            on_message_added_callback=self._on_conversation_updated,
+            on_state_changed_callback=self._on_conversation_updated))
 
   async def start(self, args: argparse.Namespace) -> None:
-    conversation_factory_options = ConversationFactoryOptions(
-        on_message_added_callback=self._on_conversation_updated,
-        on_state_changed_callback=self._on_conversation_updated)
     self.confirmation_manager = AsyncConfirmationManager(
         self._confirmation_requested)
     try:
-      self.agent_workflow: AgentWorkflow = await CreateAgentWorkflow(
-          args, self.confirmation_manager, conversation_factory_options)
+      self._agent_workflow_options: AgentWorkflowOptions = await CreateAgentWorkflowOptions(
+          args, self.confirmation_manager, self._conversation_factory)
     except RuntimeError as e:
       logging.error(e)
       raise e
 
-    logging.info(str(self.agent_workflow))
-    self._background_tasks.append(
-        asyncio.create_task(self.agent_workflow.run()))
+    logging.info(str(self._agent_workflow_options))
+    agent_workflow: Optional[AgentWorkflow]
+    if args.input:
+      agent_workflow = PrincipleReviewWorkflow(self._agent_workflow_options)
+    elif args.evaluate_evalutors:
+      agent_workflow = ReviewEvaluatorTestWorkflow(self._agent_workflow_options)
+    elif args.task:
+      agent_workflow = ImplementAndReviewWorkflow(self._agent_workflow_options)
+    if agent_workflow:
+      self._background_tasks.append(asyncio.create_task(agent_workflow.run()))
+    else:
+      # Never shut down.
+      self._background_tasks.append(
+          asyncio.create_task(asyncio.sleep(float('inf'))))
 
   async def wait_for_background_tasks(self) -> None:
-    await asyncio.gather(*self._background_tasks)
+    while self._background_tasks:
+      snapshot = list(self._background_tasks)
+      logging.info(f"Waiting for tasks: ${len(snapshot)}")
+      await asyncio.gather(*snapshot)
+      self._background_tasks = [
+          t for t in self._background_tasks if t not in snapshot
+      ]
 
   async def _on_conversation_updated(self,
                                      conversation_id: ConversationId) -> None:
@@ -50,7 +80,7 @@ class WebServerState:
                         client_message_count: Optional[int],
                         confirmation_required: Optional[str]) -> None:
     try:
-      conversation = self.agent_workflow.get_conversation_by_id(conversation_id)
+      conversation = self._conversation_factory.Get(conversation_id)
     except KeyError:
       logging.error(
           f"Conversation with ID {conversation_id} not found. Cannot send update."
@@ -124,7 +154,7 @@ class WebServerState:
 
   async def list_conversations(self, start_id: int = 0) -> None:
     logging.info(f"Listing conversations with start_id={start_id}.")
-    all_conversations = self.agent_workflow.get_all_conversations()
+    all_conversations = self._conversation_factory.GetAll()
     MAX_CONVERSATIONS_PER_UPDATE = 10
     await self.socketio.emit(
         'list_conversations', {
@@ -136,6 +166,21 @@ class WebServerState:
             'max_conversation_id':
                 max(c.GetId() for c in all_conversations)
         })
+
+  async def list_workflow_factories(self) -> None:
+    await self.socketio.emit(
+        'list_workflow_factories',
+        {'factories': sorted(self._workflow_factory_container.factory_names())})
+
+  async def create_agent_workflow(self, data: CreateAgentWorkflowData) -> None:
+    factory = self._workflow_factory_container.get(data.name)
+    if not factory:
+      logging.info(f"Unknown workflow factory: {data.name}")
+      return
+    logging.info(f"Create workflow: {data.name}")
+    self._background_tasks.append(
+        asyncio.create_task(
+            factory.new(self._agent_workflow_options, data.args).run()))
 
 
 async def create_web_server_state(args: argparse.Namespace,

@@ -1,7 +1,7 @@
 import logging
 import re
 import sys
-from typing import List, Optional, Pattern
+from typing import Dict, List, Optional, Pattern
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
@@ -11,7 +11,7 @@ from message import Message, ContentSection
 from conversation_state import ConversationState
 import review_utils
 
-from agent_workflow import AgentWorkflow
+from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 
 
@@ -120,3 +120,16 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
       ) or await self._get_confirm_guidance()
       if next_message:
         self._agent_loop.set_next_message(next_message)
+
+
+class ImplementAndReviewWorkflowFactory(AgentWorkflowFactory):
+
+  def name(self) -> str:
+    return "implement_and_review"
+
+  def new(self, options: AgentWorkflowOptions,
+          args: Dict[str, str]) -> AgentWorkflow:
+    return ImplementAndReviewWorkflow(
+        options._replace(
+            original_task_prompt_content=args.get(
+                'original_task_prompt_content')))
