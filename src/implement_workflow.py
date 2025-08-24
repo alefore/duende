@@ -127,9 +127,22 @@ class ImplementAndReviewWorkflowFactory(AgentWorkflowFactory):
   def name(self) -> str:
     return "implement_and_review"
 
-  def new(self, options: AgentWorkflowOptions,
-          args: Dict[str, str]) -> AgentWorkflow:
+  async def new(self, options: AgentWorkflowOptions,
+                args: Dict[str, str]) -> AgentWorkflow:
+    task = args.get('original_task_prompt_content')
+    # TODO: Get rid of this assert!
+    assert task
+    conversation = await options.conversation_factory.New(
+        name='Submitted conversation',
+        path=None,
+        command_registry=options.agent_loop_options.commands_registry)
+    content_sections = list(
+        options.agent_loop_options.start_message.GetContentSections())
+    content_sections.append(
+        ContentSection(content=task, summary='Input from web form.'))
+    start_message = Message('system', content_sections)
     return ImplementAndReviewWorkflow(
         options._replace(
-            original_task_prompt_content=args.get(
-                'original_task_prompt_content')))
+            agent_loop_options=options.agent_loop_options._replace(
+                conversation=conversation, start_message=start_message),
+            original_task_prompt_content=task))

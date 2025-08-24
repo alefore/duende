@@ -48,7 +48,7 @@ class WebServerState:
       raise e
 
     logging.info(str(self._agent_workflow_options))
-    agent_workflow: Optional[AgentWorkflow]
+    agent_workflow: Optional[AgentWorkflow] = None
     if args.input:
       agent_workflow = PrincipleReviewWorkflow(self._agent_workflow_options)
     elif args.evaluate_evaluators:
@@ -178,9 +178,8 @@ class WebServerState:
       logging.info(f"Unknown workflow factory: {data.name}")
       return
     logging.info(f"Create workflow: {data.name}")
-    self._background_tasks.append(
-        asyncio.create_task(
-            factory.new(self._agent_workflow_options, data.args).run()))
+    workflow = await factory.new(self._agent_workflow_options, data.args)
+    self._background_tasks.append(asyncio.create_task(workflow.run()))
 
 
 async def create_web_server_state(args: argparse.Namespace,

@@ -32,8 +32,8 @@ class AgentWorkflowFactory(ABC):
     pass
 
   @abstractmethod
-  def new(self, agent_workflow_options: AgentWorkflowOptions,
-          args: Dict[str, str]) -> AgentWorkflow:
+  async def new(self, agent_workflow_options: AgentWorkflowOptions,
+                args: Dict[str, str]) -> AgentWorkflow:
     pass
 
 

@@ -262,12 +262,15 @@ async def CreateAgentWorkflowOptions(
         input_paths=args.input,
     )
 
-  conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task)
-  conversation_name = os.path.basename(args.task).replace('.txt', '')
+  conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task or '')
+  conversation_name = os.path.basename(args.task or
+                                       'empty-conversation').replace(
+                                           '.txt', '')
 
   task_file_content: str = ""
-  with open(args.task, 'r') as f:
-    task_file_content = f.read()
+  if args.task:
+    with open(args.task, 'r') as f:
+      task_file_content = f.read()
 
   task_file_content += _read_prompt_include_files(args.prompt_include,
                                                   file_access_policy)
