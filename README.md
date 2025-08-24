@@ -22,7 +22,7 @@ is feed back to the main conversation.
 
 1.  **Install Dependencies:**
     ```bash
-    pip install openai google-genai uvicorn fastapi pydantic
+    pip install openai google-genai uvicorn fastapi pydantic "python-socketio[asyncio]"
     ```
 
 2.  **Get an API Key:** Obtain an API key from either OpenAI or Google Gemini and save it to a file. For example, `~/.gemini/api_key`.
@@ -50,7 +50,7 @@ is feed back to the main conversation.
 Duende is written in Python 3. To install the required dependencies, run the following command:
 
 ```bash
-pip install openai google-genai uvicorn fastapi pydantic
+pip install openai google-genai uvicorn fastapi pydantic "python-socketio[asyncio]"
 ```
 
 ## Configuration
