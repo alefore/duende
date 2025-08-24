@@ -51,7 +51,7 @@ class WebServerState:
     agent_workflow: Optional[AgentWorkflow]
     if args.input:
       agent_workflow = PrincipleReviewWorkflow(self._agent_workflow_options)
-    elif args.evaluate_evalutors:
+    elif args.evaluate_evaluators:
       agent_workflow = ReviewEvaluatorTestWorkflow(self._agent_workflow_options)
     elif args.task:
       agent_workflow = ImplementAndReviewWorkflow(self._agent_workflow_options)
