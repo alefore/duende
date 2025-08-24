@@ -9,6 +9,7 @@
     <script src="/static/timestamps.js"></script>
     <script src="/static/conversation.js"></script>
     <script src="/static/agent.js"></script>
+    <script src="/static/create_workflow.js"></script>
   </head>
   <body>
     <div id="fixed_header">
@@ -23,13 +24,27 @@
         <button id="next_conversation_button">➡️</button>
         <button id="confirm_button">✅</button>
       </div>
+      <button id="new_workflow_button" onclick="showCreateWorkflowForm()">New</button>
     </div>
     <h1>Agent Server Interface</h1>
-    <div id="conversation_container"></div>
-    <div id="confirmation"></div>
-    <div id="conversation_state_display" style="display: none;"></div>
-    <form id="confirmation_form" style="display: block;">
-      <textarea name="confirmation" id="confirmation_input" placeholder="Confirmation…" autofocus rows=1></textarea>
-    </form>
+
+    <div id="conversation_view">
+      <div id="conversation_container"></div>
+      <div id="confirmation"></div>
+      <div id="conversation_state_display" style="display: none;"></div>
+      <form id="confirmation_form" style="display: block;">
+        <textarea name="confirmation" id="confirmation_input" placeholder="Confirmation…" autofocus rows=1></textarea>
+      </form>
+    </div>
+
+    <div id="create_workflow_form_container" style="display: none;">
+      <h2>Create New Workflow</h2>
+      <form id="create_workflow_form">
+        <label for="original_task_prompt_content">Task Prompt:</label><br>
+        <textarea id="original_task_prompt_content" name="original_task_prompt_content" rows="10" cols="80"></textarea><br>
+        <button type="submit">Create Workflow</button>
+        <button type="button" onclick="cancelCreateWorkflow()">Cancel</button>
+      </form>
+    </div>
   </body>
 </html>
