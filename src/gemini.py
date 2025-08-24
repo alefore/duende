@@ -2,8 +2,7 @@ from google import genai
 import logging
 import asyncio
 import sys
-import PIL
-from typing import cast, Any, Coroutine, Dict, List, Optional, List
+from typing import cast, Any, Coroutine, Dict, List, Optional
 
 from command_registry import CommandRegistry
 from agent_command import ArgumentContentType, CommandInput, CommandSyntax
@@ -63,11 +62,7 @@ class GeminiConversation(ConversationalAIConversation):
   async def SendMessage(self, message: Message) -> Message:
     await self.conversation.AddMessage(message)
 
-    # We have to use this full type because genai uses List[…] (rather than
-    # Sequence[…] and lists are not covariant:
-    # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
-    gemini_parts: List[genai.types.File | genai.types.Part | PIL.Image.Image
-                       | str | genai.types.PartDict] = []
+    gemini_parts: List[genai.types.Part | str | genai.types.PartDict] = []
     for section in message.GetContentSections():
       if section.content:
         gemini_parts.append(section.content)
@@ -91,7 +86,10 @@ class GeminiConversation(ConversationalAIConversation):
     )
 
     try:
-      response = await self.chat.send_message(gemini_parts)
+      # We have to call `list(…)` around `gemini_parts` because list is not
+      # covariant:
+      # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+      response = await self.chat.send_message(list(gemini_parts))
       logging.info(f"Response: {response}")
     except Exception as e:
       logging.exception("Failed to communicate with Gemini API.")
