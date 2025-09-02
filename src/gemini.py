@@ -58,7 +58,8 @@ class GeminiConversation(ConversationalAIConversation):
     logging.info(f"Starting Gemini conversation")
     config = _get_config(conversation.command_registry)
     logging.info(config)
-    self.chat = self.client.aio.chats.create(model=model_name, config=config)
+    self.chat: genai.Chat = self.client.aio.chats.create(
+        model=model_name, config=config)
 
   @tenacity.retry(
       wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
