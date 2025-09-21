@@ -29,7 +29,6 @@ class Conversation:
       self,
       unique_id: int,
       name: str,
-      path: Optional[str],
       command_registry: CommandRegistry,
       on_message_added_callback: Optional[Callable[[int],
                                                    Coroutine[Any, Any,
@@ -45,41 +44,7 @@ class Conversation:
     self._on_state_changed_callback = on_state_changed_callback
     self._state: ConversationState = ConversationState.STARTING
     self.last_state_change_time: datetime = datetime.now(timezone.utc)
-    self.path = path
     self.command_registry = command_registry
-
-  @classmethod
-  async def create(
-      cls,
-      unique_id: int,
-      name: str,
-      path: Optional[str],
-      command_registry: CommandRegistry,
-      on_message_added_callback: Optional[Callable[[int],
-                                                   Coroutine[Any, Any,
-                                                             None]]] = None,
-      on_state_changed_callback: Optional[Callable[[ConversationId],
-                                                   Coroutine[Any, Any,
-                                                             None]]] = None
-  ) -> "Conversation":
-    self = cls(unique_id, name, path, command_registry,
-               on_message_added_callback, on_state_changed_callback)
-    if self.path is not None:
-      try:
-        async with aiofiles.open(self.path, 'r') as f:
-          self.messages.extend(
-              Message.Deserialize(message_data)
-              for message_data in json.loads(await f.read()))
-      except (FileNotFoundError, json.JSONDecodeError, KeyError):
-        logging.info("Invalid or missing data. Starting new conversation.")
-    return self
-
-  async def _Save(self) -> None:
-    if self.path is not None:
-      async with aiofiles.open(self.path, 'w') as f:
-        await f.write(
-            json.dumps([message.Serialize() for message in self.messages],
-                       indent=2))
 
   async def _derive_args(self, message: Message) -> Message:
     # Iterate over content sections and compute derived args for commands
@@ -113,7 +78,6 @@ class Conversation:
     message = await self._derive_args(message)
     logging.info(self._DebugString(message))
     self.messages.append(message)
-    await self._Save()
     if self._on_message_added_callback:
       await self._on_message_added_callback(self._unique_id)
 
@@ -155,15 +119,15 @@ class ConversationFactory:
     self.on_message_added_callback = options.on_message_added_callback
     self.on_state_changed_callback = options.on_state_changed_callback
 
-  async def New(self, name: str, path: Optional[str],
+  def New(self, name: str,
                 command_registry: CommandRegistry) -> Conversation:
     with self._lock:
       reserved_id = self._next_id
       self._next_id += 1
-    output = await Conversation.create(reserved_id, name, path,
-                                       command_registry,
-                                       self.on_message_added_callback,
-                                       self.on_state_changed_callback)
+    output = Conversation(reserved_id, name,
+                          command_registry,
+                          self.on_message_added_callback,
+                          self.on_state_changed_callback)
     self._conversations[reserved_id] = output
     return output
 

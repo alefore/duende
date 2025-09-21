@@ -55,7 +55,7 @@ def CreateCommonParser() -> argparse.ArgumentParser:
   group.add_argument(
       '--task',
       type=str,
-      help="File path for task prompt. The conversation will be stored in a corresponding .conversation.json file."
+      help="File path for task prompt."
   )
   group.add_argument(
       '--input',
@@ -236,10 +236,8 @@ async def CreateAgentWorkflowOptions(
   if args.input:
     return AgentWorkflowOptions(
         agent_loop_options=AgentLoopOptions(
-            conversation=await conversation_factory.New(
+            conversation=conversation_factory.New(
                 name="principle_review_dummy_conv",
-                path=os.path.join(os.getcwd(),
-                                  "principle_review_dummy.conversation.json"),
                 command_registry=registry),
             start_message=Message(
                 'system',
@@ -262,7 +260,6 @@ async def CreateAgentWorkflowOptions(
         input_paths=args.input,
     )
 
-  conversation_path = re.sub(r'\.txt$', '.conversation.json', args.task or '')
   conversation_name = os.path.basename(args.task or
                                        'empty-conversation').replace(
                                            '.txt', '')
@@ -275,10 +272,26 @@ async def CreateAgentWorkflowOptions(
   task_file_content += _read_prompt_include_files(args.prompt_include,
                                                   file_access_policy)
 
-  conversation, start_message = await LoadOrCreateConversation(
-      task_file_content, args.task, conversation_factory, conversation_path,
-      registry, file_access_policy, validation_manager, confirmation_state,
-      conversation_name)
+  conversation = conversation_factory.New(
+      name=conversation_name,
+      command_registry=registry)
+
+  content_sections: List[ContentSection] = []
+
+  agent_prompt_path = 'agent/prompt.txt'
+  if os.path.exists(agent_prompt_path):
+    with open(agent_prompt_path, 'r') as f:
+      content_sections.append(
+          ContentSection(
+              content=f.read(),
+              summary=f"Constant prompt guidance: {agent_prompt_path}"))
+
+  content_sections.append(
+      ContentSection(
+          content=task_file_content,
+          summary=f"Contents from --task file ({args.task})"))
+
+  start_message = Message('system', content_sections=content_sections)
 
   common_agent_loop_options = AgentLoopOptions(
       conversation=conversation,
@@ -302,50 +315,6 @@ async def CreateAgentWorkflowOptions(
       confirm_done=args.confirm,
       do_review=args.review,
       review_first=args.review_first)
-
-
-async def LoadOrCreateConversation(
-    task_file_content: str,
-    task_file_path: str,
-    conversation_factory: ConversationFactory,
-    conversation_path: str,
-    command_registry: CommandRegistry,
-    file_access_policy: FileAccessPolicy,
-    validation_manager: Optional[ValidationManager],
-    confirmation_state: ConfirmationState,
-    conversation_name: str,
-) -> Tuple[Conversation, Message]:
-  conversation = await conversation_factory.New(
-      name=conversation_name,
-      path=conversation_path,
-      command_registry=command_registry)
-  if conversation.messages:
-    next_message = Message(
-        'system',
-        content_sections=[
-            ContentSection(
-                content='The server running this interaction has been restarted.',
-                summary=None)
-        ])
-  else:
-    content_sections: List[ContentSection] = []
-
-    agent_prompt_path = 'agent/prompt.txt'
-    if os.path.exists(agent_prompt_path):
-      with open(agent_prompt_path, 'r') as f:
-        content_sections.append(
-            ContentSection(
-                content=f.read(),
-                summary=f"Constant prompt guidance: {agent_prompt_path}"))
-
-    content_sections.append(
-        ContentSection(
-            content=task_file_content,
-            summary=f"Contents from --task file ({task_file_path})"))
-
-    next_message = Message('system', content_sections=content_sections)
-
-  return conversation, next_message
 
 
 def CreateFileAccessPolicy(

@@ -52,9 +52,8 @@ class AskCommand(AgentCommand):
   async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
     question = inputs["question"]
 
-    sub_conversation = await self._conversation_factory.New(
+    sub_conversation = self._conversation_factory.New(
         name="ask_conversation",
-        path=None,
         command_registry=self._command_registry)
 
     start_message = Message(

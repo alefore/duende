@@ -85,9 +85,8 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
       RejectChange(lambda command_output: add_review_result_callback(
           command_output, ReviewDecision.REJECT)))
 
-  review_conversation = await conversation_factory.New(
+  review_conversation = conversation_factory.New(
       name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
-      path=None,
       command_registry=review_registry)
 
   review_start_sections: List[ContentSection] = [

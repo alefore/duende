@@ -112,9 +112,8 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
 
     await AgentLoop(
         AgentLoopOptions(
-            conversation=await self._options.conversation_factory.New(
+            conversation=self._options.conversation_factory.New(
                 name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
-                path=None,
                 command_registry=command_registry),
             start_message=Message(
                 'system',

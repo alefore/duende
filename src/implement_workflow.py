@@ -132,9 +132,8 @@ class ImplementAndReviewWorkflowFactory(AgentWorkflowFactory):
     task = args.get('original_task_prompt_content')
     # TODO: Get rid of this assert!
     assert task
-    conversation = await options.conversation_factory.New(
+    conversation = options.conversation_factory.New(
         name='Submitted conversation',
-        path=None,
         command_registry=options.agent_loop_options.commands_registry)
     content_sections = list(
         options.agent_loop_options.start_message.GetContentSections())
