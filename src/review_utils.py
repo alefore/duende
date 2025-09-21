@@ -65,13 +65,12 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
   # A list is used here to capture the result from the callbacks, as
   # Python closures for outer scope variables require mutable objects to
   # be modified within nested functions.
-  single_review_result: List[ReviewResult] = []
+  review_result: List[ReviewResult | None] = [None]
 
   def add_review_result_callback(command_output: CommandOutput,
                                  decision: ReviewDecision) -> None:
-    single_review_result.append(
-        ReviewResult(
-            id=review_id, command_output=command_output, decision=decision))
+    review_result[0] = ReviewResult(
+        id=review_id, command_output=command_output, decision=decision)
 
   if expose_read_commands:
     review_registry = CreateReviewCommandRegistry(
@@ -119,8 +118,11 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
   await AgentLoop(review_options).run()
   logging.info(f"Nested review agent loop for {review_id} done.")
 
-  assert single_review_result, "Review agent did not call accept/reject. This should never happen."
-  return single_review_result[0]
+  assert review_result[
+      0], "Review agent did not call accept/reject. This should never happen."
+  # We return the last one; this is useful when the user tells the review
+  # conversation to provide a more detailed reason.
+  return review_result[0]
 
 
 async def run_parallel_reviews(
