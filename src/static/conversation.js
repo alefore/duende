@@ -88,40 +88,18 @@ class ConversationData {
         const lineCount = String(content).split('\n').length;
         const $contentPre =
             $('<pre>').addClass('field-content-pre').text(content);
-        const $container = $('<div>').addClass('collapsible-content-container');
 
-        if (lineCount > 5) {
-          const $summaryPre = $('<pre>').addClass('field-summary-pre');
-          const summary = summaryContent ||
-              String(content).split('\n').slice(0, 5).join('\n') + '...';
-          $summaryPre.text(summary);
+        if (lineCount <= 20) return $contentPre;
 
-          const $toggleLink =
-              $('<span>').addClass('toggle-link').text('[expand]');
-          const $lineCountSpan =
-              $('<span>').addClass('line-count').text(` (${lineCount} lines)`);
+        const $details =
+            $('<details>').addClass('collapsible-content-container');
 
-          const $header = $('<div>').addClass('field-header');
-          $header.append($toggleLink, $lineCountSpan);
-
-          $toggleLink.on('click', () => {
-            if ($contentPre.is(':visible')) {
-              $contentPre.hide();
-              $summaryPre.show();
-              $toggleLink.text('[expand]');
-            } else {
-              $contentPre.show();
-              $summaryPre.hide();
-              $toggleLink.text('[collapse]');
-            }
-          });
-          $container.append($header, $summaryPre, $contentPre);
-          setTimeout(
-              () => $toggleLink.click(), 0);  // Initialize in collapsed state
-        } else {
-          $container.append($contentPre);
-        }
-        return $container;
+        const summaryText = summaryContent ||
+            String(content).split('\n').slice(0, 1).join('\n') + '...';
+        const $summary =
+            $('<summary>').text(`${lineCount} lines: ${summaryText}`);
+        $details.append($summary, $contentPre);
+        return $details;
       };
 
       const renderPropertiesTable = (propertiesObject, orderedKeys, title) => {

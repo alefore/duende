@@ -108,23 +108,6 @@ pre {
   overflow: auto; /* To contain floated elements within */
 }
 
-.toggle-link {
-  cursor: pointer;
-  color: blue;
-  text-decoration: underline;
-  float: right; /* Re-introduce float right for these */
-  margin-left: 10px; /* Space between links/line count */
-}
-
-.line-count {
-  color: #666; /* Softer color for line count */
-  float: right; /* Float the line count to the right as well */
-}
-
-.first-line-pre {
-  padding-bottom: 5px; /* Add some space below the first line */
-}
-
 #confirmation_input {
   width: calc(100%); /* Full width minus padding/border consideration */
   box-sizing: border-box;
@@ -171,17 +154,9 @@ pre {
     color: #aaa;
   }
 
-  .toggle-link {
-    color: #8ab4f8; /* A lighter blue for dark mode */
-  }
-
   .messageSection {
     border: 1px solid #3a3a3a; /* Darker light border */
     background-color: #303030;
-  }
-
-  .line-count {
-    color: #aaa; /* Lighter color for dark mode */
   }
 
   #confirmation_input {
