@@ -8,8 +8,10 @@ from validation import ValidationManager, ValidationResult
 class DoneCommand(AgentCommand):
 
   def __init__(self,
+               arguments: Optional[List[Argument]] = None,
                validation_manager: Optional[ValidationManager] = None) -> None:
     self._validation_manager = validation_manager
+    self._arguments = arguments if arguments is not None else []
 
   def Name(self) -> str:
     return self.Syntax().name
@@ -18,7 +20,7 @@ class DoneCommand(AgentCommand):
     return CommandSyntax(
         name="done",
         description="Signals that the current task is completed.",
-        arguments=[],
+        arguments=self._arguments,
     )
 
   async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
