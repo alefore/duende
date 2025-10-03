@@ -2,7 +2,7 @@ import asyncio
 import argparse
 import logging
 from pydantic import BaseModel
-from typing import Any, Dict, List
+from typing import Any
 import socketio
 
 from args_common import CreateAgentWorkflowOptions
@@ -22,7 +22,7 @@ from workflow_registry import StandardWorkflowFactoryContainer
 
 class CreateAgentWorkflowData(BaseModel):
   name: str
-  args: Dict[str, str]
+  args: dict[str, str]
 
 
 class WebServerState:
@@ -135,7 +135,7 @@ class WebServerState:
     self.confirmation_manager.provide_confirmation(conversation_id,
                                                    confirmation_message)
 
-  def _conversation_dict(self, conversation: Conversation) -> Dict[str, Any]:
+  def _conversation_dict(self, conversation: Conversation) -> dict[str, Any]:
     state = conversation.GetState()
     return {
         'id':
