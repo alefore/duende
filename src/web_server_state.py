@@ -1,8 +1,8 @@
 import asyncio
-from typing import Any, Dict, List, Optional
 import argparse
 import logging
 from pydantic import BaseModel
+from typing import Any, Dict, List
 import socketio
 
 from args_common import CreateAgentWorkflowOptions
@@ -48,7 +48,7 @@ class WebServerState:
       raise e
 
     logging.info(str(self._agent_workflow_options))
-    agent_workflow: Optional[AgentWorkflow] = None
+    agent_workflow: AgentWorkflow | None = None
     if args.input:
       agent_workflow = PrincipleReviewWorkflow(self._agent_workflow_options)
     elif args.evaluate_evaluators:
@@ -77,8 +77,8 @@ class WebServerState:
     await self.send_update(conversation_id, None, confirmation_required=None)
 
   async def send_update(self, conversation_id: ConversationId,
-                        client_message_count: Optional[int],
-                        confirmation_required: Optional[str]) -> None:
+                        client_message_count: int | None,
+                        confirmation_required: str | None) -> None:
     try:
       conversation = self._conversation_factory.Get(conversation_id)
     except KeyError:
