@@ -41,9 +41,9 @@ class ReadFileCommand(AgentCommand):
     path = inputs[VariableName("path")]
     assert isinstance(path, pathlib.Path)
     start_line = inputs.get(VariableName("start_line"))
-    assert isinstance(start_line, int)
+    assert isinstance(start_line, int | None)
     end_line = inputs.get(VariableName("end_line"))
-    assert isinstance(end_line, int)
+    assert isinstance(end_line, int | None)
 
     if start_line is not None and start_line < 1:
       return CommandOutput(
