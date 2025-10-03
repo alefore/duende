@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import os
 import re
 import aiofiles
@@ -55,7 +55,7 @@ class Selection:
 
   @classmethod
   async def FromLinePattern(cls, path: str, start_line_pattern: str,
-                      end_line_pattern: Optional[str]) -> 'Selection':
+                      end_line_pattern: str | None) -> 'Selection':
     """Creates a Selection object based on line patterns using regex.
     If end_line_pattern is None, only the start line is selected."""
     if not await asyncio.to_thread(os.path.exists, path):
@@ -89,9 +89,9 @@ class Selection:
 class SelectionManager:
 
   def __init__(self) -> None:
-    self.current_selection: Optional[Selection] = None
+    self.current_selection: Selection | None = None
 
-  def get_selection(self) -> Optional[Selection]:
+  def get_selection(self) -> Selection | None:
     return self.current_selection
 
   def set_selection(self, selection: Selection) -> None:
