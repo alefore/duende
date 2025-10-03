@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional, Pattern
+from typing import Any, Dict, Pattern
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from conversation import ConversationFactory
@@ -20,8 +20,8 @@ class AskCommand(AgentCommand):
                confirmation_state: ConfirmationState,
                file_access_policy: FileAccessPolicy,
                command_registry: CommandRegistry,
-               validation_manager: Optional[ValidationManager],
-               confirm_regex: Optional[Pattern[str]]):
+               validation_manager: ValidationManager | None,
+               confirm_regex: Pattern[str] | None):
     self._conversation_factory = conversation_factory
     self._conversational_ai = conversational_ai
     self._confirmation_state = confirmation_state
@@ -79,7 +79,7 @@ class AskCommand(AgentCommand):
     agent_loop = AgentLoop(sub_agent_options)
     await agent_loop.run()
 
-    answer_content: Optional[str] = None
+    answer_content: str | None = None
     for message in reversed(sub_conversation.GetMessagesList()):
       for section in message.GetContentSections():
         if section.command and section.command.command_name == "answer":
