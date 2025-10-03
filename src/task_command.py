@@ -1,11 +1,11 @@
-from typing import NamedTuple, Callable, Optional, List, Dict, Any
+from typing import NamedTuple, Callable, List, Dict, Any
 import logging
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 
 
 class TaskInformation(NamedTuple):
-  task_name: Optional[str]
+  task_name: str | None
   task_spec: str
 
 
