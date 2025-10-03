@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, NamedTuple
+from typing import Any, NamedTuple
 from datetime import datetime, timezone
 
 from agent_command import CommandInput, CommandOutput, VariableName
@@ -15,17 +15,17 @@ class Message:
 
   def __init__(self,
                role: str,
-               content_sections: List[ContentSection] | None = None,
+               content_sections: list[ContentSection] | None = None,
                creation_time: datetime | None = None):
     self.role = role
-    self._content_sections: List[
+    self._content_sections: list[
         ContentSection] = content_sections if content_sections is not None else []
     self.creation_time = creation_time or datetime.now(timezone.utc)
 
-  def Serialize(self) -> Dict[str, Any]:
+  def Serialize(self) -> dict[str, Any]:
     serialized_sections = []
     for section in self._content_sections:
-      section_dict: Dict[str, Any] = {'content': section.content}
+      section_dict: dict[str, Any] = {'content': section.content}
       if section.summary is not None:
         section_dict['summary'] = section.summary
       if section.command is not None:
@@ -39,10 +39,10 @@ class Message:
         'creation_time': self.creation_time.isoformat()
     }
 
-  def ToPropertiesDict(self) -> Dict[str, Any]:
+  def ToPropertiesDict(self) -> dict[str, Any]:
     serialized_sections = []
     for section in self._content_sections:
-      section_dict: Dict[str, Any] = {'content': section.content}
+      section_dict: dict[str, Any] = {'content': section.content}
       if section.summary is not None:
         section_dict['summary'] = section.summary
       if section.command is not None:
@@ -70,8 +70,8 @@ class Message:
     }
 
   @staticmethod
-  def Deserialize(data: Dict[str, Any]) -> 'Message':
-    content_sections: List[ContentSection] = []
+  def Deserialize(data: dict[str, Any]) -> 'Message':
+    content_sections: list[ContentSection] = []
     raw_sections = data.get('content_sections', [])
     for section_data in raw_sections:
       content_sections.append(
@@ -83,7 +83,7 @@ class Message:
         content_sections=content_sections,
         creation_time=datetime.fromisoformat(data['creation_time']))
 
-  def GetContentSections(self) -> List[ContentSection]:
+  def GetContentSections(self) -> list[ContentSection]:
     return self._content_sections
 
   def PushSection(self, section: ContentSection) -> None:
