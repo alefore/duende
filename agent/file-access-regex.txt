@@ -1,1 +1,1 @@
-^(\.|src|(src|doc)/[a-z_/]*(.dm)?\.(css|js|html|py)|README.md)$
+^(\.|(src|doc)|(src|doc)/[-a-z_/]*(.dm)?\.(css|js|html|py|md)|README.md)$
