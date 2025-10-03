@@ -19,7 +19,7 @@ class CommandOutput(NamedTuple):
 
 class CommandInput(NamedTuple):
   command_name: str
-  args: dict[VariableName, Any] = {}
+  args: dict[VariableName, VariableValue] = {}
   # Args that are computed by the command (before `run`).
   # They are mostly used to communicate additional debugging information
   # to the frontend.
