@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 import os
 import re
 import asyncio
@@ -44,7 +44,7 @@ class SelectCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
     path = inputs[VariableName('path')]
@@ -118,7 +118,7 @@ class SelectOverwriteCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     content = inputs[VariableName("content")]
 
     current_selection = self.selection_manager.get_selection()
