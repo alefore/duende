@@ -35,9 +35,11 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     os.makedirs("fruits")
 
     # Create files
-    for f in ["animals/mammals/dog.txt", "animals/mammals/cat.txt", "animals/mammals/fox.txt",
-              "animals/birds/tucan.jpg", "animals/birds/condor.txt",
-              "fruits/banana.md", "fruits/orange.md"]:
+    for f in [
+        "animals/mammals/dog.txt", "animals/mammals/cat.txt",
+        "animals/mammals/fox.txt", "animals/birds/tucan.jpg",
+        "animals/birds/condor.txt", "fruits/banana.md", "fruits/orange.md"
+    ]:
       with open(f, "w") as fp:
         fp.write("")
     # ✨
@@ -49,8 +51,9 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
   async def testRoot(self):
     """Root search (".") finds expected number of files."""
     # ✨ root
-    output: CommandOutput = await list_all_files(".")
-    self.assertEqual(len(output.file_paths), 7)
+    file_access_policy = CurrentDirectoryFileAccessPolicy()
+    file_paths = [f async for f in list_all_files(".", file_access_policy)]
+    self.assertEqual(len(file_paths), 7)
     # ✨
 
   async def testRootFormat(self):
@@ -58,8 +61,8 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
 
     Expected format: "fruits/banana.md"."""
     # ✨ expected output root
-    output: CommandOutput = await list_all_files(".")
-    file_paths = sorted(output.file_paths)  # Sort for consistent order
+    file_access_policy = CurrentDirectoryFileAccessPolicy()
+    file_paths = sorted([f async for f in list_all_files(".", file_access_policy)])  # Sort for consistent order
 
     self.assertIn("fruits/banana.md", file_paths)
     self.assertIn("animals/mammals/dog.txt", file_paths)
@@ -74,15 +77,17 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     """No files are returned for a search in an empty directory."""
     # ✨ empty
     os.makedirs("empty_dir")
-    output: CommandOutput = await list_all_files("empty_dir")
-    self.assertEqual(len(output.file_paths), 0)
+    file_access_policy = CurrentDirectoryFileAccessPolicy()
+    file_paths = [f async for f in list_all_files("empty_dir", file_access_policy)]
+    self.assertEqual(len(file_paths), 0)
     # ✨
 
   async def testFlat(self):
     """Search in a flat directory returns expected number of outputs."""
     # ✨ flat
-    output: CommandOutput = await list_all_files("fruits")
-    self.assertEqual(len(output.file_paths), 2)
+    file_access_policy = CurrentDirectoryFileAccessPolicy()
+    file_paths = [f async for f in list_all_files("fruits", file_access_policy)]
+    self.assertEqual(len(file_paths), 2)
     # ✨
 
   async def testFlatFormat(self):
@@ -90,16 +95,18 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
 
     Expected format: "animals/birds/condor.txt"."""
     # ✨ flat format
-    output: CommandOutput = await list_all_files("animals/birds")
-    file_paths = sorted(output.file_paths)
-    self.assertListEqual(file_paths, ["animals/birds/condor.txt", "animals/birds/tucan.jpg"])
+    file_access_policy = CurrentDirectoryFileAccessPolicy()
+    file_paths = sorted([f async for f in list_all_files("animals/birds", file_access_policy)])
+    self.assertListEqual(
+        file_paths, ["animals/birds/condor.txt", "animals/birds/tucan.jpg"])
     # ✨
 
   async def testNestedDirs(self):
     """Search in animals outputs five entries in the expected format."""
     # ✨ nested dirs
-    output: CommandOutput = await list_all_files("animals")
-    self.assertEqual(len(output.file_paths), 5)
+    file_access_policy = CurrentDirectoryFileAccessPolicy()
+    file_paths = [f async for f in list_all_files("animals", file_access_policy)]
+    self.assertEqual(len(file_paths), 5)
 
     expected_files = [
         "animals/birds/condor.txt",
@@ -108,7 +115,7 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
         "animals/mammals/dog.txt",
         "animals/mammals/fox.txt",
     ]
-    self.assertListEqual(sorted(output.file_paths), expected_files)
+    self.assertListEqual(sorted(file_paths), expected_files)
     # ✨
 
   async def testFileAccessPolicy(self):
@@ -117,18 +124,22 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     Creates a regex file access policy matching two files and validates that
     the outputs are exactly as expected."""
     # ✨ file access policy
-    file_access_policy = RegexFileAccessPolicy(r"(dog.txt|banana.md)$")
-    output: CommandOutput = await list_all_files(".", file_access_policy)
-    self.assertListEqual(sorted(output.file_paths), [
-        "animals/mammals/dog.txt",
-        "fruits/banana.md",
-    ])
+    file_access_policy = RegexFileAccessPolicy(r"^(animals/mammals/dog.txt|fruits/banana.md)$")
+    file_paths = [f async for f in list_all_files(".", file_access_policy)]
+    self.assertListEqual(
+        sorted(file_paths), [
+            "animals/mammals/dog.txt",
+            "fruits/banana.md",
+        ])
     # ✨
 
   async def testFileAccessPolicyNoMatch(self):
     """Runs successfully if file access policy doesn't match anything."""
     # ✨ file access policy no match
     file_access_policy = RegexFileAccessPolicy(r"(non_existent_file.txt)$")
-    output: CommandOutput = await list_all_files(".", file_access_policy)
-    self.assertListEqual(output.file_paths, [])
+    file_paths = [f async for f in list_all_files(".", file_access_policy)]
+    self.assertListEqual(file_paths, [])
     # ✨
+
+if __name__ == '__main__':
+  unittest.main()

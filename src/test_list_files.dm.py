@@ -72,3 +72,7 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
   async def testFileAccessPolicyNoMatch(self):
     """Runs successfully if file access policy doesn't match anything."""
     # {{🍄 file access policy no match}}
+
+
+if __name__ == '__main__':
+  unittest.main()
