@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, NamedTuple
 from datetime import datetime, timezone
 
-from agent_command import CommandInput, CommandOutput
+from agent_command import CommandInput, CommandOutput, VariableName
 
 
 class ContentSection(NamedTuple):
@@ -52,7 +52,7 @@ class Message:
         for key, value in section.command.args.items():
           command_dict[key] = str(value)
         for key, value in section.command.derived_args.items():
-          command_dict[f"derived_{key}"] = str(value)
+          command_dict[VariableName(f"derived_{key}")] = str(value)
         section_dict['command'] = command_dict
       if section.command_output is not None:
         section_dict['command_output'] = {

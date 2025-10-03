@@ -5,7 +5,7 @@ import sys
 from typing import cast, Any, Coroutine, Dict, List, Optional
 
 from command_registry import CommandRegistry
-from agent_command import ArgumentContentType, CommandInput, CommandSyntax
+from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableName
 from conversation import Conversation
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -120,7 +120,10 @@ class GeminiConversation(ConversationalAIConversation):
                 summary=f'MCP call: {function_call}',
                 command=CommandInput(
                     command_name=(function_call.name or "unknown"),
-                    args=(function_call.args or {}),
+                    args={
+                        VariableName(k): v
+                        for k, v in (function_call.args or {}).items()
+                    },
                     thought_signature=(part.thought_signature if hasattr(
                         part, 'thought_signature') else None))))
 

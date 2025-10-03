@@ -5,9 +5,11 @@ import difflib
 import aiofiles
 import asyncio
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
 from selection_manager import SelectionManager
+
+_content_variable = VariableName("content")
 
 
 class WriteFileCommand(AgentCommand):
@@ -27,11 +29,11 @@ class WriteFileCommand(AgentCommand):
       return []
     return [
         Argument(
-            name="path",
+            name=VariableName("path"),
             arg_type=ArgumentContentType.PATH_OUTPUT,
             description="The file path to write the content to."),
         Argument(
-            name="reason",
+            name=VariableName("reason"),
             arg_type=ArgumentContentType.STRING,
             description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
             required=False)
@@ -39,11 +41,11 @@ class WriteFileCommand(AgentCommand):
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
-        name="write_file",
+        name=VariableName("write_file"),
         description="Writes the given content to a specified file.",
         arguments=[
             Argument(
-                name="content",
+                name=_content_variable,
                 arg_type=ArgumentContentType.STRING,
                 description="The content to write.")
         ] + self._optional_arguments(),
@@ -67,11 +69,13 @@ class WriteFileCommand(AgentCommand):
         ))
     return diff
 
-  async def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-    output = {}
-    path = self._hard_coded_path or inputs.get('path')
-    if path and inputs.get('content'):
-      output['content_diff'] = await self._derive_diff(path, inputs['content'])
+  async def derive_args(
+      self, inputs: dict[VariableName, Any]) -> dict[VariableName, Any]:
+    output: dict[VariableName, Any] = {}
+    path = self._hard_coded_path or inputs.get(VariableName("path"))
+    if path and inputs.get(_content_variable):
+      output[VariableName("content_diff")] = await self._derive_diff(
+          path, inputs[_content_variable])
     return output
 
   async def _derive_diff(self, path: str, new_content: str) -> str:
@@ -86,9 +90,9 @@ class WriteFileCommand(AgentCommand):
     except Exception as e:
       return f"Could not compute diff: {e}"
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    path = self._hard_coded_path or inputs['path']
-    new_content = inputs['content']
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    path = self._hard_coded_path or inputs[VariableName("path")]
+    new_content = inputs[_content_variable]
     logging.info(f"Write: {path}")
 
     selection_invalidated = False

@@ -3,7 +3,7 @@ import os
 import re
 import asyncio
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager, StartPatternNotFound, EndPatternNotFound
@@ -28,28 +28,29 @@ class SelectCommand(AgentCommand):
         description="Creates a new selection for the content in the path specified. The selection starts at the first line matching a start pattern and ends at the first following line matching an optional end pattern. If no end pattern is provided, only the line matching the start pattern is selected. The contents selected will be returned. Use select_overwrite to overwrite the selection with new contents. If your patterns contain spaces, you probably want to put quotes around them.",
         arguments=[
             Argument(
-                name="path",
+                name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="Path to the file to select from.",
                 required=True),
             Argument(
-                name="start_line_pattern",
+                name=VariableName("start_line_pattern"),
                 arg_type=ArgumentContentType.STRING,
                 description="The start line pattern.",
                 required=True),
             Argument(
-                name="end_line_pattern",
+                name=VariableName("end_line_pattern"),
                 arg_type=ArgumentContentType.STRING,
                 description="The end line pattern. If omitted, only the start line is selected.",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    path = inputs['path']
-    start_line_pattern_raw = inputs['start_line_pattern']
-    end_line_pattern_raw: Optional[str] = inputs.get('end_line_pattern')
+    path = inputs[VariableName('path')]
+    start_line_pattern_raw = inputs[VariableName('start_line_pattern')]
+    end_line_pattern_raw: Optional[str] = inputs.get(
+        VariableName('end_line_pattern'))
 
     if self.use_regex:
       start_line_pattern = start_line_pattern_raw
@@ -106,19 +107,19 @@ class SelectOverwriteCommand(AgentCommand):
         description="Replaces the contents of the selection (the very last call to #select or similar command) with new contents.",
         arguments=[
             Argument(
-                name="content",
+                name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
                 description="New contents to overwrite the current selection.",
                 required=True),
             Argument(
-                name="reason",
+                name=VariableName("reason"),
                 arg_type=ArgumentContentType.STRING,
                 description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    content = inputs['content']
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    content = inputs[VariableName("content")]
 
     current_selection = self.selection_manager.get_selection()
 

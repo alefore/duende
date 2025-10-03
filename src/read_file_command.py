@@ -1,9 +1,8 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 import logging
 from typing import Any, Dict, List
 import aiofiles
 
-
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from file_access_policy import FileAccessPolicy
 
 
@@ -22,26 +21,26 @@ class ReadFileCommand(AgentCommand):
         description="Outputs the contents of a file. It can optionally read specific lines.",
         arguments=[
             Argument(
-                name="path",
+                name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="The path of the file to be read.",
                 required=True),
             Argument(
-                name="start_line",
+                name=VariableName("start_line"),
                 arg_type=ArgumentContentType.INTEGER,
                 description="The starting line number (inclusive) to read from.",
                 required=False),
             Argument(
-                name="end_line",
+                name=VariableName("end_line"),
                 arg_type=ArgumentContentType.INTEGER,
                 description="The ending line number (inclusive) to read up to.",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    path = inputs['path']
-    start_line = inputs.get('start_line')
-    end_line = inputs.get('end_line')
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    path = inputs[VariableName("path")]
+    start_line = inputs.get(VariableName("start_line"))
+    end_line = inputs.get(VariableName("end_line"))
 
     if start_line is not None and start_line < 1:
       return CommandOutput(

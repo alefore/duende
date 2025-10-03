@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
@@ -24,8 +24,8 @@ class ResetFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    path: str = inputs['path']
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    path: str = inputs[VariableName('path')]
     errors: List[str] = []
 
     try:
@@ -66,12 +66,12 @@ class ResetFileCommand(AgentCommand):
         description="Resets file to its original state. Use this if you accidentally broke a file.",
         arguments=[
             Argument(
-                name="path",
+                name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_OUTPUT,
                 description="Path to reset to original state.",
                 required=True),
             Argument(
-                name="reason",
+                name=VariableName("reason"),
                 arg_type=ArgumentContentType.STRING,
                 description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
                 required=False)

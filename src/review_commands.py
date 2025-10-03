@@ -1,6 +1,7 @@
 import logging
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from typing import Any, Dict, List, Optional, Callable
+
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 
 
 class AcceptChange(AgentCommand):
@@ -12,8 +13,8 @@ class AcceptChange(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    reason = inputs["reason"]
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    reason = inputs[VariableName("reason")]
     logging.info(f"Change accepted with reason: {reason[:50]}...")
     command_output = CommandOutput(
         output="Change accepted.",
@@ -30,7 +31,7 @@ class AcceptChange(AgentCommand):
         description="Accepts the proposed code changes. Use after thoroughly reviewing the changes if they meet the evaluation criteria.",
         arguments=[
             Argument(
-                name="reason",
+                name=VariableName("reason"),
                 arg_type=ArgumentContentType.STRING,
                 description="A human-readable description of why the change is being accepted.",
                 required=True)
@@ -46,8 +47,8 @@ class RejectChange(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    reason = inputs["reason"]
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    reason = inputs[VariableName("reason")]
     logging.info(f"Change rejected with reason: {reason[:50]}...")
     command_output = CommandOutput(
         output=reason,
@@ -64,7 +65,7 @@ class RejectChange(AgentCommand):
         description="Rejects the proposed code changes. Use this command if you find issues that prevent them from meeting the criteria. Include a detailed explanation of those issues, ideally making it as actionable as possible (e.g., what is a possible way of addressing those issues).",
         arguments=[
             Argument(
-                name="reason",
+                name=VariableName("reason"),
                 arg_type=ArgumentContentType.STRING,
                 description="A human-readable description of why the change is being rejected, including specific issues found.",
                 required=True)

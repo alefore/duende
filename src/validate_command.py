@@ -1,5 +1,5 @@
 import subprocess
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, VariableName
 from validation import ValidationManager
 from typing import List, Any, Dict
 
@@ -19,7 +19,7 @@ class ValidateCommand(AgentCommand):
         description="Executes validation script to verify code integrity. Recommended to run this command after making changes."
     )
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     result = await self.validation_manager.Validate()
 
     if not result.success:

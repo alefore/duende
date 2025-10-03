@@ -1,6 +1,7 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from typing import NamedTuple, Callable, Optional, List, Dict, Any
 import logging
+
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 
 
 class TaskInformation(NamedTuple):
@@ -17,10 +18,9 @@ class TaskCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
-  async def run(self, params: Dict[str, Any]) -> CommandOutput:
-    task_name = params.get("task_name")
-    task_spec = params["task_spec"]
+  async def run(self, params: Dict[VariableName, Any]) -> CommandOutput:
+    task_name = params.get(VariableName("task_name"))
+    task_spec = params[VariableName("task_spec")]
 
     task_info = TaskInformation(task_name=task_name, task_spec=task_spec)
     logging.info(
@@ -48,12 +48,12 @@ class TaskCommand(AgentCommand):
         description="Starts a new conversation with the AI asking it to implement a sub-task. Use this for complex commands, where you would like an agent to implement a specific smaller change. In the specification, include all information you think the AI may need. Some additional information (about the environment) will be included.",
         arguments=[
             Argument(
-                name="task_name",
+                name=VariableName("task_name"),
                 arg_type=ArgumentContentType.STRING,
                 description="The name of the task",
                 required=False),
             Argument(
-                name="task_spec",
+                name=VariableName("task_spec"),
                 arg_type=ArgumentContentType.STRING,
                 description="The full specification for the task.",
                 required=True)

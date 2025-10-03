@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, Pattern
 
-from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from conversation import ConversationFactory
 from conversational_ai import ConversationalAI
 from confirmation import ConfirmationState
@@ -39,7 +39,7 @@ class AskCommand(AgentCommand):
         description="Forks a separate AI conversation to investigate the codebase and answer a specific question. Use this when you need detailed information that cannot be trivially obtained with existing commands. The AI in the forked conversation will have read-only access.",
         arguments=[
             Argument(
-                name="question",
+                name=VariableName("question"),
                 arg_type=ArgumentContentType.STRING,
                 description="The question to be answered by the forked AI.",
                 required=True,
@@ -49,12 +49,11 @@ class AskCommand(AgentCommand):
         output_description="The answer provided by the forked AI.",
     )
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    question = inputs["question"]
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    question = inputs[VariableName("question")]
 
     sub_conversation = self._conversation_factory.New(
-        name="ask_conversation",
-        command_registry=self._command_registry)
+        name="ask_conversation", command_registry=self._command_registry)
 
     start_message = Message(
         role='user',
@@ -83,7 +82,7 @@ class AskCommand(AgentCommand):
     for message in reversed(sub_conversation.GetMessagesList()):
       for section in message.GetContentSections():
         if section.command and section.command.command_name == "answer":
-          answer_content = section.command.args["answer"]
+          answer_content = section.command.args[VariableName("answer")]
           logging.info(f"Found answer: {answer_content}")
           break
       if answer_content is not None:

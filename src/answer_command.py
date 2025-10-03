@@ -1,5 +1,5 @@
 from typing import Any, Dict
-from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 
 
 class AnswerCommand(AgentCommand):
@@ -13,7 +13,7 @@ class AnswerCommand(AgentCommand):
         description="Provides the answer to the question for this conversation. This command signals the completion of the current task and provides the final answer.",
         arguments=[
             Argument(
-                name="answer",
+                name=VariableName("answer"),
                 arg_type=ArgumentContentType.STRING,
                 description="The brief answer to the question.",
                 required=True,
@@ -23,8 +23,8 @@ class AnswerCommand(AgentCommand):
         output_description="The answer provided.",
     )
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    answer = inputs["answer"]
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    answer = inputs[VariableName("answer")]
     return CommandOutput(
         command_name=self.Name(),
         output=answer,

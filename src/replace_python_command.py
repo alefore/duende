@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
 from select_python import FindPythonDefinition
@@ -24,31 +24,31 @@ class ReplacePythonCommand(AgentCommand):
         description="Replaces the definition of the identifier in the specified Python file. Searches in all Python files if no path is provided. The identifier can be the name of a (top-level) function, class (example: `MyClass`), or method (example: `MyClass.__init__`).",
         arguments=[
             Argument(
-                name="identifier",
+                name=VariableName("identifier"),
                 arg_type=ArgumentContentType.IDENTIFIER,
                 description="The identifier of the Python element to replace.",
                 required=True),
             Argument(
-                name="path",
+                name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
                 description="Path to a Python file.",
                 required=False),
             Argument(
-                name="content",
+                name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
                 description="The new definition of the Python element.",
                 required=True),
             Argument(
-                name="reason",
+                name=VariableName("reason"),
                 arg_type=ArgumentContentType.STRING,
                 description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    identifier: str = inputs['identifier']
-    new_content: str = inputs['content']
-    validated_path: Optional[str] = inputs.get('path')
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    identifier: str = inputs[VariableName("identifier")]
+    new_content: str = inputs[VariableName("content")]
+    validated_path: Optional[str] = inputs.get(VariableName("path"))
 
     try:
       selections: List[Selection] = await FindPythonDefinition(

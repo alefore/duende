@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from typing import List, Tuple, Optional, Dict, Any
 import logging
 import os
@@ -8,8 +8,8 @@ from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
 
-async def _ListFileDetails(directory: str,
-                            file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
+async def _ListFileDetails(
+    directory: str, file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
   details: List[str] = []
   errors: List[str] = []
   async for file in list_all_files(directory, file_access_policy):
@@ -41,17 +41,18 @@ class ListFilesCommand(AgentCommand):
         description="Lists all files in the given directories (or the top-level if none is specified).",
         arguments=[
             Argument(
-                name="directory",
+                name=VariableName("directory"),
                 arg_type=ArgumentContentType.PATH_UNVALIDATED,
                 description="The directory path to list files from.",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    directory = inputs.get('directory', ".")
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    directory = inputs.get(VariableName("directory"), ".")
 
     try:
-      output, errors = await _ListFileDetails(directory, self.file_access_policy)
+      output, errors = await _ListFileDetails(directory,
+                                              self.file_access_policy)
 
       return CommandOutput(
           output=output,

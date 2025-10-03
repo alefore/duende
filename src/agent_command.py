@@ -19,11 +19,11 @@ class CommandOutput(NamedTuple):
 
 class CommandInput(NamedTuple):
   command_name: str
-  args: Dict[str, Any] = {}
+  args: Dict[VariableName, Any] = {}
   # Args that are computed by the command (before `run`).
   # They are mostly used to communicate additional debugging information
   # to the frontend.
-  derived_args: Dict[str, Any] = {}
+  derived_args: Dict[VariableName, Any] = {}
   thought_signature: bytes | None = None
 
 
@@ -41,7 +41,7 @@ class ArgumentContentType(Enum):
 
 class Argument(NamedTuple):
   """Defines an argument with a name, type, and description."""
-  name: str
+  name: VariableName
   arg_type: ArgumentContentType
   description: str
   required: bool = True
@@ -77,10 +77,11 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     pass
 
-  async def derive_args(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+  async def derive_args(
+      self, inputs: Dict[VariableName, Any]) -> Dict[VariableName, Any]:
     """
     Computes additional, display-only properties for the command.
     These properties are attached to the CommandInput object.

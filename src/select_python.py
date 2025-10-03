@@ -1,11 +1,12 @@
+import aiofiles
 import ast
+import asyncio
 from typing import List, Tuple, Sequence, Any, Dict
+
 from list_files import list_all_files
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
-import aiofiles
-import asyncio
 
 
 class SelectPythonCommand(AgentCommand):
@@ -19,7 +20,6 @@ class SelectPythonCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-
   @classmethod
   def Syntax(cls) -> CommandSyntax:
     return CommandSyntax(
@@ -27,26 +27,26 @@ class SelectPythonCommand(AgentCommand):
         description=("Selects the definition of an identifier."),
         arguments=[
             Argument(
-                name="identifier",
+                name=VariableName("identifier"),
                 arg_type=ArgumentContentType.IDENTIFIER,
                 description="The name of the identifier to be selected.",
                 required=True),
             Argument(
-                name="path",
+                name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="Path to a Python file to search within. Omit this to search in all Python files.",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    identifier: str = inputs['identifier']
-    validated_path: str | None = inputs.get('path')
+    identifier: str = inputs[VariableName("identifier")]
+    validated_path: str | None = inputs.get(VariableName("path"))
 
     try:
-      selections = await FindPythonDefinition(self.file_access_policy, validated_path,
-                                        identifier)
+      selections = await FindPythonDefinition(self.file_access_policy,
+                                              validated_path, identifier)
 
       if len(selections) == 0:
         return CommandOutput(
@@ -108,8 +108,8 @@ def _find_nested_definition_nodes(
 
 
 async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
-                         validated_path: str | None,
-                         identifier: str) -> List[Selection]:
+                               validated_path: str | None,
+                               identifier: str) -> List[Selection]:
   """Finds all Python code elements by identifier and returns the selections.
 
   Args:
@@ -136,7 +136,8 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
 
   for file_path in file_list:
     try:
-      async with aiofiles.open(file_path, "r") as file_obj: # Renamed 'file' to 'file_obj'
+      async with aiofiles.open(file_path,
+                               "r") as file_obj:  # Renamed 'file' to 'file_obj'
         file_content = await file_obj.read()
       tree: ast.Module = ast.parse(file_content, filename=file_path)
 

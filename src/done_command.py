@@ -1,7 +1,7 @@
 from typing import List, Any, Dict, Optional
 import logging
 
-from agent_command import AgentCommand, CommandOutput, CommandSyntax, ArgumentContentType, Argument
+from agent_command import AgentCommand, CommandOutput, CommandSyntax, ArgumentContentType, Argument, VariableName
 from validation import ValidationManager, ValidationResult
 
 
@@ -23,7 +23,7 @@ class DoneCommand(AgentCommand):
         arguments=self._arguments,
     )
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     logging.info("Done command runs!")
     if not self._validation_manager:
       return CommandOutput(

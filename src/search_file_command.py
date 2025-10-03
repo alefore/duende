@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from typing import AsyncIterable, Iterable, List, Optional, Dict, Any
 import logging
 from file_access_policy import FileAccessPolicy
@@ -23,20 +23,20 @@ class SearchFileCommand(AgentCommand):
         description="Searches for the specific content.",
         arguments=[
             Argument(
-                name="content",
+                name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
                 description="The content to search for",
                 required=True),
             Argument(
-                name="path",
+                name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="File to search in. Skip it to find references in the entire repository.",
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    search_term: str = inputs['content']
-    input_path: Optional[str] = inputs.get('path')
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    search_term: str = inputs[VariableName("content")]
+    input_path: Optional[str] = inputs.get(VariableName("path"))
     logging.info(
         f"Searching for '{search_term}' in specified files or directory and subdirectories."
     )

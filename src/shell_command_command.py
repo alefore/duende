@@ -1,4 +1,4 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 import logging
 import asyncio
 from typing import Any, Dict
@@ -16,14 +16,14 @@ class ShellCommandCommand(AgentCommand):
         description="Executes a shell command and returns its stdout, stderr, and exit status.",
         arguments=[
             Argument(
-                name="command",
+                name=VariableName("command"),
                 arg_type=ArgumentContentType.STRING,
                 description="The shell command to execute.",
                 required=True)
         ])
 
-  async def run(self, inputs: Dict[str, Any]) -> CommandOutput:
-    command = inputs['command']
+  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+    command = inputs[VariableName("command")]
     logging.info(f"Executing shell command: {command}")
 
     try:
@@ -42,7 +42,8 @@ class ShellCommandCommand(AgentCommand):
               "exit_status": process.returncode
           }),
           errors="" if not stderr else stderr.decode().strip(),
-          summary=f"Shell command executed with exit status {process.returncode}." + (" Stderr not empty." if stderr else ""))
+          summary=f"Shell command executed with exit status {process.returncode}."
+          + (" Stderr not empty." if stderr else ""))
 
     except Exception as e:
       return CommandOutput(
