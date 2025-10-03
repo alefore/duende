@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import logging
 import os
 import difflib
@@ -12,9 +12,9 @@ from selection_manager import SelectionManager
 
 class WriteFileCommand(AgentCommand):
 
-  def __init__(self, validation_manager: Optional[ValidationManager],
+  def __init__(self, validation_manager: ValidationManager | None,
                selection_manager: SelectionManager,
-               hard_coded_path: Optional[str]):
+               hard_coded_path: str | None):
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
     self._hard_coded_path = hard_coded_path
@@ -51,7 +51,7 @@ class WriteFileCommand(AgentCommand):
     )
 
   async def _get_full_diff(self, path: str,
-                           new_content: str) -> Optional[List[str]]:
+                           new_content: str) -> List[str] | None:
     if not await asyncio.to_thread(os.path.exists, path):
       return None
 
