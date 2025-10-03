@@ -1,8 +1,7 @@
 import logging
-from typing import Any
 import aiofiles
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValueInt
 from file_access_policy import FileAccessPolicy
 
 
@@ -37,10 +36,12 @@ class ReadFileCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: VariableMap) -> CommandOutput:
     path = inputs[VariableName("path")]
     start_line = inputs.get(VariableName("start_line"))
+    assert isinstance(start_line, int)
     end_line = inputs.get(VariableName("end_line"))
+    assert isinstance(end_line, int)
 
     if start_line is not None and start_line < 1:
       return CommandOutput(
@@ -87,7 +88,7 @@ class ReadFileCommand(AgentCommand):
               summary=f"{self.Name()} command error: start_line out of bounds.")
         if end_index > len(lines):
           # If end_line is specified and beyond file length, read till end of file
-          end_index = len(lines)
+          end_index = VariableValueInt(len(lines))
 
         contents = "".join(lines[start_index:end_index])
         actual_lines_read = len(lines[start_index:end_index])

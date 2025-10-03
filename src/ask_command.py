@@ -1,7 +1,7 @@
 import logging
-from typing import Any, Pattern
+from typing import Pattern
 
-from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
 from conversation import ConversationFactory
 from conversational_ai import ConversationalAI
 from confirmation import ConfirmationState
@@ -49,7 +49,7 @@ class AskCommand(AgentCommand):
         output_description="The answer provided by the forked AI.",
     )
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: VariableMap) -> CommandOutput:
     question = inputs[VariableName("question")]
 
     sub_conversation = self._conversation_factory.New(
@@ -78,7 +78,7 @@ class AskCommand(AgentCommand):
     agent_loop = AgentLoop(sub_agent_options)
     await agent_loop.run()
 
-    answer_content: str | None = None
+    answer_content: VariableValue | None = None
     for message in reversed(sub_conversation.GetMessagesList()):
       for section in message.GetContentSections():
         if section.command and section.command.command_name == "answer":
@@ -91,6 +91,7 @@ class AskCommand(AgentCommand):
     if answer_content is None:
       logging.fatal("Could not retrieve answer from sub-agent.")
     assert answer_content
+    assert isinstance(answer_content, str)
     return CommandOutput(
         command_name=self.Name(),
         output=answer_content,

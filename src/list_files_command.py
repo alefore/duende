@@ -1,9 +1,8 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
-from typing import Any
 import logging
 import os
 import aiofiles
 
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
@@ -47,8 +46,9 @@ class ListFilesCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: VariableMap) -> CommandOutput:
     directory = inputs.get(VariableName("directory"), ".")
+    assert isinstance(directory, str)
 
     try:
       output, errors = await _ListFileDetails(directory,

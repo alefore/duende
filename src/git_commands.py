@@ -1,11 +1,11 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+import asyncio
 import subprocess
 import sys
-from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
-from typing import Any
+
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
+from file_access_policy import FileAccessPolicy
 from validation import ValidationManager
-import asyncio
 
 
 class GitRepositoryState(Enum):
@@ -24,8 +24,9 @@ class ResetFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
-    path: str = inputs[VariableName('path')]
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    path = inputs[VariableName('path')]
+    assert isinstance(path, str)
     errors: list[str] = []
 
     try:

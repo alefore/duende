@@ -1,5 +1,4 @@
-from typing import Any
-from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName
 
 
 class AnswerCommand(AgentCommand):
@@ -23,8 +22,9 @@ class AnswerCommand(AgentCommand):
         output_description="The answer provided.",
     )
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: VariableMap) -> CommandOutput:
     answer = inputs[VariableName("answer")]
+    assert isinstance(answer, str)
     return CommandOutput(
         command_name=self.Name(),
         output=answer,

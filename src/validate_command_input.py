@@ -36,6 +36,7 @@ def ValidateCommandInput(syntax: CommandSyntax, input: CommandInput,
   for syntax_arg in syntax.arguments:
     value = input.args.get(syntax_arg.name)
     if value is not None:
+      assert isinstance(value, str)
       if _IsPath(syntax_arg.arg_type):
         warnings.extend(_ValidatePathArg(syntax_arg, value, file_access_policy))
     elif syntax_arg.required:

@@ -1,11 +1,11 @@
+import asyncio
 from google import genai
 import logging
-import asyncio
 import sys
-from typing import cast, Any, Coroutine
+from typing import Any
 
 from command_registry import CommandRegistry
-from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableMap, VariableName, VariableValue
+from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableMap, VariableName, VariableValue, VariableValueInt, VariableValueStr
 from conversation import Conversation
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -121,7 +121,7 @@ class GeminiConversation(ConversationalAIConversation):
                 command=CommandInput(
                     command_name=(function_call.name or "unknown"),
                     args=VariableMap({
-                        VariableName(k): VariableValue(v)
+                        VariableName(k): _get_value(v)
                         for k, v in (function_call.args or {}).items()
                     }),
                     thought_signature=(part.thought_signature if hasattr(
@@ -129,6 +129,16 @@ class GeminiConversation(ConversationalAIConversation):
 
     await self.conversation.AddMessage(reply_message)
     return reply_message
+
+
+def _get_value(v: Any) -> VariableValue:
+  match v:
+    case str(s):
+      return VariableValueStr(s)
+    case int(i):
+      return VariableValueInt(i)
+    case _:
+      raise ValueError(f"Unsupported data type: {v}")
 
 
 class Gemini(ConversationalAI):
