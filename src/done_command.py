@@ -1,4 +1,4 @@
-from typing import List, Any, Dict, Optional
+from typing import List, Any, Dict
 import logging
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, ArgumentContentType, Argument, VariableName
@@ -9,7 +9,7 @@ class DoneCommand(AgentCommand):
 
   def __init__(self,
                arguments: List[Argument],
-               validation_manager: Optional[ValidationManager] = None) -> None:
+               validation_manager: ValidationManager | None = None) -> None:
     self._validation_manager = validation_manager
     self._arguments = arguments
 
