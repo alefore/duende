@@ -1,7 +1,7 @@
 import os
 import subprocess
 import logging
-from typing import Optional, NamedTuple
+from typing import NamedTuple
 import asyncio
 
 
@@ -15,7 +15,7 @@ class ValidationManager:
 
   def __init__(self) -> None:
     self.validation_script: str = "agent/validate.sh"
-    self.validation_output: Optional[ValidationResult] = None
+    self.validation_output: ValidationResult | None = None
 
   def RegisterChange(self) -> None:
     self.validation_output = None
@@ -49,7 +49,7 @@ class ValidationManager:
       return ValidationResult(success=False, output="", error=str(e))
 
 
-def CreateValidationManager() -> Optional[ValidationManager]:
+def CreateValidationManager() -> ValidationManager | None:
   script_path = "agent/validate.sh"
   if not os.path.isfile(script_path):
     logging.info(f"{script_path}: Validation script does not exist.")
