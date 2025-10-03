@@ -2,7 +2,7 @@ from google import genai
 import logging
 import asyncio
 import sys
-from typing import cast, Any, Coroutine, Dict, List, Optional
+from typing import cast, Any, Coroutine, Dict, List
 
 from command_registry import CommandRegistry
 from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableName
