@@ -24,7 +24,7 @@ class ResetFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     path: str = inputs[VariableName('path')]
     errors: list[str] = []
 

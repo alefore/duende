@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Dict
+from typing import Any, Callable, Coroutine
 import asyncio
 import logging
 from dataclasses import dataclass
@@ -29,7 +29,7 @@ class AsyncConfirmationManager(ConfirmationManager):
       on_confirmation_requested: Callable[[ConversationId, str],
                                           Coroutine[Any, Any, None]] | None = None
   ) -> None:
-    self.confirmations: Dict[ConversationId, ConfirmationEntry] = {}
+    self.confirmations: dict[ConversationId, ConfirmationEntry] = {}
     self.on_confirmation_requested = on_confirmation_requested
     self._lock = asyncio.Lock()
 

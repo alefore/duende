@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 import logging
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, ArgumentContentType, Argument, VariableName
@@ -23,7 +23,7 @@ class DoneCommand(AgentCommand):
         arguments=self._arguments,
     )
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     logging.info("Done command runs!")
     for k in self._arguments:
       if k.required:

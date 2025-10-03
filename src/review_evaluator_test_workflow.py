@@ -18,7 +18,7 @@ class _TestSpec(NamedTuple):
   expect: ReviewDecision
 
 class EvaluatorResults:
-  def __init__(self, review_results: list[ReviewResult], expected_decisions: Dict[str, ReviewDecision]):
+  def __init__(self, review_results: list[ReviewResult], expected_decisions: dict[str, ReviewDecision]):
     self._review_results = review_results
     self._expected_decisions = expected_decisions
 
@@ -69,7 +69,7 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
       logging.info("No evaluators found. Exiting.")
       return
 
-    tests_to_run: Dict[str, _TestSpec] = {}
+    tests_to_run: dict[str, _TestSpec] = {}
 
     for evaluator_name in all_evaluators:
       for test_file in glob.glob(f'agent/review/{evaluator_name}/accept/*.txt'):
@@ -97,13 +97,13 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
     logging.info("Review Evaluator Test Workflow completed.")
 
   def _process_results(self, all_review_results: list[ReviewResult],
-                       expected_decisions: Dict[str, ReviewDecision]) -> None:
+                       expected_decisions: dict[str, ReviewDecision]) -> None:
 
-    evaluator_grouped_results: Dict[EvaluatorName, list[ReviewResult]] = collections.defaultdict(list)
+    evaluator_grouped_results: dict[EvaluatorName, list[ReviewResult]] = collections.defaultdict(list)
     for result in all_review_results:
       evaluator_grouped_results[result.id.split('/')[0]].append(result)
 
-    evaluator_stats: Dict[EvaluatorName, EvaluatorResults] = {}
+    evaluator_stats: dict[EvaluatorName, EvaluatorResults] = {}
     for evaluator_name, results in evaluator_grouped_results.items():
       evaluator_stats[evaluator_name] = EvaluatorResults(results, expected_decisions)
 

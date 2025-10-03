@@ -1,5 +1,5 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
-from typing import AsyncIterable, Iterable, Dict, Any
+from typing import AsyncIterable, Iterable, Any
 import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
@@ -35,7 +35,7 @@ class SearchFileCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     search_term: str = inputs[VariableName("content")]
     input_path: str | None = inputs.get(VariableName("path"))
     logging.info(

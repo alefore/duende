@@ -3,7 +3,7 @@ import argparse
 import logging
 import socketio
 import uvicorn
-from typing import Any, Dict
+from typing import Any
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from starlette.staticfiles import StaticFiles
@@ -40,7 +40,7 @@ async def read_root() -> FileResponse:
   return FileResponse(current_script_dir / "static/index.html")
 
 
-async def send_update(server_state: WebServerState, data: Dict[str,
+async def send_update(server_state: WebServerState, data: dict[str,
                                                                Any]) -> None:
   message_count = data.get('message_count', 0)
   conversation_id = data.get('conversation_id')
@@ -58,7 +58,7 @@ async def main() -> None:
   server_state = await create_web_server_state(args, sio)
 
   @sio.on('confirm')  # type: ignore[misc]
-  async def handle_confirmation(sid: str, data: Dict[str, Any]) -> None:
+  async def handle_confirmation(sid: str, data: dict[str, Any]) -> None:
     logging.info("Received: confirm.")
     confirmation = data.get('confirmation')
     conversation_id = data.get('conversation_id')
@@ -72,11 +72,11 @@ async def main() -> None:
     await send_update(server_state, data)
 
   @sio.on('request_update')  # type: ignore[misc]
-  async def start_update(sid: str, data: Dict[str, Any]) -> None:
+  async def start_update(sid: str, data: dict[str, Any]) -> None:
     await send_update(server_state, data)
 
   @sio.on('list_conversations')  # type: ignore[misc]
-  async def list_conversations(sid: str, data: Dict[str, Any]) -> None:
+  async def list_conversations(sid: str, data: dict[str, Any]) -> None:
     logging.info("Received: list_conversations request")
     MAX_CONVERSATIONS_PER_LIST_UPDATE = 10
     start_id = data.get('start_id', 0)
@@ -84,7 +84,7 @@ async def main() -> None:
     await server_state.list_conversations(start_id=start_id)
 
   @sio.on('create_agent_workflow')  # type:ignore[misc]
-  async def create_agent_workflow(sid: str, data: Dict[str, Any]) -> None:
+  async def create_agent_workflow(sid: str, data: dict[str, Any]) -> None:
     logging.info("Received: create_agent_workflow request")
     try:
       validated_data = CreateAgentWorkflowData.model_validate(data)

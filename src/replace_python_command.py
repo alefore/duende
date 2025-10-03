@@ -45,7 +45,7 @@ class ReplacePythonCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     identifier: str = inputs[VariableName("identifier")]
     new_content: str = inputs[VariableName("content")]
     validated_path: str | None = inputs.get(VariableName("path"))

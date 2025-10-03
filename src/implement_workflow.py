@@ -128,7 +128,7 @@ class ImplementAndReviewWorkflowFactory(AgentWorkflowFactory):
     return "implement_and_review"
 
   async def new(self, options: AgentWorkflowOptions,
-                args: Dict[str, str]) -> AgentWorkflow:
+                args: dict[str, str]) -> AgentWorkflow:
     task = args.get('original_task_prompt_content')
     # TODO: Get rid of this assert!
     assert task

@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import os
-from typing import Dict
-
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
 from message import ContentSection, Message
@@ -64,7 +62,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
     with open(input_path, 'r') as f:
       input_content = f.read()
 
-    reviews_to_run: Dict[str, str] = {
+    reviews_to_run: dict[str, str] = {
         f"{self._path_to_id(input_path)}-{self._path_to_id(p)}":
             self._get_principle_prompt(p, input_content)
         for p in self._principle_paths

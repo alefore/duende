@@ -33,14 +33,14 @@ class AgentWorkflowFactory(ABC):
 
   @abstractmethod
   async def new(self, agent_workflow_options: AgentWorkflowOptions,
-                args: Dict[str, str]) -> AgentWorkflow:
+                args: dict[str, str]) -> AgentWorkflow:
     pass
 
 
 class AgentWorkflowFactoryContainer:
 
   def __init__(self) -> None:
-    self._workflow_factories: Dict[str, AgentWorkflowFactory] = {}
+    self._workflow_factories: dict[str, AgentWorkflowFactory] = {}
 
   def add(self, factory: AgentWorkflowFactory) -> None:
     assert factory.name() not in self._workflow_factories

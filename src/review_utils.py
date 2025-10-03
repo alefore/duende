@@ -4,7 +4,7 @@ import logging
 import os
 import subprocess
 import threading
-from typing import Callable, NamedTuple, Dict, Any
+from typing import Callable, NamedTuple, Any
 from enum import Enum
 
 from agent_command import CommandOutput
@@ -125,7 +125,7 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
 
 
 async def run_parallel_reviews(
-    reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
+    reviews_to_run: dict[str, str], parent_options: AgentLoopOptions,
     conversation_factory: ConversationFactory,
     expose_read_commands: bool) -> list[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
@@ -158,7 +158,7 @@ async def run_parallel_reviews(
 
 def implementation_review_spec(parent_options: AgentLoopOptions,
                                original_task_prompt_content: str,
-                               git_diff_output: str) -> Dict[str, str]:
+                               git_diff_output: str) -> dict[str, str]:
   """Computes the dictionary of review specifications for implementation reviews.
 
   Args:
@@ -170,7 +170,7 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
   Returns:
     A dictionary mapping an arbitrary ID (str) to the full review prompt string.
   """
-  reviews_to_run: Dict[str, str] = {}
+  reviews_to_run: dict[str, str] = {}
   evaluator_names = find_all_evaluators()
 
   if not evaluator_names:

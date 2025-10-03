@@ -137,7 +137,7 @@ class TestAgentLoop(unittest.TestCase):
         os.remove(review_file)
 
   async def _run_agent_loop_for_test(self,
-                                     scripted_responses: Dict[str,
+                                     scripted_responses: dict[str,
                                                               list[Message]],
                                      confirm_done: bool = False,
                                      do_review: bool = False) -> list[Message]:

@@ -1,7 +1,7 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 import logging
 import asyncio
-from typing import Any, Dict
+from typing import Any
 
 
 class ShellCommandCommand(AgentCommand):
@@ -22,7 +22,7 @@ class ShellCommandCommand(AgentCommand):
                 required=True)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     command = inputs[VariableName("command")]
     logging.info(f"Executing shell command: {command}")
 

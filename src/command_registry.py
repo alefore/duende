@@ -19,7 +19,7 @@ class CommandRegistrationError(Exception):
 class CommandRegistry:
 
   def __init__(self) -> None:
-    self.commands: Dict[str, AgentCommand] = {}
+    self.commands: dict[str, AgentCommand] = {}
 
   def Register(self, command: AgentCommand) -> None:
     name = command.Name()

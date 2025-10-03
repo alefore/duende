@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any
 import aiofiles
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
@@ -37,7 +37,7 @@ class ReadFileCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     path = inputs[VariableName("path")]
     start_line = inputs.get(VariableName("start_line"))
     end_line = inputs.get(VariableName("end_line"))

@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable, Dict, Any
+from typing import NamedTuple, Callable, Any
 import logging
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
@@ -18,7 +18,7 @@ class TaskCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def run(self, params: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, params: dict[VariableName, Any]) -> CommandOutput:
     task_name = params.get(VariableName("task_name"))
     task_spec = params[VariableName("task_spec")]
 

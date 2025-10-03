@@ -1,7 +1,7 @@
 import aiofiles
 import ast
 import asyncio
-from typing import Tuple, Sequence, Any, Dict
+from typing import Tuple, Sequence, Any
 
 from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
@@ -38,7 +38,7 @@ class SelectPythonCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     self.selection_manager.clear_selection()
 
     identifier: str = inputs[VariableName("identifier")]

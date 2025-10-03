@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Pattern
+from typing import Any, Pattern
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from conversation import ConversationFactory
@@ -49,7 +49,7 @@ class AskCommand(AgentCommand):
         output_description="The answer provided by the forked AI.",
     )
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     question = inputs[VariableName("question")]
 
     sub_conversation = self._conversation_factory.New(

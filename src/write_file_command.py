@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 import logging
 import os
 import difflib
@@ -90,7 +90,7 @@ class WriteFileCommand(AgentCommand):
     except Exception as e:
       return f"Could not compute diff: {e}"
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     path = self._hard_coded_path or inputs[VariableName("path")]
     new_content = inputs[_content_variable]
     logging.info(f"Write: {path}")
