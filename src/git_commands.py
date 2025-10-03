@@ -3,7 +3,7 @@ import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from validation import ValidationManager
 import asyncio
 
@@ -17,7 +17,7 @@ class GitRepositoryState(Enum):
 class ResetFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy,
-               validation_manager: Optional[ValidationManager]) -> None:
+               validation_manager: ValidationManager | None) -> None:
     self.file_access_policy = file_access_policy
     self.validation_manager = validation_manager
 
