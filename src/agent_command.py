@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, NamedTuple, NewType
+from typing import Any, NamedTuple, NewType
 from collections import namedtuple
 from enum import Enum, auto
 
@@ -19,11 +19,11 @@ class CommandOutput(NamedTuple):
 
 class CommandInput(NamedTuple):
   command_name: str
-  args: Dict[VariableName, Any] = {}
+  args: dict[VariableName, Any] = {}
   # Args that are computed by the command (before `run`).
   # They are mostly used to communicate additional debugging information
   # to the frontend.
-  derived_args: Dict[VariableName, Any] = {}
+  derived_args: dict[VariableName, Any] = {}
   thought_signature: bytes | None = None
 
 
@@ -55,7 +55,7 @@ class CommandSyntax(NamedTuple):
   description: str = ''
 
   # MCP arguments
-  arguments: List[Argument] = []
+  arguments: list[Argument] = []
 
   output_type: ArgumentContentType = ArgumentContentType.STRING
   output_description: str | None = None
@@ -77,11 +77,11 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     pass
 
   async def derive_args(
-      self, inputs: Dict[VariableName, Any]) -> Dict[VariableName, Any]:
+      self, inputs: dict[VariableName, Any]) -> dict[VariableName, Any]:
     """
     Computes additional, display-only properties for the command.
     These properties are attached to the CommandInput object.
