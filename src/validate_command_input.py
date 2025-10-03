@@ -1,4 +1,4 @@
-from typing import Generator, List, Optional
+from typing import Generator, List
 import os
 from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument
 from file_access_policy import FileAccessPolicy
