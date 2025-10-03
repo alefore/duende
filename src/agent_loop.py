@@ -3,7 +3,7 @@ import logging
 from conversation import Conversation, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
-from typing import cast, Generator, List, Tuple, Union
+from typing import cast, Generator, Tuple, Union
 
 from validation import ValidationManager
 from agent_command import CommandInput, CommandOutput
@@ -46,10 +46,10 @@ class AgentLoop:
           f"Warning {cmd_input.command_name}: {warning}" for warning in warnings
       ]))
 
-  async def _process_ai_response(
-      self, response_message: Message) -> Message | None:
-    commands: List[CommandInput] = []
-    non_command_lines: List[str] = []
+  async def _process_ai_response(self,
+                                 response_message: Message) -> Message | None:
+    commands: list[CommandInput] = []
+    non_command_lines: list[str] = []
 
     await self.conversation.SetState(ConversationState.PARSING_COMMANDS)
 
@@ -159,14 +159,14 @@ class AgentLoop:
     return True
 
   async def _execute_one_command(
-      self, cmd_input: CommandInput) -> List[ContentSection]:
+      self, cmd_input: CommandInput) -> list[ContentSection]:
     command_name = cmd_input.command_name
     command = self.options.commands_registry.Get(command_name)
     assert command
     command_output: CommandOutput = (await command.run(
         cmd_input.args))._replace(thought_signature=cmd_input.thought_signature)
 
-    outputs: List[ContentSection] = []
+    outputs: list[ContentSection] = []
     if command_output.output:
       outputs.append(
           # We deliberately leave `content` empty (since the output is included
@@ -194,8 +194,8 @@ class AgentLoop:
 
   # Return value indicates whether `done` was received.
   async def _execute_commands(
-      self, commands: List[CommandInput]) -> Tuple[List[ContentSection], bool]:
-    outputs: List[ContentSection] = []
+      self, commands: list[CommandInput]) -> Tuple[list[ContentSection], bool]:
+    outputs: list[ContentSection] = []
     for cmd_input in commands:
       outputs.extend(await self._execute_one_command(cmd_input))
 
