@@ -13,10 +13,10 @@ class CommandValidationError(Exception):
 
 
 def _IsPath(arg_type: ArgumentContentType) -> bool:
-  return arg_type in [
+  return arg_type in {
       ArgumentContentType.PATH_INPUT, ArgumentContentType.PATH_INPUT_OUTPUT,
       ArgumentContentType.PATH_OUTPUT
-  ]
+  }
 
 
 def _InvalidPathError(arg: Argument, value: str, error: str) -> str:
@@ -81,7 +81,7 @@ def validate_command_input(cmd_input: CommandInput,
 
   output = VariableMap({})
   for k, v in cmd_input.args.items():
-    if syntax_args_dict[k].arg_type == ArgumentContentType.PATH_INPUT_OUTPUT:
+    if _IsPath(syntax_args_dict[k].arg_type):
       assert isinstance(v, str)
       output[k] = pathlib.Path(v)
     else:

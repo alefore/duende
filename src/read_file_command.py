@@ -1,5 +1,6 @@
-import logging
 import aiofiles
+import logging
+import pathlib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValueInt
 from file_access_policy import FileAccessPolicy
@@ -38,6 +39,7 @@ class ReadFileCommand(AgentCommand):
 
   async def run(self, inputs: VariableMap) -> CommandOutput:
     path = inputs[VariableName("path")]
+    assert isinstance(path, pathlib.Path)
     start_line = inputs.get(VariableName("start_line"))
     assert isinstance(start_line, int)
     end_line = inputs.get(VariableName("end_line"))

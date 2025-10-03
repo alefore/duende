@@ -1,7 +1,8 @@
-from typing import Any
-import os
-import re
 import asyncio
+import os
+import pathlib
+import re
+from typing import Any
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
@@ -48,6 +49,7 @@ class SelectCommand(AgentCommand):
     self.selection_manager.clear_selection()
 
     path = inputs[VariableName('path')]
+    assert isinstance(path, pathlib.Path)
     start_line_pattern_raw = inputs[VariableName('start_line_pattern')]
     end_line_pattern_raw: str | None = inputs.get(
         VariableName('end_line_pattern'))
@@ -61,8 +63,8 @@ class SelectCommand(AgentCommand):
           end_line_pattern_raw) if end_line_pattern_raw is not None else None
 
     try:
-      selection = await Selection.FromLinePattern(path, start_line_pattern,
-                                                  end_line_pattern)
+      selection = await Selection.FromLinePattern(
+          str(path), start_line_pattern, end_line_pattern)
       selected_lines = await selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(

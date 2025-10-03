@@ -9,22 +9,22 @@ import re
 
 from search_file_command import SearchFileCommand
 from file_access_policy import CurrentDirectoryFileAccessPolicy, RegexFileAccessPolicy
-from agent_command import CommandOutput
+from agent_command import CommandOutput, VariableMap, VariableName, VariableValueStr
 
 
 class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
 
-  def setUp(self):
+  def setUp(self) -> None:
     self.original_cwd = os.getcwd()
     self.temp_dir = pathlib.Path(tempfile.mkdtemp())
     os.chdir(self.temp_dir)
     self.file_access_policy = CurrentDirectoryFileAccessPolicy()
 
-  def tearDown(self):
+  def tearDown(self) -> None:
     os.chdir(self.original_cwd)
     shutil.rmtree(self.temp_dir)
 
-  async def test_run_no_matches(self):
+  async def test_run_no_matches(self) -> None:
     file_name = "test_file.txt"
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write("Line 1 with unique content.\n")
@@ -32,23 +32,27 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
     search_term = 'nonexistent_word'
-    inputs = {'content': search_term, 'path': None}
+    inputs = VariableMap(
+        {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
 
     self.assertIn(f"No matches found for '{search_term}'.", output.output)
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 0 matches.", output.summary)
 
-  async def test_run_single_file_single_match(self):
+  async def test_run_single_file_single_match(self) -> None:
     """Verify correct reporting of a single match in a specified file."""
-    file_name = "single_match_file.txt"
+    file_name = pathlib.Path("single_match_file.txt")
     search_term = "unique_term"
     file_content = f"This line has a {search_term} here.\nAnother line.\n"
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write(file_content)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': file_name}
+    inputs = VariableMap({
+        VariableName('content'): VariableValueStr(search_term),
+        VariableName('path'): file_name
+    })
     output: CommandOutput = await command.run(inputs)
 
     expected_output_line = f"{file_name}:1: This line has a {search_term} here."
@@ -56,9 +60,9 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
-  async def test_run_single_file_multiple_matches(self):
+  async def test_run_single_file_multiple_matches(self) -> None:
     """Verify correct reporting of multiple matches in a specified file. Validate that lines that don't match don't get returned."""
-    file_name = "multiple_match_file.txt"
+    file_name = pathlib.Path("multiple_match_file.txt")
     search_term = "match"
     file_content = (f"This line has a {search_term}.\n"
                     f"Another line with a {search_term} too.\n"
@@ -68,7 +72,10 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(file_content)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': file_name}
+    inputs = VariableMap({
+        VariableName('content'): VariableValueStr(search_term),
+        VariableName('path'): file_name
+    })
     output: CommandOutput = await command.run(inputs)
 
     expected_output_lines = [
@@ -82,7 +89,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 3 matches.", output.summary)
 
-  async def test_run_multiple_files_multiple_matches(self):
+  async def test_run_multiple_files_multiple_matches(self) -> None:
     """Verify correct reporting of matches across multiple files."""
     file_name1 = "file1.txt"
     file_name2 = "file2.txt"
@@ -97,7 +104,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(file_content2)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': None}
+    inputs = VariableMap(
+        {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
 
     expected_output_lines = [
@@ -112,9 +120,9 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 2 files, found 3 matches.", output.summary)
 
-  async def test_run_with_path_argument(self):
+  async def test_run_with_path_argument(self) -> None:
     """Verify search is restricted to the specified file when 'path' argument is used."""
-    file_to_search = "target_file.txt"
+    file_to_search = pathlib.Path("target_file.txt")
     other_file = "another_file.txt"
     search_term = "important_word"
 
@@ -124,7 +132,10 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(f"This file also has the {search_term}.\n")
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': file_to_search}
+    inputs = VariableMap({
+        VariableName('content'): VariableValueStr(search_term),
+        VariableName('path'): file_to_search
+    })
     output: CommandOutput = await command.run(inputs)
 
     expected_output_line = f"{file_to_search}:1: Line one with the {search_term}."
@@ -134,11 +145,11 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
-  async def test_run_with_subdirectory_path(self):
+  async def test_run_with_subdirectory_path(self) -> None:
     """Verify search is restricted to the specified subdirectory when 'path' argument is a directory."""
     subdir = pathlib.Path("test_subdir")
     subdir.mkdir(exist_ok=True)
-    
+
     file_in_subdir = subdir / "file_in_subdir.txt"
     file_outside_subdir = "file_outside_subdir.txt"
     search_term = "subdirectory_term"
@@ -146,10 +157,14 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_in_subdir, mode='w') as f:
       await f.write(f"This file contains the {search_term} in the subdir.\n")
     async with aiofiles.open(file_outside_subdir, mode='w') as f:
-      await f.write(f"This file also contains the {search_term} but is outside.\n")
+      await f.write(
+          f"This file also contains the {search_term} but is outside.\n")
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': str(subdir)}
+    inputs = VariableMap({
+        VariableName('content'): VariableValueStr(search_term),
+        VariableName('path'): subdir
+    })
     output: CommandOutput = await command.run(inputs)
 
     expected_output_line = f"{file_in_subdir}:1: This file contains the {search_term} in the subdir."
@@ -160,7 +175,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     # This will likely fail, confirming the hypothesis.
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
-  async def test_run_repository_wide_search(self):
+  async def test_run_repository_wide_search(self) -> None:
     """Verify search covers the entire repository, including subdirectories, when no 'path' argument is provided."""
     subdir1 = pathlib.Path("subdir1")
     subdir2 = pathlib.Path("subdir2")
@@ -180,7 +195,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(f"{search_term} is also here in subdir2.\n")
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': None}
+    inputs = VariableMap(
+        {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
 
     expected_output_lines = [
@@ -195,9 +211,9 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 3 files, found 3 matches.", output.summary)
 
-  async def test_run_large_number_of_matches(self):
+  async def test_run_large_number_of_matches(self) -> None:
     """Verify correct handling of the match_limit and summary reporting."""
-    file_name = "large_match_file.txt"
+    file_name = pathlib.Path("large_match_file.txt")
     search_term = "limit_test"
     num_matches = 250  # More than the default match_limit of 200
     file_content = "\n".join(
@@ -207,7 +223,10 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(file_content)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': file_name}
+    inputs = VariableMap({
+        VariableName('content'): VariableValueStr(search_term),
+        VariableName('path'): file_name
+    })
     output: CommandOutput = await command.run(inputs)
 
     self.assertIn(f"Too many matches to display ({num_matches}, limit is 200).",
@@ -219,7 +238,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertIn(f"Searched 1 files, found {num_matches} matches.",
                   output.summary)
 
-  async def test_run_with_file_access_errors(self):
+  async def test_run_with_file_access_errors(self) -> None:
     """Verify graceful handling and reporting of file access errors (policy-based)."""
     file_allowed = "allowed_file.txt"
     file_restricted = "restricted_file.txt"
@@ -232,7 +251,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
 
     access_policy = RegexFileAccessPolicy(r"^allowed_file\.txt$")
     command = SearchFileCommand(file_access_policy=access_policy)
-    inputs = {'content': search_term, 'path': None}
+    inputs = VariableMap(
+        {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
 
     self.assertIn(f"{file_allowed}:1: This file is {search_term} and allowed.",

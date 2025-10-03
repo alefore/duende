@@ -54,7 +54,7 @@ class ReplacePythonCommand(AgentCommand):
 
     try:
       selections: list[Selection] = await FindPythonDefinition(
-          self.file_access_policy, str(validated_path), identifier)
+          self.file_access_policy, validated_path, identifier)
     except Exception as e:
       return CommandOutput(
           output="",

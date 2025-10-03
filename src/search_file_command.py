@@ -1,12 +1,13 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
-from typing import AsyncIterable, Iterable, Any
-import logging
-from file_access_policy import FileAccessPolicy
-from list_files import list_all_files
-import os
 import aiofiles
 import asyncio
-import pathlib  # Added import
+import logging
+import pathlib
+import os
+from typing import AsyncIterable, Iterable, Any
+
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName, VariableValue
+from file_access_policy import FileAccessPolicy
+from list_files import list_all_files
 
 
 class SearchFileCommand(AgentCommand):
@@ -37,7 +38,8 @@ class SearchFileCommand(AgentCommand):
 
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     search_term: str = inputs[VariableName("content")]
-    input_path: str | None = inputs.get(VariableName("path"))
+    input_path: VariableValue | None = inputs.get(VariableName("path"))
+    assert isinstance(input_path, pathlib.Path | None)
     logging.info(
         f"Searching for '{search_term}' in specified files or directory and subdirectories."
     )
@@ -54,12 +56,12 @@ class SearchFileCommand(AgentCommand):
     if not input_path:
       paths_to_search = list_all_files(".", self.file_access_policy)
     elif pathlib.Path(input_path).is_dir():
-      paths_to_search = list_all_files(input_path, self.file_access_policy)
+      paths_to_search = list_all_files(str(input_path), self.file_access_policy)
     else:
       # If a specific file path is provided,
       # convert it to an async iterable for consistency
       async def _single_file_iterator() -> AsyncIterable[str]:
-        yield input_path
+        yield str(input_path)
 
       paths_to_search = _single_file_iterator()
 

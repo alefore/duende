@@ -1,10 +1,11 @@
 import aiofiles
 import ast
 import asyncio
+import pathlib
 from typing import Tuple, Sequence, Any
 
 from list_files import list_all_files
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
 from file_access_policy import FileAccessPolicy
 from selection_manager import Selection, SelectionManager
 
@@ -38,11 +39,13 @@ class SelectPythonCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: VariableMap) -> CommandOutput:
     self.selection_manager.clear_selection()
 
-    identifier: str = inputs[VariableName("identifier")]
-    validated_path: str | None = inputs.get(VariableName("path"))
+    identifier: VariableValue = inputs[VariableName("identifier")]
+    assert isinstance(identifier, str)
+    validated_path: VariableValue | None = inputs.get(VariableName("path"))
+    assert isinstance(validated_path, pathlib.Path | None)
 
     try:
       selections = await FindPythonDefinition(self.file_access_policy,
@@ -108,7 +111,7 @@ def _find_nested_definition_nodes(
 
 
 async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
-                               validated_path: str | None,
+                               validated_path: pathlib.Path | None,
                                identifier: str) -> list[Selection]:
   """Finds all Python code elements by identifier and returns the selections.
 
@@ -121,7 +124,7 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
   Returns:
       A list of Selection objects for the found definitions.
   """
-  file_list: list[str]
+  file_list: list[pathlib.Path]
 
   if validated_path:
     file_list = [validated_path]
@@ -129,7 +132,8 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
     file_list = []
     async for file in list_all_files(".", file_access_policy):
       if file.endswith(".py") and file_access_policy.allow_access(file):
-        file_list.append(file)
+        # TODO: Remove the pathlib.Path wrapping here.
+        file_list.append(pathlib.Path(file))
 
   selections = []
   identifier_parts = identifier.split('.')
@@ -147,7 +151,7 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
       for node in found_nodes:
         if node.lineno is not None and node.end_lineno is not None:
           selections.append(
-              Selection(file_path, node.lineno - 1, node.end_lineno - 1))
+              Selection(str(file_path), node.lineno - 1, node.end_lineno - 1))
     except Exception as e:
       # Log error or add to a list of errors if file cannot be parsed
       # For now, just continue to the next file
