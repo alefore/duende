@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import shutil
-from typing import List, Optional
+from typing import List
 from unittest.mock import patch, MagicMock, call
 
 from args_common import CreateCommonParser, CreateFileAccessPolicy
@@ -24,7 +24,7 @@ class TestArgsCommon(unittest.TestCase):
     os.chdir(self.test_dir)
 
     os.makedirs(os.path.dirname(DEFAULT_FILE_ACCESS_REGEX_PATH), exist_ok=True)
-    self.policy: Optional[FileAccessPolicy] = None
+    self.policy: FileAccessPolicy | None = None
 
   def tearDown(self) -> None:
     os.chdir(self.original_cwd)
