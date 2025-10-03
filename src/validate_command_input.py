@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 from typing import Generator
 
 from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument, VariableMap, VariableName, VariableValue
@@ -68,10 +69,21 @@ def validate_command_input(cmd_input: CommandInput,
     if not found_in_syntax:
       warnings.append(f"Unexpected argument: {input_arg_name}")
 
+  syntax_args_dict: dict[VariableName, Argument] = {
+      a.name: a for a in command.Syntax().arguments
+  }
+
   if warnings:
     logging.info(f"Warnings: {','.join(warnings)}")
     raise CommandValidationError("\n".join([
         f"Warning {command.Syntax().name}: {warning}" for warning in warnings
     ]))
 
-  return cmd_input.args
+  output = VariableMap({})
+  for k, v in cmd_input.args.items():
+    if syntax_args_dict[k].arg_type == ArgumentContentType.PATH_INPUT_OUTPUT:
+      assert isinstance(v, str)
+      output[k] = pathlib.Path(v)
+    else:
+      output[k] = v
+  return output

@@ -3,11 +3,12 @@ from dataclasses import dataclass
 from typing import NamedTuple, NewType
 from collections import namedtuple
 from enum import Enum, auto
+import pathlib
 
 VariableName = NewType("VariableName", str)
 VariableValueInt = NewType("VariableValueInt", int)
 VariableValueStr = NewType("VariableValueStr", str)
-VariableValue = VariableValueInt | VariableValueStr
+VariableValue = VariableValueInt | VariableValueStr | pathlib.Path
 VariableMap = NewType("VariableMap", dict[VariableName, VariableValue])
 
 

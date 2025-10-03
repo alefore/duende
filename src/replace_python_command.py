@@ -1,4 +1,6 @@
+import pathlib
 from typing import Any
+
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
@@ -48,11 +50,11 @@ class ReplacePythonCommand(AgentCommand):
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     identifier: str = inputs[VariableName("identifier")]
     new_content: str = inputs[VariableName("content")]
-    validated_path: str | None = inputs.get(VariableName("path"))
+    validated_path: pathlib.Path | None = inputs.get(VariableName("path"))
 
     try:
       selections: list[Selection] = await FindPythonDefinition(
-          self.file_access_policy, validated_path, identifier)
+          self.file_access_policy, str(validated_path), identifier)
     except Exception as e:
       return CommandOutput(
           output="",
