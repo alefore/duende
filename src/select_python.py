@@ -1,5 +1,5 @@
 import ast
-from typing import List, Optional, Tuple, Sequence, Any, Dict
+from typing import List, Tuple, Sequence, Any, Dict
 from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType
 from file_access_policy import FileAccessPolicy
@@ -42,7 +42,7 @@ class SelectPythonCommand(AgentCommand):
     self.selection_manager.clear_selection()
 
     identifier: str = inputs['identifier']
-    validated_path: Optional[str] = inputs.get('path')
+    validated_path: str | None = inputs.get('path')
 
     try:
       selections = await FindPythonDefinition(self.file_access_policy, validated_path,
@@ -108,7 +108,7 @@ def _find_nested_definition_nodes(
 
 
 async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
-                         validated_path: Optional[str],
+                         validated_path: str | None,
                          identifier: str) -> List[Selection]:
   """Finds all Python code elements by identifier and returns the selections.
 
