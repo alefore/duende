@@ -1,4 +1,4 @@
-from typing import List, Optional, Pattern, NamedTuple
+from typing import List, Pattern, NamedTuple
 
 from command_registry import CommandRegistry
 from confirmation import ConfirmationState
@@ -17,6 +17,6 @@ class AgentLoopOptions(NamedTuple):
   confirmation_state: ConfirmationState
   file_access_policy: FileAccessPolicy
   conversational_ai: ConversationalAI
-  confirm_regex: Optional[Pattern[str]] = None
+  confirm_regex: Pattern[str] | None = None
   skip_implicit_validation: bool = False
-  validation_manager: Optional[ValidationManager] = None
+  validation_manager: ValidationManager | None = None
