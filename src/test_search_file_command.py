@@ -133,6 +133,39 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
+  async def test_run_repository_wide_search(self):
+    """Verify search covers the entire repository, including subdirectories, when no 'path' argument is provided."""
+    os.makedirs("subdir1", exist_ok=True)
+    os.makedirs("subdir2", exist_ok=True)
+
+    file_main = "main_file.txt"
+    file_subdir1 = os.path.join("subdir1", "sub_file1.txt")
+    file_subdir2 = os.path.join("subdir2", "sub_file2.txt")
+    search_term = "repo_match"
+
+    async with aiofiles.open(file_main, mode='w') as f:
+      await f.write(f"Here is a {search_term} in the main directory.\n")
+    async with aiofiles.open(file_subdir1, mode='w') as f:
+      await f.write(f"A {search_term} inside subdir1.\nAnother line.\n")
+    async with aiofiles.open(file_subdir2, mode='w') as f:
+      await f.write(f"{search_term} is also here in subdir2.\n")
+
+    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    inputs = {'content': search_term, 'path': None}
+    output: CommandOutput = await command.run(inputs)
+
+    expected_output_lines = [
+        f"{file_main}:1: Here is a {search_term} in the main directory.",
+        f"{file_subdir1}:1: A {search_term} inside subdir1.",
+        f"{file_subdir2}:1: {search_term} is also here in subdir2."
+    ]
+
+    for line in expected_output_lines:
+      self.assertIn(line, output.output)
+
+    self.assertEqual(output.errors, "")
+    self.assertIn("Searched 3 files, found 3 matches.", output.summary) # 3 files created for this test
+
 
 if __name__ == '__main__':
   unittest.main()
