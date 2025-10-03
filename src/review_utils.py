@@ -4,7 +4,7 @@ import logging
 import os
 import subprocess
 import threading
-from typing import Callable, List, Optional, NamedTuple, Dict, Any
+from typing import Callable, List, NamedTuple, Dict, Any
 from enum import Enum
 
 from agent_command import CommandOutput
@@ -201,7 +201,7 @@ def find_all_evaluators() -> List[str]:
 
 
 def reject_output_content_sections(
-    all_review_results: List[ReviewResult]) -> Optional[List[ContentSection]]:
+    all_review_results: List[ReviewResult]) -> List[ContentSection] | None:
   """Processes the output of run_parallel_reviews, turning rejections into
   an optional list of content sections.
 
