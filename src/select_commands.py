@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import os
 import re
 import asyncio
@@ -49,7 +49,7 @@ class SelectCommand(AgentCommand):
 
     path = inputs[VariableName('path')]
     start_line_pattern_raw = inputs[VariableName('start_line_pattern')]
-    end_line_pattern_raw: Optional[str] = inputs.get(
+    end_line_pattern_raw: str | None = inputs.get(
         VariableName('end_line_pattern'))
 
     if self.use_regex:
@@ -93,7 +93,7 @@ class SelectCommand(AgentCommand):
 class SelectOverwriteCommand(AgentCommand):
 
   def __init__(self, selection_manager: SelectionManager,
-               validation_manager: Optional[ValidationManager]):
+               validation_manager: ValidationManager | None):
     self.selection_manager = selection_manager
     self.validation_manager = validation_manager
 
