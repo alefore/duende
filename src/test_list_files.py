@@ -53,15 +53,30 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(len(output.file_paths), 7)
     # ✨
 
-  def testRootFormat(self):
+  async def testRootFormat(self):
     """The output of root search (".") is as expected.
 
     Expected format: "fruits/banana.md"."""
-    # {{🍄 expected output root}}
+    # ✨ expected output root
+    output: CommandOutput = await list_all_files(".")
+    file_paths = sorted(output.file_paths)  # Sort for consistent order
 
-  def testEmpty(self):
+    self.assertIn("fruits/banana.md", file_paths)
+    self.assertIn("animals/mammals/dog.txt", file_paths)
+    self.assertIn("animals/birds/tucan.jpg", file_paths)
+
+    # Validate format for a few entries
+    for path in file_paths:
+      self.assertTrue(re.match(r"^[a-zA-Z0-9_]+/.*\.[a-zA-Z0-9_]+$", path))
+    # ✨
+
+  async def testEmpty(self):
     """No files are returned for a search in an empty directory."""
-    # {{🍄 empty}}
+    # ✨ empty
+    os.makedirs("empty_dir")
+    output: CommandOutput = await list_all_files("empty_dir")
+    self.assertEqual(len(output.file_paths), 0)
+    # ✨
 
   def testFlat(self):
     """Search in a flat directory returns expected number of outputs."""
