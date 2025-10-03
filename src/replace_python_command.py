@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
@@ -10,7 +10,7 @@ class ReplacePythonCommand(AgentCommand):
   """Command to replace a Python code element based on an identifier."""
 
   def __init__(self, file_access_policy: FileAccessPolicy,
-               validation_manager: Optional[ValidationManager]) -> None:
+               validation_manager: ValidationManager | None) -> None:
     self.file_access_policy = file_access_policy
     self.validation_manager = validation_manager
 
@@ -48,7 +48,7 @@ class ReplacePythonCommand(AgentCommand):
   async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     identifier: str = inputs[VariableName("identifier")]
     new_content: str = inputs[VariableName("content")]
-    validated_path: Optional[str] = inputs.get(VariableName("path"))
+    validated_path: str | None = inputs.get(VariableName("path"))
 
     try:
       selections: List[Selection] = await FindPythonDefinition(
