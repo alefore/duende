@@ -25,6 +25,10 @@ class DoneCommand(AgentCommand):
 
   async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     logging.info("Done command runs!")
+    for k in self._arguments:
+      if k.required:
+        assert k.name in inputs
+
     if not self._validation_manager:
       return CommandOutput(
           self.Name(), "", "", "Task completed.", task_done=True)
@@ -44,6 +48,7 @@ class DoneCommand(AgentCommand):
           self.Name(),
           output=validation_result.output,
           errors="",
+          output_variables=inputs,
           summary=f"Validation succeeded.",
           task_done=True,
       )
