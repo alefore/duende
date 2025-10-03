@@ -95,9 +95,21 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     self.assertListEqual(file_paths, ["animals/birds/condor.txt", "animals/birds/tucan.jpg"])
     # ✨
 
-  def testNestedDirs(self):
+  async def testNestedDirs(self):
     """Search in animals outputs five entries in the expected format."""
-    # {{🍄 nested dirs}}
+    # ✨ nested dirs
+    output: CommandOutput = await list_all_files("animals")
+    self.assertEqual(len(output.file_paths), 5)
+
+    expected_files = [
+        "animals/birds/condor.txt",
+        "animals/birds/tucan.jpg",
+        "animals/mammals/cat.txt",
+        "animals/mammals/dog.txt",
+        "animals/mammals/fox.txt",
+    ]
+    self.assertListEqual(sorted(output.file_paths), expected_files)
+    # ✨
 
   def testFileAccessPolicy(self):
     """Search in root directory only outputs entries allowed by access policy.
