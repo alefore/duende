@@ -1,5 +1,5 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Dict, Any
 import logging
 import os
 import aiofiles
