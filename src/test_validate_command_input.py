@@ -1,19 +1,45 @@
-import unittest
-from validate_command_input import ValidateCommandInput
-from agent_command import CommandSyntax, CommandInput, Argument, ArgumentContentType
-from file_access_policy import RegexFileAccessPolicy
 import os
+import unittest
+
+from agent_command import AgentCommand, CommandSyntax, CommandInput, Argument, ArgumentContentType, VariableMap, VariableName, VariableValueStr
+from command_registry import CommandRegistry
+from file_access_policy import RegexFileAccessPolicy
+from validate_command_input import CommandValidationError, validate_command_input
+
+
+class FakeCommand(AgentCommand):
+
+  def __init__(self, arguments: list[Argument] = []):
+    self._arguments = arguments
+
+  def execute(self):
+    assert False
+
+  def Syntax(self):
+    return CommandSyntax(name="test_command", arguments=self._arguments)
+
+  def Name(self):
+    return self.Syntax().name
+
+  def run(self, inputs: VariableMap):
+    pass
+
+
+def fake_registry(arguments: list[Argument]):
+  output = CommandRegistry()
+  output.Register(FakeCommand(arguments))
+  return output
 
 
 class TestValidateCommandInput(unittest.TestCase):
 
-  def setUp(self):
+  def setUp(self) -> None:
     self.input_path = Argument(
-        name="input_path",
+        name=VariableName("input_path"),
         arg_type=ArgumentContentType.PATH_INPUT,
         description="Input file path")
     self.output_path = Argument(
-        name="output_path",
+        name=VariableName("output_path"),
         arg_type=ArgumentContentType.PATH_OUTPUT,
         description="Output file path")
     self.file_access_policy = RegexFileAccessPolicy(
@@ -30,7 +56,7 @@ class TestValidateCommandInput(unittest.TestCase):
     with open(self.not_allowed_path, 'w') as f:
       f.write('dummy content')
 
-  def tearDown(self):
+  def tearDown(self) -> None:
     if os.path.exists(self.existing_allowed_path):
       os.remove(self.existing_allowed_path)
     if os.path.exists(self.not_allowed_path):
@@ -38,53 +64,66 @@ class TestValidateCommandInput(unittest.TestCase):
     if os.path.exists('allowed/'):
       os.rmdir('allowed/')
 
-  def test_missing_input_path(self):
-    syntax = CommandSyntax(arguments=[self.input_path])
-    input = CommandInput(command_name="test_command", args={})
-    warnings = ValidateCommandInput(syntax, input, self.file_access_policy)
-    self.assertIn("Missing required argument", warnings[0])
-    self.assertIn(self.input_path.name, warnings[0])
+  def test_missing_input_path(self) -> None:
+    input = CommandInput(command_name="test_command", args=VariableMap({}))
+    with self.assertRaisesRegex(CommandValidationError,
+                                r".*Missing required argument: input_path"):
+      validate_command_input(input, fake_registry([self.input_path]),
+                             self.file_access_policy)
 
-  def test_excess_arguments_with_no_repeatable_final(self):
-    syntax = CommandSyntax(arguments=[self.input_path, self.output_path])
+  def test_excess_arguments_with_no_repeatable_final(self) -> None:
     input = CommandInput(
         command_name="test_command",
-        args={
-            "input_path": self.existing_allowed_path,
-            "output_path": "arg2",
-            "extra_arg": "arg3"
-        })
-    warnings = ValidateCommandInput(syntax, input, self.file_access_policy)
-    self.assertIn("Unexpected argument: extra_arg", warnings[0])
+        args=VariableMap({
+            VariableName("input_path"):
+                VariableValueStr(self.existing_allowed_path),
+            VariableName("output_path"):
+                VariableValueStr("arg2"),
+            VariableName("extra_arg"):
+                VariableValueStr("arg3")
+        }))
+    with self.assertRaisesRegex(CommandValidationError,
+                                "Unexpected argument: extra_arg"):
+      validate_command_input(input,
+                             fake_registry([self.input_path, self.output_path]),
+                             self.file_access_policy)
 
-  def test_perfect_argument_count(self):
-    syntax = CommandSyntax(arguments=[self.input_path, self.output_path])
+  def test_perfect_argument_count(self) -> None:
     input = CommandInput(
         command_name="test_command",
-        args={
-            "input_path": self.existing_allowed_path,
-            "output_path": "arg2"
-        })
-    warnings = ValidateCommandInput(syntax, input, self.file_access_policy)
-    self.assertEqual(warnings, [])
+        args=VariableMap({
+            VariableName("input_path"):
+                VariableValueStr(self.existing_allowed_path),
+            VariableName("output_path"):
+                VariableValueStr("arg2")
+        }))
+    validate_command_input(input,
+                           fake_registry([self.input_path, self.output_path]),
+                           self.file_access_policy)
 
-  def test_non_existent_input_path(self):
-    syntax = CommandSyntax(arguments=[self.input_path])
+  def test_non_existent_input_path(self) -> None:
     input = CommandInput(
-        command_name="test_command", args={"input_path": "non_existent_path"})
-    warnings = ValidateCommandInput(syntax, input, self.file_access_policy)
-    self.assertIn("File not found", warnings[0])
-    self.assertIn(self.input_path.name, warnings[0])
-    self.assertIn(input.args[self.input_path.name], warnings[0])
+        command_name="test_command",
+        args=VariableMap({
+            VariableName("input_path"): VariableValueStr("non_existent_path")
+        }))
+    with self.assertRaisesRegex(
+        CommandValidationError,
+        f"{self.input_path.name}.*File not found.*non_existent_path"):
+      validate_command_input(input, fake_registry([self.input_path]),
+                             self.file_access_policy)
 
-  def test_access_denied_input_path(self):
-    syntax = CommandSyntax(arguments=[self.input_path])
+  def test_access_denied_input_path(self) -> None:
     input = CommandInput(
-        command_name="test_command", args={"input_path": self.not_allowed_path})
-    warnings = ValidateCommandInput(syntax, input, self.restricted_policy)
-    self.assertIn("File not found", warnings[0])
-    self.assertIn(self.input_path.name, warnings[0])
-    self.assertIn(input.args[self.input_path.name], warnings[0])
+        command_name="test_command",
+        args=VariableMap({
+            VariableName("input_path"): VariableValueStr(self.not_allowed_path)
+        }))
+    with self.assertRaisesRegex(
+        CommandValidationError,
+        r".*test_command.*input_path.*File not found.*not_allowed_path"):
+      validate_command_input(input, fake_registry([self.input_path]),
+                             self.restricted_policy)
 
 
 if __name__ == '__main__':

@@ -19,7 +19,6 @@ from conversation import Conversation, ConversationFactory, ConversationFactoryO
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI
 from gemini import Gemini
-from validate_command_input import ValidateCommandInput
 from agent_workflow_options import AgentWorkflowOptions
 from selection_manager import SelectionManager
 from ask_command import AskCommand
@@ -52,11 +51,7 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default=os.path.expanduser('~/.openai/api_key'))
 
   group = parser.add_mutually_exclusive_group(required=False)
-  group.add_argument(
-      '--task',
-      type=str,
-      help="File path for task prompt."
-  )
+  group.add_argument('--task', type=str, help="File path for task prompt.")
   group.add_argument(
       '--input',
       action='append',
@@ -237,8 +232,7 @@ async def CreateAgentWorkflowOptions(
     return AgentWorkflowOptions(
         agent_loop_options=AgentLoopOptions(
             conversation=conversation_factory.New(
-                name="principle_review_dummy_conv",
-                command_registry=registry),
+                name="principle_review_dummy_conv", command_registry=registry),
             start_message=Message(
                 'system',
                 content_sections=[
@@ -273,8 +267,7 @@ async def CreateAgentWorkflowOptions(
                                                   file_access_policy)
 
   conversation = conversation_factory.New(
-      name=conversation_name,
-      command_registry=registry)
+      name=conversation_name, command_registry=registry)
 
   content_sections: list[ContentSection] = []
 

@@ -109,6 +109,10 @@ class GeminiConversation(ConversationalAIConversation):
         logging.info(part)
         if not part.function_call:
           continue
+        name = part.function_call.name
+        if not name:
+          continue
+
         logging.info(f"Commands received from Gemini")
         function_call: genai.types.FunctionCall = part.function_call
         logging.info(function_call)
@@ -119,7 +123,7 @@ class GeminiConversation(ConversationalAIConversation):
                 content="",
                 summary=f'MCP call: {function_call}',
                 command=CommandInput(
-                    command_name=(function_call.name or "unknown"),
+                    command_name=name,
                     args=VariableMap({
                         VariableName(k): _get_value(v)
                         for k, v in (function_call.args or {}).items()

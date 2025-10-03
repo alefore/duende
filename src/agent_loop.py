@@ -11,13 +11,9 @@ from agent_loop_options import AgentLoopOptions
 from confirmation import ConfirmationState
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
-from validate_command_input import ValidateCommandInput
+from validate_command_input import CommandValidationError, validate_command_input
 
 logging.basicConfig(level=logging.INFO)
-
-
-class CommandValidationError(Exception):
-  pass
 
 
 class AgentLoop:
@@ -29,22 +25,6 @@ class AgentLoop:
         self.conversation)
     self._previous_validation_passed = True
     self.next_message: Message | None = self.options.start_message
-
-  def _validate_command(self, cmd_input: CommandInput) -> None:
-    command = self.options.commands_registry.Get(cmd_input.command_name)
-    if not command:
-      error_msg = (f"Error: Unknown command: {cmd_input.command_name}. " +
-                   self.options.commands_registry.available_commands_str())
-      logging.error(error_msg)
-      raise CommandValidationError(error_msg)
-
-    warnings = ValidateCommandInput(command.Syntax(), cmd_input,
-                                    self.options.file_access_policy)
-    if warnings:
-      logging.info(f"Warnings: {','.join(warnings)}")
-      raise CommandValidationError("\n".join([
-          f"Warning {cmd_input.command_name}: {warning}" for warning in warnings
-      ]))
 
   async def _process_ai_response(self,
                                  response_message: Message) -> Message | None:
@@ -59,7 +39,10 @@ class AgentLoop:
       if section.command:
         cmd_input = section.command
         try:
-          self._validate_command(cmd_input)
+          cmd_input = cmd_input._replace(
+              args=validate_command_input(cmd_input,
+                                          self.options.commands_registry,
+                                          self.options.file_access_policy))
         except CommandValidationError as e:
           non_command_lines.append(f"Invalid command invocation: {str(e)}")
           next_message.PushSection(

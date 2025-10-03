@@ -1,7 +1,14 @@
-from typing import Generator
+import logging
 import os
-from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument
+from typing import Generator
+
+from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument, VariableMap, VariableName, VariableValue
+from command_registry import CommandRegistry
 from file_access_policy import FileAccessPolicy
+
+
+class CommandValidationError(Exception):
+  pass
 
 
 def _IsPath(arg_type: ArgumentContentType) -> bool:
@@ -28,13 +35,22 @@ def _ValidatePathArg(
     yield _InvalidPathError(arg, value, "File not found")
 
 
-def ValidateCommandInput(syntax: CommandSyntax, input: CommandInput,
-                         file_access_policy: FileAccessPolicy) -> list[str]:
+def validate_command_input(cmd_input: CommandInput,
+                           command_registry: CommandRegistry,
+                           file_access_policy: FileAccessPolicy) -> VariableMap:
+  command = command_registry.Get(cmd_input.command_name)
+  if not command:
+    error_msg = (f"Error: Unknown command: {cmd_input.command_name}. " +
+                 command_registry.available_commands_str())
+    logging.error(error_msg)
+    raise CommandValidationError(error_msg)
+
   warnings: list[str] = []
 
   # Validate arguments based on CommandSyntax.arguments
-  for syntax_arg in syntax.arguments:
-    value = input.args.get(syntax_arg.name)
+  for syntax_arg in command.Syntax().arguments:
+    name: VariableName = syntax_arg.name
+    value: VariableValue | None = cmd_input.args.get(syntax_arg.name)
     if value is not None:
       assert isinstance(value, str)
       if _IsPath(syntax_arg.arg_type):
@@ -42,14 +58,20 @@ def ValidateCommandInput(syntax: CommandSyntax, input: CommandInput,
     elif syntax_arg.required:
       warnings.append(f"Missing required argument: {syntax_arg.name}")
 
-  # Check for unexpected arguments in input.args
-  for input_arg_name in input.args:
+  # Check for unexpected arguments:
+  for input_arg_name in cmd_input.args:
     found_in_syntax = False
-    for syntax_arg in syntax.arguments:
+    for syntax_arg in command.Syntax().arguments:
       if input_arg_name == syntax_arg.name:
         found_in_syntax = True
         break
     if not found_in_syntax:
       warnings.append(f"Unexpected argument: {input_arg_name}")
 
-  return warnings
+  if warnings:
+    logging.info(f"Warnings: {','.join(warnings)}")
+    raise CommandValidationError("\n".join([
+        f"Warning {command.Syntax().name}: {warning}" for warning in warnings
+    ]))
+
+  return cmd_input.args
