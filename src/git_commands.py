@@ -3,7 +3,7 @@ import subprocess
 import sys
 from file_access_policy import FileAccessPolicy
 from enum import Enum, auto
-from typing import List, Dict, Any
+from typing import Dict, Any
 from validation import ValidationManager
 import asyncio
 
@@ -26,7 +26,7 @@ class ResetFileCommand(AgentCommand):
 
   async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
     path: str = inputs[VariableName('path')]
-    errors: List[str] = []
+    errors: list[str] = []
 
     try:
       process = await asyncio.create_subprocess_exec(

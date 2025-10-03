@@ -4,7 +4,6 @@ import os
 import sys
 import tempfile
 import shutil
-from typing import List
 from unittest.mock import patch, MagicMock, call
 
 from args_common import CreateCommonParser, CreateFileAccessPolicy
@@ -30,7 +29,7 @@ class TestArgsCommon(unittest.TestCase):
     os.chdir(self.original_cwd)
     shutil.rmtree(self.test_dir)
 
-  def _create_policy(self, args_list: List[str]):
+  def _create_policy(self, args_list: list[str]):
     args = self.parser.parse_args(args_list)
     self.policy = CreateFileAccessPolicy(args.file_access_regex,
                                          args.file_access_regex_path)

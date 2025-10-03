@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from typing import List, Dict
+from typing import Dict
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
@@ -24,13 +24,13 @@ class PrincipleReviewWorkflow(AgentWorkflow):
       raise ValueError(
           "PrincipleReviewWorkflow requires principle_paths in AgentWorkflowOptions."
       )
-    self._principle_paths: List[str] = options.principle_paths
+    self._principle_paths: list[str] = options.principle_paths
 
     if not options.input_paths:
       raise ValueError(
           "PrincipleReviewWorkflow requires input_paths in AgentWorkflowOptions."
       )
-    self._input_paths: List[str] = options.input_paths
+    self._input_paths: list[str] = options.input_paths
 
   def _path_to_id(self, path: str) -> str:
     return os.path.basename(path).replace('.md', '')

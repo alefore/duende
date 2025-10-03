@@ -1,6 +1,6 @@
 import asyncio
 
-from typing import Dict, Callable, List
+from typing import Dict, Callable
 import sys
 
 from agent_command import AgentCommand, CommandOutput

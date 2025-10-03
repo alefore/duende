@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Dict, Any
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from validation import ValidationManager
 from file_access_policy import FileAccessPolicy
@@ -51,7 +51,7 @@ class ReplacePythonCommand(AgentCommand):
     validated_path: str | None = inputs.get(VariableName("path"))
 
     try:
-      selections: List[Selection] = await FindPythonDefinition(
+      selections: list[Selection] = await FindPythonDefinition(
           self.file_access_policy, validated_path, identifier)
     except Exception as e:
       return CommandOutput(

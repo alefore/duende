@@ -1,7 +1,7 @@
 import os
 import unittest
 from unittest.mock import MagicMock, call, patch
-from typing import Dict, List, Union
+from typing import Dict, Union
 import glob
 import logging
 import asyncio
@@ -138,9 +138,9 @@ class TestAgentLoop(unittest.TestCase):
 
   async def _run_agent_loop_for_test(self,
                                      scripted_responses: Dict[str,
-                                                              List[Message]],
+                                                              list[Message]],
                                      confirm_done: bool = False,
-                                     do_review: bool = False) -> List[Message]:
+                                     do_review: bool = False) -> list[Message]:
     """Creates and runs an AgentLoop instance, returning the conversation."""
     self.fake_ai = FakeConversationalAI(scripted_responses=scripted_responses)
     conversation = Conversation(

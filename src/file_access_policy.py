@@ -1,7 +1,6 @@
 import abc
 import re
 import os
-from typing import List
 
 
 class FileAccessPolicy(abc.ABC):
@@ -33,7 +32,7 @@ class CurrentDirectoryFileAccessPolicy(FileAccessPolicy):
 
 class CompositeFileAccessPolicy(FileAccessPolicy):
 
-  def __init__(self, policies: List[FileAccessPolicy]):
+  def __init__(self, policies: list[FileAccessPolicy]):
     self.policies = policies
 
   def allow_access(self, path: str) -> bool:

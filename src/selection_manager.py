@@ -1,4 +1,3 @@
-from typing import List
 import os
 import re
 import aiofiles
@@ -20,13 +19,13 @@ class Selection:
     self.start_index = start_index
     self.end_index = end_index
 
-  async def Read(self) -> List[str]:
+  async def Read(self) -> list[str]:
     """Reads corresponding lines from the file and returns them."""
     if not await asyncio.to_thread(os.path.exists, self.path):
       raise FileNotFoundError(f"File not found: {self.path}")
 
     async with aiofiles.open(self.path, "r") as file:
-      lines: List[str] = [l.rstrip('\n') for l in await file.readlines()]
+      lines: list[str] = [l.rstrip('\n') for l in await file.readlines()]
 
     if self.start_index < 0 or self.end_index >= len(lines):
       raise ValueError("Start or end index out of range.")
@@ -62,7 +61,7 @@ class Selection:
       raise FileNotFoundError(f"File not found: {path}")
 
     async with aiofiles.open(path, "r") as file:
-      lines: List[str] = await file.readlines()
+      lines: list[str] = await file.readlines()
 
     start_index = None
     for index, line in enumerate(lines):

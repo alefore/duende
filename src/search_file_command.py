@@ -1,5 +1,5 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
-from typing import AsyncIterable, Iterable, List, Dict, Any
+from typing import AsyncIterable, Iterable, Dict, Any
 import logging
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
@@ -43,7 +43,7 @@ class SearchFileCommand(AgentCommand):
     )
 
     matches = []
-    errors: List[str] = []
+    errors: list[str] = []
 
     global_file_count = 0
     global_line_count = 0
@@ -63,7 +63,7 @@ class SearchFileCommand(AgentCommand):
 
       paths_to_search = _single_file_iterator()
 
-    files_data: List[str] = []
+    files_data: list[str] = []
 
     match_limit = 200
     async for file_path_str in paths_to_search:
@@ -91,7 +91,7 @@ class SearchFileCommand(AgentCommand):
       except Exception as e:
         errors.append(f"{file_path_str}: {str(e)}")
 
-    output_lines: List[str] = [
+    output_lines: list[str] = [
         f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"
     ]
 

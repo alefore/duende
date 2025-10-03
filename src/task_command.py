@@ -1,4 +1,4 @@
-from typing import NamedTuple, Callable, List, Dict, Any
+from typing import NamedTuple, Callable, Dict, Any
 import logging
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName

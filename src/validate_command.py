@@ -1,7 +1,7 @@
 import subprocess
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, VariableName
 from validation import ValidationManager
-from typing import List, Any, Dict
+from typing import Any, Dict
 
 
 class ValidateCommand(AgentCommand):

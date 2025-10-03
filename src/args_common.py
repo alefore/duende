@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import sys
-from typing import Any, Callable, List, NamedTuple, Pattern, Tuple
+from typing import Any, Callable, NamedTuple, Pattern, Tuple
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
@@ -276,7 +276,7 @@ async def CreateAgentWorkflowOptions(
       name=conversation_name,
       command_registry=registry)
 
-  content_sections: List[ContentSection] = []
+  content_sections: list[ContentSection] = []
 
   agent_prompt_path = 'agent/prompt.txt'
   if os.path.exists(agent_prompt_path):
@@ -320,7 +320,7 @@ async def CreateAgentWorkflowOptions(
 def CreateFileAccessPolicy(
     file_access_regex: str | None,
     file_access_regex_path: TrackedFlagStr) -> FileAccessPolicy:
-  policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
+  policies: list[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
 
   if file_access_regex:
     if file_access_regex_path.set_explicitly:
@@ -356,7 +356,7 @@ async def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
     print(file)
 
 
-def _read_prompt_include_files(paths: List[str],
+def _read_prompt_include_files(paths: list[str],
                                file_access_policy: FileAccessPolicy) -> str:
   not_allowed_paths = list(
       filter(lambda p: not file_access_policy.allow_access(os.path.abspath(p)),

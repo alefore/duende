@@ -1,7 +1,7 @@
 import logging
 import re
 import sys
-from typing import Dict, List, Pattern
+from typing import Dict, Pattern
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
@@ -31,7 +31,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         options.confirm_done) if options.confirm_done else None
 
   async def _RunReviews(self,
-                        git_diff_output: str) -> List[ContentSection] | None:
+                        git_diff_output: str) -> list[ContentSection] | None:
     await self._options.agent_loop_options.conversation.SetState(
         ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
 

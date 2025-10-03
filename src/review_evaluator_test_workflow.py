@@ -3,7 +3,7 @@ import glob
 import logging
 import os
 import sys
-from typing import Dict, Any, List, Tuple, Callable, NamedTuple
+from typing import Dict, Any, Tuple, Callable, NamedTuple
 
 from agent_workflow import AgentWorkflow
 from agent_loop_options import AgentLoopOptions
@@ -18,7 +18,7 @@ class _TestSpec(NamedTuple):
   expect: ReviewDecision
 
 class EvaluatorResults:
-  def __init__(self, review_results: List[ReviewResult], expected_decisions: Dict[str, ReviewDecision]):
+  def __init__(self, review_results: list[ReviewResult], expected_decisions: Dict[str, ReviewDecision]):
     self._review_results = review_results
     self._expected_decisions = expected_decisions
 
@@ -96,10 +96,10 @@ class ReviewEvaluatorTestWorkflow(AgentWorkflow):
 
     logging.info("Review Evaluator Test Workflow completed.")
 
-  def _process_results(self, all_review_results: List[ReviewResult],
+  def _process_results(self, all_review_results: list[ReviewResult],
                        expected_decisions: Dict[str, ReviewDecision]) -> None:
 
-    evaluator_grouped_results: Dict[EvaluatorName, List[ReviewResult]] = collections.defaultdict(list)
+    evaluator_grouped_results: Dict[EvaluatorName, list[ReviewResult]] = collections.defaultdict(list)
     for result in all_review_results:
       evaluator_grouped_results[result.id.split('/')[0]].append(result)
 

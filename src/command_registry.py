@@ -1,11 +1,11 @@
-from typing import Dict, List, Set
+from typing import Dict, Set
 from agent_command import AgentCommand
 from agent_command_helpers import FormatHelp
 
 
 class UnknownCommandError(Exception):
 
-  def __init__(self, unknown_commands: List[str]):
+  def __init__(self, unknown_commands: list[str]):
     self.unknown_commands = unknown_commands
     super().__init__(
         f"Unknown command(s): {', '.join(sorted(unknown_commands))}")
@@ -32,13 +32,13 @@ class CommandRegistry:
   def Get(self, name: str) -> AgentCommand | None:
     return self.commands.get(name)
 
-  def list_all(self) -> List[str]:
+  def list_all(self) -> list[str]:
     return sorted(self.commands.keys())
 
   def HelpText(self) -> str:
     return FormatHelp([self.commands[name] for name in self.list_all()])
 
-  def GetCommands(self) -> List[AgentCommand]:
+  def GetCommands(self) -> list[AgentCommand]:
     return list(self.commands.values())
 
   def available_commands_str(self) -> str:

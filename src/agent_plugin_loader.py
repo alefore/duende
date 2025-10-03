@@ -1,7 +1,5 @@
 import importlib.util
 import os
-from typing import List
-
 from agent_plugin_interface import AgentPlugin
 
 DUENDE_PLUGIN_PREFIX = 'duende_plugin'
@@ -23,9 +21,9 @@ class InvalidPluginClassError(Exception):
   pass
 
 
-def load_plugins(directories: List[str]) -> List[AgentPlugin]:
+def load_plugins(directories: list[str]) -> list[AgentPlugin]:
   """Find all `duende_plugin_*.py` files and loads all plugins in them."""
-  loaded_plugins: List[AgentPlugin] = []
+  loaded_plugins: list[AgentPlugin] = []
 
   for directory in directories:
     plugin_files = [f for f in os.listdir(directory) if f.startswith(DUENDE_PLUGIN_PREFIX) and f.endswith('.py')]

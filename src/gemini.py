@@ -2,7 +2,7 @@ from google import genai
 import logging
 import asyncio
 import sys
-from typing import cast, Any, Coroutine, Dict, List
+from typing import cast, Any, Coroutine, Dict
 
 from command_registry import CommandRegistry
 from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableName
@@ -62,7 +62,7 @@ class GeminiConversation(ConversationalAIConversation):
   async def SendMessage(self, message: Message) -> Message:
     await self.conversation.AddMessage(message)
 
-    gemini_parts: List[genai.types.Part | str | genai.types.PartDict] = []
+    gemini_parts: list[genai.types.Part | str | genai.types.PartDict] = []
     for section in message.GetContentSections():
       if section.content:
         gemini_parts.append(section.content)

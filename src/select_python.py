@@ -1,7 +1,7 @@
 import aiofiles
 import ast
 import asyncio
-from typing import List, Tuple, Sequence, Any, Dict
+from typing import Tuple, Sequence, Any, Dict
 
 from list_files import list_all_files
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
@@ -79,15 +79,15 @@ class SelectPythonCommand(AgentCommand):
 
 
 def _find_nested_definition_nodes(
-    nodes: Sequence[ast.AST], identifier_parts: List[str]
-) -> List[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
+    nodes: Sequence[ast.AST], identifier_parts: list[str]
+) -> list[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
   """Recursively finds AST nodes matching the identifier parts."""
   if not identifier_parts:
     return []
 
   current_part = identifier_parts[0]
   remaining_parts = identifier_parts[1:]
-  matching_nodes: List[ast.FunctionDef | ast.AsyncFunctionDef
+  matching_nodes: list[ast.FunctionDef | ast.AsyncFunctionDef
                        | ast.ClassDef] = []
 
   for node in nodes:
@@ -109,7 +109,7 @@ def _find_nested_definition_nodes(
 
 async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
                                validated_path: str | None,
-                               identifier: str) -> List[Selection]:
+                               identifier: str) -> list[Selection]:
   """Finds all Python code elements by identifier and returns the selections.
 
   Args:
@@ -121,7 +121,7 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
   Returns:
       A list of Selection objects for the found definitions.
   """
-  file_list: List[str]
+  file_list: list[str]
 
   if validated_path:
     file_list = [validated_path]

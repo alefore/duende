@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 import logging
 import os
 import difflib
@@ -24,7 +24,7 @@ class WriteFileCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  def _optional_arguments(self) -> List[Argument]:
+  def _optional_arguments(self) -> list[Argument]:
     if self._hard_coded_path:
       return []
     return [
@@ -53,12 +53,12 @@ class WriteFileCommand(AgentCommand):
     )
 
   async def _get_full_diff(self, path: str,
-                           new_content: str) -> List[str] | None:
+                           new_content: str) -> list[str] | None:
     if not await asyncio.to_thread(os.path.exists, path):
       return None
 
     async with aiofiles.open(path, "r") as f:
-      original_content_lines: List[str] = (await f.read()).splitlines()
+      original_content_lines: list[str] = (await f.read()).splitlines()
     diff = list(
         difflib.unified_diff(
             original_content_lines,

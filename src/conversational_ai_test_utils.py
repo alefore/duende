@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 from conversation import Conversation, Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -8,7 +8,7 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
   """A fake implementation of ConversationalAIConversation for testing."""
 
   def __init__(self, conversation: Conversation,
-               scripted_responses: List[Message]):
+               scripted_responses: list[Message]):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
 
@@ -32,7 +32,7 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
 class FakeConversationalAI(ConversationalAI):
   """A fake implementation of ConversationalAI for testing."""
 
-  def __init__(self, scripted_responses: Dict[str, List[Message]]):
+  def __init__(self, scripted_responses: Dict[str, list[Message]]):
     self.scripted_responses = scripted_responses
     # Keep track of which conversations have been started to help debugging
     self.started_conversations: Dict[str, int] = {}

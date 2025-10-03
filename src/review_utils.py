@@ -4,7 +4,7 @@ import logging
 import os
 import subprocess
 import threading
-from typing import Callable, List, NamedTuple, Dict, Any
+from typing import Callable, NamedTuple, Dict, Any
 from enum import Enum
 
 from agent_command import CommandOutput
@@ -65,7 +65,7 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
   # A list is used here to capture the result from the callbacks, as
   # Python closures for outer scope variables require mutable objects to
   # be modified within nested functions.
-  review_result: List[ReviewResult | None] = [None]
+  review_result: list[ReviewResult | None] = [None]
 
   def add_review_result_callback(command_output: CommandOutput,
                                  decision: ReviewDecision) -> None:
@@ -89,7 +89,7 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
       name=f"AI Review ({review_id}): {parent_options.conversation.GetName()}",
       command_registry=review_registry)
 
-  review_start_sections: List[ContentSection] = [
+  review_start_sections: list[ContentSection] = [
       ContentSection(
           content=review_prompt_content, summary="Generic review guidelines"),
   ]
@@ -127,7 +127,7 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
 async def run_parallel_reviews(
     reviews_to_run: Dict[str, str], parent_options: AgentLoopOptions,
     conversation_factory: ConversationFactory,
-    expose_read_commands: bool) -> List[ReviewResult]:
+    expose_read_commands: bool) -> list[ReviewResult]:
   """Runs reviews in parallel based on the provided specifications.
 
   Args:
@@ -145,7 +145,7 @@ async def run_parallel_reviews(
     logging.info("No reviews specified. Skipping parallel review.")
     return []
 
-  review_results: List[ReviewResult] = []
+  review_results: list[ReviewResult] = []
   return await asyncio.gather(
       *(_run_single_review(
           review_id=review_id,
@@ -192,7 +192,7 @@ def implementation_review_spec(parent_options: AgentLoopOptions,
   return reviews_to_run
 
 
-def find_all_evaluators() -> List[str]:
+def find_all_evaluators() -> list[str]:
   """Finds all evaluator names by globbing in the 'agent/review/' directory."""
   return [
       os.path.basename(os.path.dirname(path))
@@ -201,7 +201,7 @@ def find_all_evaluators() -> List[str]:
 
 
 def reject_output_content_sections(
-    all_review_results: List[ReviewResult]) -> List[ContentSection] | None:
+    all_review_results: list[ReviewResult]) -> list[ContentSection] | None:
   """Processes the output of run_parallel_reviews, turning rejections into
   an optional list of content sections.
 
@@ -222,7 +222,7 @@ def reject_output_content_sections(
     return None
 
   logging.info("Some reviews rejected the change.")
-  feedback_sections: List[ContentSection] = [
+  feedback_sections: list[ContentSection] = [
       ContentSection(
           content="Please consider addressing the following issues that caused the evaluators to reject your change and try again.",
           summary="Instructions about review results")

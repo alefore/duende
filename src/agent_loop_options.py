@@ -1,4 +1,4 @@
-from typing import List, Pattern, NamedTuple
+from typing import Pattern, NamedTuple
 
 from command_registry import CommandRegistry
 from confirmation import ConfirmationState
