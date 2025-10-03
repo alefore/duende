@@ -1,7 +1,7 @@
 import logging
 import re
 import sys
-from typing import Dict, List, Optional, Pattern
+from typing import Dict, List, Pattern
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
@@ -27,11 +27,11 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
     self._original_task_prompt_content: str = options.original_task_prompt_content
 
     self._agent_loop = AgentLoop(options.agent_loop_options)
-    self._confirm_done_regex: Optional[Pattern[str]] = re.compile(
+    self._confirm_done_regex: Pattern[str] | None = re.compile(
         options.confirm_done) if options.confirm_done else None
 
   async def _RunReviews(self,
-                        git_diff_output: str) -> Optional[List[ContentSection]]:
+                        git_diff_output: str) -> List[ContentSection] | None:
     await self._options.agent_loop_options.conversation.SetState(
         ConversationState.WAITING_FOR_REVIEW_FEEDBACK)
 
@@ -71,7 +71,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
         logging.info("No review suggestions found. Exiting.")
         sys.exit(0)
 
-  async def _get_review_message(self) -> Optional[Message]:
+  async def _get_review_message(self) -> Message | None:
     if not self._options.do_review:
       return None
 
@@ -88,7 +88,7 @@ class ImplementAndReviewWorkflow(AgentWorkflow):
 
     return Message(role='user', content_sections=review_feedback_content)
 
-  async def _get_confirm_guidance(self) -> Optional[Message]:
+  async def _get_confirm_guidance(self) -> Message | None:
     if not self._confirm_done_regex:
       return None
 
