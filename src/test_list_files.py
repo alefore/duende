@@ -125,6 +125,10 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     ])
     # ✨
 
-  def testFileAccessPolicyNoMatch(self):
+  async def testFileAccessPolicyNoMatch(self):
     """Runs successfully if file access policy doesn't match anything."""
-    # {{🍄 file access policy no match}}
+    # ✨ file access policy no match
+    file_access_policy = RegexFileAccessPolicy(r"(non_existent_file.txt)$")
+    output: CommandOutput = await list_all_files(".", file_access_policy)
+    self.assertListEqual(output.file_paths, [])
+    # ✨
