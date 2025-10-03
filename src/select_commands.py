@@ -63,8 +63,8 @@ class SelectCommand(AgentCommand):
           end_line_pattern_raw) if end_line_pattern_raw is not None else None
 
     try:
-      selection = await Selection.FromLinePattern(
-          str(path), start_line_pattern, end_line_pattern)
+      selection = await Selection.FromLinePattern(path, start_line_pattern,
+                                                  end_line_pattern)
       selected_lines = await selection.Read()
       self.selection_manager.set_selection(selection)
       return CommandOutput(

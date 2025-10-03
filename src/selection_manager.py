@@ -2,6 +2,7 @@ import os
 import re
 import aiofiles
 import asyncio
+import pathlib
 
 
 class StartPatternNotFound(ValueError):
@@ -14,7 +15,7 @@ class EndPatternNotFound(ValueError):
 
 class Selection:
 
-  def __init__(self, path: str, start_index: int, end_index: int) -> None:
+  def __init__(self, path: pathlib.Path, start_index: int, end_index: int) -> None:
     self.path = path
     self.start_index = start_index
     self.end_index = end_index
@@ -53,7 +54,7 @@ class Selection:
       await file.writelines(lines)
 
   @classmethod
-  async def FromLinePattern(cls, path: str, start_line_pattern: str,
+  async def FromLinePattern(cls, path: pathlib.Path, start_line_pattern: str,
                       end_line_pattern: str | None) -> 'Selection':
     """Creates a Selection object based on line patterns using regex.
     If end_line_pattern is None, only the start line is selected."""

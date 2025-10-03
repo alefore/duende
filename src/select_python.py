@@ -151,7 +151,7 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
       for node in found_nodes:
         if node.lineno is not None and node.end_lineno is not None:
           selections.append(
-              Selection(str(file_path), node.lineno - 1, node.end_lineno - 1))
+              Selection(file_path, node.lineno - 1, node.end_lineno - 1))
     except Exception as e:
       # Log error or add to a list of errors if file cannot be parsed
       # For now, just continue to the next file
