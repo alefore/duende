@@ -2,7 +2,7 @@ import logging
 import re
 import sys
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Pattern
+from typing import Dict, List, Pattern
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
@@ -49,5 +49,5 @@ class AgentWorkflowFactoryContainer:
   def factory_names(self) -> List[str]:
     return list(self._workflow_factories)
 
-  def get(self, name: str) -> Optional[AgentWorkflowFactory]:
+  def get(self, name: str) -> AgentWorkflowFactory | None:
     return self._workflow_factories.get(name)
