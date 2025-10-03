@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import sys
-from typing import Any, Callable, List, NamedTuple, Optional, Pattern, Tuple
+from typing import Any, Callable, List, NamedTuple, Pattern, Tuple
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
@@ -39,7 +39,7 @@ class TrackFlagStrAction(argparse.Action):
                parser: argparse.ArgumentParser,
                namespace: argparse.Namespace,
                values: Any,
-               option_string: Optional[str] = None) -> None:
+               option_string: str | None = None) -> None:
     setattr(namespace, self.dest, TrackedFlagStr(values, True))
 
 
@@ -183,7 +183,7 @@ async def CreateAgentWorkflowOptions(
     await TestFileAccess(file_access_policy)
     sys.exit(0)
 
-  confirm_regex: Optional[Pattern[str]] = re.compile(
+  confirm_regex: Pattern[str] | None = re.compile(
       args.confirm) if args.confirm else None
 
   validation_manager = CreateValidationManager()
@@ -318,7 +318,7 @@ async def CreateAgentWorkflowOptions(
 
 
 def CreateFileAccessPolicy(
-    file_access_regex: Optional[str],
+    file_access_regex: str | None,
     file_access_regex_path: TrackedFlagStr) -> FileAccessPolicy:
   policies: List[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
 
