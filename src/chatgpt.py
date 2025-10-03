@@ -1,6 +1,6 @@
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
-from typing import cast, Optional
+from typing import cast
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 from conversation import Conversation
 from message import Message, ContentSection
