@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List, Set
+from typing import Dict, List, Set
 from agent_command import AgentCommand
 from agent_command_helpers import FormatHelp
 
@@ -29,7 +29,7 @@ class CommandRegistry:
 
     self.commands[name] = command
 
-  def Get(self, name: str) -> Optional[AgentCommand]:
+  def Get(self, name: str) -> AgentCommand | None:
     return self.commands.get(name)
 
   def list_all(self) -> List[str]:
