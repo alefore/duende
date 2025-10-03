@@ -3,7 +3,7 @@ import logging
 from conversation import Conversation, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
-from typing import cast, Generator, List, Optional, Tuple, Union
+from typing import cast, Generator, List, Tuple, Union
 
 from validation import ValidationManager
 from agent_command import CommandInput, CommandOutput
@@ -28,7 +28,7 @@ class AgentLoop:
     self.ai_conversation = options.conversational_ai.StartConversation(
         self.conversation)
     self._previous_validation_passed = True
-    self.next_message: Optional[Message] = self.options.start_message
+    self.next_message: Message | None = self.options.start_message
 
   def _validate_command(self, cmd_input: CommandInput) -> None:
     command = self.options.commands_registry.Get(cmd_input.command_name)
@@ -47,7 +47,7 @@ class AgentLoop:
       ]))
 
   async def _process_ai_response(
-      self, response_message: Message) -> Optional[Message]:
+      self, response_message: Message) -> Message | None:
     commands: List[CommandInput] = []
     non_command_lines: List[str] = []
 
@@ -131,7 +131,7 @@ class AgentLoop:
 
   async def run(self) -> None:
     logging.info("Starting AgentLoop run method...")
-    next_message: Optional[Message] = self.next_message
+    next_message: Message | None = self.next_message
     self.next_message = None
 
     while next_message:
