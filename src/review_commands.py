@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Callable
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 
