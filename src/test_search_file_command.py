@@ -111,6 +111,28 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 2 files, found 3 matches.", output.summary) # Corrected file count to 2
 
+  async def test_run_with_path_argument(self):
+    """Verify search is restricted to the specified file when 'path' argument is used."""
+    file_to_search = "target_file.txt"
+    other_file = "another_file.txt"
+    search_term = "important_word"
+
+    async with aiofiles.open(file_to_search, mode='w') as f:
+      await f.write(f"Line one with the {search_term}.\nLine two.\n")
+    async with aiofiles.open(other_file, mode='w') as f:
+      await f.write(f"This file also has the {search_term}.\n")
+
+    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    inputs = {'content': search_term, 'path': file_to_search}
+    output: CommandOutput = await command.run(inputs)
+
+    expected_output_line = f"{file_to_search}:1: Line one with the {search_term}."
+
+    self.assertIn(expected_output_line, output.output)
+    self.assertNotIn(other_file, output.output)  # Ensure other file's content is not in output
+    self.assertEqual(output.errors, "")
+    self.assertIn("Searched 1 files, found 1 matches.", output.summary)
+
 
 if __name__ == '__main__':
   unittest.main()
