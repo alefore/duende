@@ -85,11 +85,15 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(len(output.file_paths), 2)
     # ✨
 
-  def testFlatFormat(self):
+  async def testFlatFormat(self):
     """Search in flat directory returns entries with expected format.
 
     Expected format: "animals/birds/condor.txt"."""
-    # {{🍄 flat format}}
+    # ✨ flat format
+    output: CommandOutput = await list_all_files("animals/birds")
+    file_paths = sorted(output.file_paths)
+    self.assertListEqual(file_paths, ["animals/birds/condor.txt", "animals/birds/tucan.jpg"])
+    # ✨
 
   def testNestedDirs(self):
     """Search in animals outputs five entries in the expected format."""
