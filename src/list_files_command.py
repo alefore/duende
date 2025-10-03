@@ -1,5 +1,5 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
-from typing import List, Tuple, Dict, Any
+from typing import Any
 import logging
 import os
 import aiofiles
@@ -9,9 +9,9 @@ from list_files import list_all_files
 
 
 async def _ListFileDetails(
-    directory: str, file_access_policy: FileAccessPolicy) -> Tuple[str, str]:
-  details: List[str] = []
-  errors: List[str] = []
+    directory: str, file_access_policy: FileAccessPolicy) -> tuple[str, str]:
+  details: list[str] = []
+  errors: list[str] = []
   async for file in list_all_files(directory, file_access_policy):
     file_path = os.path.join(directory, file)
     try:
@@ -47,7 +47,7 @@ class ListFilesCommand(AgentCommand):
                 required=False)
         ])
 
-  async def run(self, inputs: Dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     directory = inputs.get(VariableName("directory"), ".")
 
     try:
