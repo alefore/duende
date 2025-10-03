@@ -3,7 +3,7 @@ import os
 import pathlib
 from typing import Generator
 
-from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument, VariableMap, VariableName, VariableValue
+from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument, VariableMap, VariableName, VariableValue, VariableValueInt
 from command_registry import CommandRegistry
 from file_access_policy import FileAccessPolicy
 
@@ -84,6 +84,9 @@ def validate_command_input(cmd_input: CommandInput,
     if _IsPath(syntax_args_dict[k].arg_type):
       assert isinstance(v, str)
       output[k] = pathlib.Path(v)
+    elif syntax_args_dict[k].arg_type == ArgumentContentType.INTEGER:
+      assert isinstance(v, int | str)
+      output[k] = VariableValueInt(int(v))
     else:
       output[k] = v
   return output
