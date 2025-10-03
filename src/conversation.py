@@ -1,4 +1,4 @@
-from typing import Any, Callable, Coroutine, Dict, List, NamedTuple, Optional
+from typing import Any, Callable, Coroutine, Dict, List, NamedTuple
 import json
 import logging
 import threading
@@ -15,12 +15,10 @@ ConversationId = int
 
 
 class ConversationFactoryOptions(NamedTuple):
-  on_message_added_callback: Optional[Callable[[ConversationId],
-                                               Coroutine[Any, Any,
-                                                         None]]] = None
-  on_state_changed_callback: Optional[Callable[[ConversationId],
-                                               Coroutine[Any, Any,
-                                                         None]]] = None
+  on_message_added_callback: Callable[[ConversationId],
+                                      Coroutine[Any, Any, None]] | None = None
+  on_state_changed_callback: Callable[[ConversationId],
+                                      Coroutine[Any, Any, None]] | None = None
 
 
 class Conversation:
@@ -30,12 +28,11 @@ class Conversation:
       unique_id: int,
       name: str,
       command_registry: CommandRegistry,
-      on_message_added_callback: Optional[Callable[[int],
-                                                   Coroutine[Any, Any,
-                                                             None]]] = None,
-      on_state_changed_callback: Optional[Callable[[ConversationId],
-                                                   Coroutine[Any, Any,
-                                                             None]]] = None
+      on_message_added_callback: Callable[[int], Coroutine[Any, Any, None]]
+      | None = None,
+      on_state_changed_callback: Callable[[ConversationId], Coroutine[Any, Any,
+                                                                      None]]
+      | None = None
   ) -> None:
     self._unique_id = unique_id
     self._name = name
