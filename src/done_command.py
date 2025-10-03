@@ -8,10 +8,10 @@ from validation import ValidationManager, ValidationResult
 class DoneCommand(AgentCommand):
 
   def __init__(self,
-               arguments: Optional[List[Argument]] = None,
+               arguments: List[Argument],
                validation_manager: Optional[ValidationManager] = None) -> None:
     self._validation_manager = validation_manager
-    self._arguments = arguments if arguments is not None else []
+    self._arguments = arguments
 
   def Name(self) -> str:
     return self.Syntax().name

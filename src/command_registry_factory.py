@@ -54,7 +54,7 @@ async def create_command_registry(
     shell_command_execution: bool = False) -> CommandRegistry:
   registry = _create_base_registry(file_access_policy)
 
-  registry.Register(DoneCommand())
+  registry.Register(DoneCommand(arguments=[]))
 
   git_state = await CheckGitRepositoryState()
   if git_state == GitRepositoryState.CLEAN:

@@ -104,7 +104,7 @@ class TestAgentLoop(unittest.TestCase):
     self.registry.Register(self.mock_list_files_command)
     self.registry.Register(self.mock_read_file_command)
     self.registry.Register(self.mock_write_file_command)
-    self.registry.Register(DoneCommand())
+    self.registry.Register(DoneCommand(arguments=[]))
 
     # Dummy callback for the real AcceptChange and RejectChange commands
     # These commands are not expected to be run by the main agent in this test setup
