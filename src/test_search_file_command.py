@@ -81,6 +81,36 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 3 matches.", output.summary)
 
+  async def test_run_multiple_files_multiple_matches(self):
+    """Verify correct reporting of matches across multiple files."""
+    file_name1 = "file1.txt"
+    file_name2 = "file2.txt"
+    search_term = "test"
+
+    file_content1 = f"This is a {search_term} line.\nAnother line.\n{search_term}ing again.\n"
+    file_content2 = f"A {search_term} in a different file.\nNo match here.\n"
+
+    async with aiofiles.open(file_name1, mode='w') as f:
+      await f.write(file_content1)
+    async with aiofiles.open(file_name2, mode='w') as f:
+      await f.write(file_content2)
+
+    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    inputs = {'content': search_term, 'path': None}  # Search all files
+    output: CommandOutput = await command.run(inputs)
+
+    expected_output_lines = [
+        f"{file_name1}:1: This is a {search_term} line.",
+        f"{file_name1}:3: {search_term}ing again.",
+        f"{file_name2}:1: A {search_term} in a different file.",
+    ]
+
+    for line in expected_output_lines:
+      self.assertIn(line, output.output)
+
+    self.assertEqual(output.errors, "")
+    self.assertIn("Searched 2 files, found 3 matches.", output.summary) # Corrected file count to 2
+
 
 if __name__ == '__main__':
   unittest.main()
