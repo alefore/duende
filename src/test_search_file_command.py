@@ -134,6 +134,32 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
+  async def test_run_with_subdirectory_path(self):
+    """Verify search is restricted to the specified subdirectory when 'path' argument is a directory."""
+    subdir = pathlib.Path("test_subdir")
+    subdir.mkdir(exist_ok=True)
+    
+    file_in_subdir = subdir / "file_in_subdir.txt"
+    file_outside_subdir = "file_outside_subdir.txt"
+    search_term = "subdirectory_term"
+
+    async with aiofiles.open(file_in_subdir, mode='w') as f:
+      await f.write(f"This file contains the {search_term} in the subdir.\n")
+    async with aiofiles.open(file_outside_subdir, mode='w') as f:
+      await f.write(f"This file also contains the {search_term} but is outside.\n")
+
+    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    inputs = {'content': search_term, 'path': str(subdir)}
+    output: CommandOutput = await command.run(inputs)
+
+    expected_output_line = f"{file_in_subdir}:1: This file contains the {search_term} in the subdir."
+    self.assertIn(expected_output_line, output.output)
+    self.assertNotIn(str(file_outside_subdir), output.output)
+    self.assertEqual(output.errors, "")
+    # The assertion below expects that only one file was searched and one match was found.
+    # This will likely fail, confirming the hypothesis.
+    self.assertIn("Searched 1 files, found 1 matches.", output.summary)
+
   async def test_run_repository_wide_search(self):
     """Verify search covers the entire repository, including subdirectories, when no 'path' argument is provided."""
     subdir1 = pathlib.Path("subdir1")

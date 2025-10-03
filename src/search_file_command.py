@@ -6,6 +6,7 @@ from list_files import list_all_files
 import os
 import aiofiles
 import asyncio
+import pathlib  # Added import
 
 
 class SearchFileCommand(AgentCommand):
@@ -49,19 +50,25 @@ class SearchFileCommand(AgentCommand):
     global_match_count = 0
 
     paths_to_search: AsyncIterable[str]
-    if input_path:
-      # If a specific path is provided, convert it to an async iterable for consistency
+
+    if not input_path:
+      paths_to_search = list_all_files(".", self.file_access_policy)
+    elif pathlib.Path(input_path).is_dir():
+      paths_to_search = list_all_files(input_path, self.file_access_policy)
+    else:
+      # If a specific file path is provided,
+      # convert it to an async iterable for consistency
       async def _single_file_iterator() -> AsyncIterable[str]:
         yield input_path
 
       paths_to_search = _single_file_iterator()
-    else:
-      paths_to_search = list_all_files(".", self.file_access_policy)
 
     files_data: List[str] = []
 
     match_limit = 200
-    async for file_path in paths_to_search:
+    async for file_path_str in paths_to_search:
+      file_path = pathlib.Path(file_path_str)
+
       try:
         global_file_count += 1
         async with aiofiles.open(file_path, mode='r', encoding='utf-8') as file:
@@ -75,14 +82,14 @@ class SearchFileCommand(AgentCommand):
             file_match_count += 1
             global_match_count += 1
             if global_match_count < match_limit:
-              matches.append(f"{file_path}:{i + 1}: {line.strip()}")
+              matches.append(f"{file_path_str}:{i + 1}: {line.strip()}")
 
         if file_match_count > 0:
           files_data.append(
-              f"{file_path}, {file_match_count}, {file_line_count}")
+              f"{file_path_str}, {file_match_count}, {file_line_count}")
 
       except Exception as e:
-        errors.append(f"{file_path}: {str(e)}")
+        errors.append(f"{file_path_str}: {str(e)}")
 
     output_lines: List[str] = [
         f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"
