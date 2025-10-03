@@ -78,9 +78,12 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(len(output.file_paths), 0)
     # ✨
 
-  def testFlat(self):
+  async def testFlat(self):
     """Search in a flat directory returns expected number of outputs."""
-    # {{🍄 flat}}
+    # ✨ flat
+    output: CommandOutput = await list_all_files("fruits")
+    self.assertEqual(len(output.file_paths), 2)
+    # ✨
 
   def testFlatFormat(self):
     """Search in flat directory returns entries with expected format.
