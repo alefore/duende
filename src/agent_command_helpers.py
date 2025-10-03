@@ -1,4 +1,3 @@
-from typing import List
 from agent_command import AgentCommand, CommandSyntax, Argument
 from message import ContentSection
 
@@ -12,14 +11,14 @@ def HelpText(name: str, syntax: CommandSyntax) -> str:
     else:
       header_parts.append(f"[{arg.name}]")
 
-  output_list: List[str] = [" ".join(header_parts)]
+  output_list: list[str] = [" ".join(header_parts)]
   output_list.append(f"  {syntax.description}")
   output_list.append("")
   return "\n".join(output_list)
 
 
-def FormatHelp(commands: List[AgentCommand]) -> str:
-  output_list: List[str] = []
+def FormatHelp(commands: list[AgentCommand]) -> str:
+  output_list: list[str] = []
   for command in sorted(commands, key=lambda c: c.Name()):
     output_list.append(HelpText(command.Name(), command.Syntax()))
 
