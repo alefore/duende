@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
