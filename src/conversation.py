@@ -1,4 +1,4 @@
-from typing import Any, Callable, Coroutine, Dict, List, NamedTuple
+from typing import Any, Callable, Coroutine, NamedTuple
 import json
 import logging
 import threading
@@ -36,7 +36,7 @@ class Conversation:
   ) -> None:
     self._unique_id = unique_id
     self._name = name
-    self.messages: List[Message] = []
+    self.messages: list[Message] = []
     self._on_message_added_callback = on_message_added_callback
     self._on_state_changed_callback = on_state_changed_callback
     self._state: ConversationState = ConversationState.STARTING
@@ -45,7 +45,7 @@ class Conversation:
 
   async def _derive_args(self, message: Message) -> Message:
     # Iterate over content sections and compute derived args for commands
-    output_content_sections: List[ContentSection] = []
+    output_content_sections: list[ContentSection] = []
     for section in message.GetContentSections():
       if section.command:
         command_name = section.command.command_name
@@ -79,14 +79,14 @@ class Conversation:
       await self._on_message_added_callback(self._unique_id)
 
   def _DebugString(self, message: Message) -> str:
-    content_sections: List[ContentSection] = message.GetContentSections()
+    content_sections: list[ContentSection] = message.GetContentSections()
     content: str = ""
     for section in content_sections:
       content += section.content
     return (f"Add message: {message.role}: {len(content_sections)} sections: "
             f"{content[:50]}...")
 
-  def GetMessagesList(self) -> List[Message]:
+  def GetMessagesList(self) -> list[Message]:
     return self.messages
 
   def GetId(self) -> ConversationId:
@@ -112,7 +112,7 @@ class ConversationFactory:
   def __init__(self, options: ConversationFactoryOptions) -> None:
     self._lock = threading.Lock()
     self._next_id: ConversationId = 0
-    self._conversations: Dict[ConversationId, Conversation] = {}
+    self._conversations: dict[ConversationId, Conversation] = {}
     self.on_message_added_callback = options.on_message_added_callback
     self.on_state_changed_callback = options.on_state_changed_callback
 
@@ -129,5 +129,5 @@ class ConversationFactory:
   def Get(self, id: ConversationId) -> Conversation:
     return self._conversations[id]
 
-  def GetAll(self) -> List[Conversation]:
+  def GetAll(self) -> list[Conversation]:
     return list(self._conversations.values())
