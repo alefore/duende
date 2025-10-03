@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Dict, Optional
+from typing import Any, Callable, Coroutine, Dict
 import asyncio
 import logging
 from dataclasses import dataclass
@@ -17,7 +17,7 @@ class ConfirmationManager(ABC):
 
   @abstractmethod
   async def RequireConfirmation(self, conversation_id: ConversationId,
-                                message: str) -> Optional[str]:
+                                message: str) -> str | None:
     """Blocks execution until confirmation is given, returning additional guidance if provided by the user."""
     pass
 
@@ -26,16 +26,15 @@ class AsyncConfirmationManager(ConfirmationManager):
 
   def __init__(
       self,
-      on_confirmation_requested: Optional[Callable[[ConversationId, str],
-                                                   Coroutine[Any, Any,
-                                                             None]]] = None
+      on_confirmation_requested: Callable[[ConversationId, str],
+                                          Coroutine[Any, Any, None]] | None = None
   ) -> None:
     self.confirmations: Dict[ConversationId, ConfirmationEntry] = {}
     self.on_confirmation_requested = on_confirmation_requested
     self._lock = asyncio.Lock()
 
   async def RequireConfirmation(self, conversation_id: ConversationId,
-                                message: str) -> Optional[str]:
+                                message: str) -> str | None:
     async with self._lock:
       if conversation_id in self.confirmations:
         logging.fatal(
@@ -62,7 +61,7 @@ class AsyncConfirmationManager(ConfirmationManager):
     asyncio.create_task(_set_result())
 
   def get_pending_message(self,
-                          conversation_id: ConversationId) -> Optional[str]:
+                          conversation_id: ConversationId) -> str | None:
     entry = self.confirmations.get(conversation_id)
     return entry.message if entry else None
 
@@ -72,9 +71,9 @@ class ConfirmationState:
 
   def __init__(self,
                confirmation_manager: ConfirmationManager,
-               confirm_every: Optional[int] = None) -> None:
+               confirm_every: int | None = None) -> None:
     self.confirmation_manager: ConfirmationManager = confirmation_manager
-    self.confirm_every: Optional[int] = confirm_every
+    self.confirm_every: int | None = confirm_every
     self.interaction_count: int = 0
 
   async def RegisterInteraction(self, conversation_id: ConversationId) -> None:
@@ -89,7 +88,7 @@ class ConfirmationState:
         self.interaction_count = 0
 
   async def RequireConfirmation(self, conversation_id: ConversationId,
-                                message: str) -> Optional[str]:
+                                message: str) -> str | None:
     """Requires explicit confirmation through the confirmation manager."""
     return await self.confirmation_manager.RequireConfirmation(
         conversation_id, message)
