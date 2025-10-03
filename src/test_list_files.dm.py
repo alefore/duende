@@ -34,41 +34,41 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     os.chdir(self.original_cwd)
     shutil.rmtree(self.temp_dir)
 
-  def testRoot(self):
+  async def testRoot(self):
     """Root search (".") finds expected number of files."""
     # {{🍄 root}}
 
-  def testRootFormat(self):
+  async def testRootFormat(self):
     """The output of root search (".") is as expected.
 
     Expected format: "fruits/banana.md"."""
     # {{🍄 expected output root}}
 
-  def testEmpty(self):
+  async def testEmpty(self):
     """No files are returned for a search in an empty directory."""
     # {{🍄 empty}}
 
-  def testFlat(self):
+  async def testFlat(self):
     """Search in a flat directory returns expected number of outputs."""
     # {{🍄 flat}}
 
-  def testFlatFormat(self):
+  async def testFlatFormat(self):
     """Search in flat directory returns entries with expected format.
 
     Expected format: "animals/birds/condor.txt"."""
     # {{🍄 flat format}}
 
-  def testNestedDirs(self):
+  async def testNestedDirs(self):
     """Search in animals outputs five entries in the expected format."""
     # {{🍄 nested dirs}}
 
-  def testFileAccessPolicy(self):
+  async def testFileAccessPolicy(self):
     """Search in root directory only outputs entries allowed by access policy.
 
     Creates a regex file access policy matching two files and validates that
     the outputs are exactly as expected."""
     # {{🍄 file access policy}}
 
-  def testFileAccessPolicyNoMatch(self):
+  async def testFileAccessPolicyNoMatch(self):
     """Runs successfully if file access policy doesn't match anything."""
     # {{🍄 file access policy no match}}
