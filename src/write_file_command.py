@@ -5,7 +5,7 @@ import difflib
 import aiofiles
 import asyncio
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
 from validation import ValidationManager
 from selection_manager import SelectionManager
 
@@ -69,26 +69,26 @@ class WriteFileCommand(AgentCommand):
         ))
     return diff
 
-  async def derive_args(
-      self, inputs: dict[VariableName, Any]) -> dict[VariableName, Any]:
-    output: dict[VariableName, Any] = {}
+  async def derive_args(self, inputs: VariableMap) -> VariableMap:
+    output = VariableMap({})
     path = self._hard_coded_path or inputs.get(VariableName("path"))
     if path and inputs.get(_content_variable):
       output[VariableName("content_diff")] = await self._derive_diff(
           path, inputs[_content_variable])
     return output
 
-  async def _derive_diff(self, path: str, new_content: str) -> str:
+  async def _derive_diff(self, path: str,
+                         new_content: VariableValue) -> VariableValue:
     try:
       diff = await self._get_full_diff(path, new_content)
       if diff is None:
-        return "File is new."
+        return VariableValue("File is new.")
       elif not diff:
-        return "No changes."
+        return VariableValue("No changes.")
       else:
-        return "\n".join(diff)
+        return VariableValue("\n".join(diff))
     except Exception as e:
-      return f"Could not compute diff: {e}"
+      return VariableValue(f"Could not compute diff: {e}")
 
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     path = self._hard_coded_path or inputs[VariableName("path")]

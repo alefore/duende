@@ -5,6 +5,7 @@ from enum import Enum, auto
 
 VariableName = NewType("VariableName", str)
 VariableValue = NewType("VariableValue", str)
+VariableMap = NewType("VariableMap", dict[VariableName, VariableValue])
 
 
 class CommandOutput(NamedTuple):
@@ -19,11 +20,11 @@ class CommandOutput(NamedTuple):
 
 class CommandInput(NamedTuple):
   command_name: str
-  args: dict[VariableName, VariableValue] = {}
+  args: VariableMap = VariableMap({})
   # Args that are computed by the command (before `run`).
   # They are mostly used to communicate additional debugging information
   # to the frontend.
-  derived_args: dict[VariableName, Any] = {}
+  derived_args: VariableMap = VariableMap({})
   thought_signature: bytes | None = None
 
 
@@ -77,13 +78,12 @@ class AgentCommand(ABC):
     pass
 
   @abstractmethod
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
+  async def run(self, inputs: VariableMap) -> CommandOutput:
     pass
 
-  async def derive_args(
-      self, inputs: dict[VariableName, Any]) -> dict[VariableName, Any]:
+  async def derive_args(self, inputs: VariableMap) -> VariableMap:
     """
     Computes additional, display-only properties for the command.
     These properties are attached to the CommandInput object.
     """
-    return {}
+    return VariableMap({})
