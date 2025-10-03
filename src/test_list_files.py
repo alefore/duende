@@ -111,12 +111,19 @@ class ListAllFilesTest(unittest.IsolatedAsyncioTestCase):
     self.assertListEqual(sorted(output.file_paths), expected_files)
     # ✨
 
-  def testFileAccessPolicy(self):
+  async def testFileAccessPolicy(self):
     """Search in root directory only outputs entries allowed by access policy.
 
     Creates a regex file access policy matching two files and validates that
     the outputs are exactly as expected."""
-    # {{🍄 file access policy}}
+    # ✨ file access policy
+    file_access_policy = RegexFileAccessPolicy(r"(dog.txt|banana.md)$")
+    output: CommandOutput = await list_all_files(".", file_access_policy)
+    self.assertListEqual(sorted(output.file_paths), [
+        "animals/mammals/dog.txt",
+        "fruits/banana.md",
+    ])
+    # ✨
 
   def testFileAccessPolicyNoMatch(self):
     """Runs successfully if file access policy doesn't match anything."""
