@@ -5,9 +5,10 @@ import tempfile
 import shutil
 import aiofiles
 import pathlib
+import re
 
 from search_file_command import SearchFileCommand
-from file_access_policy import CurrentDirectoryFileAccessPolicy
+from file_access_policy import CurrentDirectoryFileAccessPolicy, RegexFileAccessPolicy
 from agent_command import CommandOutput
 
 
@@ -191,6 +192,30 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn(f"Searched 1 files, found {num_matches} matches.",
                   output.summary)
+
+  async def test_run_with_file_access_errors(self):
+    """Verify graceful handling and reporting of file access errors (policy-based)."""
+    file_allowed = "allowed_file.txt"
+    file_restricted = "restricted_file.txt"
+    search_term = "policy_test"
+
+    async with aiofiles.open(file_allowed, mode='w') as f:
+      await f.write(f"This file is {search_term} and allowed.\n")
+    async with aiofiles.open(file_restricted, mode='w') as f:
+      await f.write(f"This file is {search_term} but restricted.\n")
+
+    access_policy = RegexFileAccessPolicy(r"^allowed_file\.txt$")
+    command = SearchFileCommand(file_access_policy=access_policy)
+    inputs = {'content': search_term, 'path': None}
+    output: CommandOutput = await command.run(inputs)
+
+    self.assertIn(f"{file_allowed}:1: This file is {search_term} and allowed.",
+                  output.output)
+    self.assertNotIn(f"{file_restricted}:1:", output.output)
+
+    self.assertEqual(output.errors, "")
+    self.assertIn("Searched 1 files, found 1 matches.", output.summary)
+    self.assertNotIn("Errors:", output.summary)
 
 
 if __name__ == '__main__':
