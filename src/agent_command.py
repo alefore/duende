@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, NamedTuple
+from typing import Any, Dict, List, NamedTuple, NewType
 from collections import namedtuple
 from enum import Enum, auto
+
+VariableName = NewType("VariableName", str)
+VariableValue = NewType("VariableValue", str)
 
 
 class CommandOutput(NamedTuple):
@@ -9,6 +12,7 @@ class CommandOutput(NamedTuple):
   output: str
   errors: str
   summary: str
+  output_variables: dict[VariableName, VariableValue] = {}
   task_done: bool = False
   thought_signature: bytes | None = None
 
