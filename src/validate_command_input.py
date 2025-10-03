@@ -1,4 +1,4 @@
-from typing import Generator, List
+from typing import Generator
 import os
 from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument
 from file_access_policy import FileAccessPolicy
@@ -29,8 +29,8 @@ def _ValidatePathArg(
 
 
 def ValidateCommandInput(syntax: CommandSyntax, input: CommandInput,
-                         file_access_policy: FileAccessPolicy) -> List[str]:
-  warnings: List[str] = []
+                         file_access_policy: FileAccessPolicy) -> list[str]:
+  warnings: list[str] = []
 
   # Validate arguments based on CommandSyntax.arguments
   for syntax_arg in syntax.arguments:
