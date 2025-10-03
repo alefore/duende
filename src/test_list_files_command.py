@@ -2,8 +2,6 @@ import unittest
 import os
 import tempfile
 import shutil
-from typing import Set
-
 from list_files_command import ListFilesCommand
 from agent_command import CommandInput
 from file_access_policy import FileAccessPolicy
@@ -12,7 +10,7 @@ from file_access_policy import FileAccessPolicy
 class TestFileAccessPolicy(FileAccessPolicy):
 
   def __init__(self) -> None:
-    self._denied_paths: Set[str] = set()
+    self._denied_paths: set[str] = set()
 
   def allow_access(self, file_path: str) -> bool:
     return os.path.abspath(file_path) not in self._denied_paths

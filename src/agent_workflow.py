@@ -2,7 +2,7 @@ import logging
 import re
 import sys
 from abc import ABC, abstractmethod
-from typing import Dict, Pattern
+from typing import Pattern
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
