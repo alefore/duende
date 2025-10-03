@@ -37,6 +37,22 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 0 matches.", output.summary)
 
+  async def test_run_single_file_single_match(self):
+    """Verify correct reporting of a single match in a specified file."""
+    file_name = "single_match_file.txt"
+    search_term = "unique_term"
+    file_content = f"This line has a {search_term} here.\nAnother line.\n"
+    async with aiofiles.open(file_name, mode='w') as f:
+      await f.write(file_content)
+
+    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    inputs = {'content': search_term, 'path': file_name}
+    output: CommandOutput = await command.run(inputs)
+
+    expected_output_line = f"{file_name}:1: This line has a {search_term} here."
+    self.assertIn(expected_output_line, output.output)
+    self.assertEqual(output.errors, "")
+    self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
 if __name__ == '__main__':
   unittest.main()
