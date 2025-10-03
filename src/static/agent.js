@@ -117,6 +117,9 @@ function handleUpdate(socket, data) {
       });
 
   conversation.updateView();
+  if (conversation.isShown()) {
+    updatePageTitle();
+  }
   maybeAutoConfirm(socket);
   maybeRequestMessages(socket, data.message_count, conversation);
 }
@@ -148,11 +151,10 @@ function handleListConversations(socket, response_data) {
 function switchSelectedConversationIndex(delta) {
   const $conversationSelector = $('#conversation_selector');
   const currentLength = $conversationSelector.children('option').length;
-  if (currentLength === 0) return;  // No conversations to switch
+  if (currentLength === 0) return;
 
   let newIndex = $conversationSelector.prop('selectedIndex') + delta;
 
-  // Wrap around logic
   if (newIndex < 0) {
     newIndex = currentLength - 1;
   } else if (newIndex >= currentLength) {
@@ -161,6 +163,16 @@ function switchSelectedConversationIndex(delta) {
 
   $conversationSelector.prop('selectedIndex', newIndex);
   $conversationSelector.trigger('change');
+}
+
+function updatePageTitle() {
+  const conversation = getShownConversation();
+  const baseTitle = 'Duende';
+  if (conversation) {
+    document.title = `${conversation.stateEmoji} ${baseTitle}`;
+  } else {
+    document.title = baseTitle;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -211,20 +223,18 @@ document.addEventListener('DOMContentLoaded', function() {
   $conversationSelector.on('change', function() {
     const id = parseInt($(this).val());
     if (conversationsById[id]) conversationsById[id].show();
+    updatePageTitle();
   });
 
-  // Function to show/hide the confirmation button
   function updateConfirmationButtonVisibility() {
     const confirmationForm = document.getElementById('confirmation_form');
     if (confirmationForm.style.display === 'none') {
       confirmButton.style.display = 'none';
     } else {
-      confirmButton.style.display =
-          'inline-block';  // Or 'block' depending on desired layout
+      confirmButton.style.display = 'inline-block';
     }
   }
 
-  // Observe changes to the style attribute of the confirmation_form
   const observer = new MutationObserver(function(mutations) {
     mutations.forEach(function(mutation) {
       if (mutation.attributeName === 'style') {
@@ -235,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
   observer.observe(confirmationForm, {attributes: true});
 
-  // Initial check for button visibility
   updateConfirmationButtonVisibility();
 
   $('#prev_conversation_button').on('click', function() {
