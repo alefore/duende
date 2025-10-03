@@ -1,6 +1,6 @@
 import asyncio
 
-from typing import Dict, Optional, Callable, List
+from typing import Dict, Callable, List
 import sys
 
 from agent_command import AgentCommand, CommandOutput
@@ -46,7 +46,7 @@ def create_ask_command_registry(
 
 async def create_command_registry(
     file_access_policy: FileAccessPolicy,
-    validation_manager: Optional[ValidationManager],
+    validation_manager: ValidationManager | None,
     start_new_task: Callable[[TaskInformation], CommandOutput],
     git_dirty_accept: bool = False,
     can_write: bool = True,
