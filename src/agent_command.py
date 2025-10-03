@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, Dict, List, NamedTuple
 from collections import namedtuple
 from enum import Enum, auto
 
@@ -10,7 +10,7 @@ class CommandOutput(NamedTuple):
   errors: str
   summary: str
   task_done: bool = False
-  thought_signature: Optional[bytes] = None
+  thought_signature: bytes | None = None
 
 
 class CommandInput(NamedTuple):
@@ -20,7 +20,7 @@ class CommandInput(NamedTuple):
   # They are mostly used to communicate additional debugging information
   # to the frontend.
   derived_args: Dict[str, Any] = {}
-  thought_signature: Optional[bytes] = None
+  thought_signature: bytes | None = None
 
 
 class ArgumentContentType(Enum):
@@ -54,7 +54,7 @@ class CommandSyntax(NamedTuple):
   arguments: List[Argument] = []
 
   output_type: ArgumentContentType = ArgumentContentType.STRING
-  output_description: Optional[str] = None
+  output_description: str | None = None
 
 
 class AgentCommand(ABC):
