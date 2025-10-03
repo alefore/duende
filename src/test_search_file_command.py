@@ -24,7 +24,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     shutil.rmtree(self.temp_dir)
 
   async def test_run_no_matches(self):
-    file_name = self.temp_dir / "test_file.txt"
+    file_name = "test_file.txt"
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write("Line 1 with unique content.\n")
       await f.write("Line 2 without the search term.\n")
@@ -40,24 +40,24 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
 
   async def test_run_single_file_single_match(self):
     """Verify correct reporting of a single match in a specified file."""
-    file_name = self.temp_dir / "single_match_file.txt"
+    file_name = "single_match_file.txt"
     search_term = "unique_term"
     file_content = f"This line has a {search_term} here.\nAnother line.\n"
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write(file_content)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': str(file_name)}
+    inputs = {'content': search_term, 'path': file_name}
     output: CommandOutput = await command.run(inputs)
 
-    expected_output_line = f"{file_name.name}:1: This line has a {search_term} here."
+    expected_output_line = f"{file_name}:1: This line has a {search_term} here."
     self.assertIn(expected_output_line, output.output)
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
   async def test_run_single_file_multiple_matches(self):
     """Verify correct reporting of multiple matches in a specified file. Validate that lines that don't match don't get returned."""
-    file_name = self.temp_dir / "multiple_match_file.txt"
+    file_name = "multiple_match_file.txt"
     search_term = "match"
     file_content = (f"This line has a {search_term}.\n"
                     f"Another line with a {search_term} too.\n"
@@ -67,13 +67,13 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(file_content)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': str(file_name)}
+    inputs = {'content': search_term, 'path': file_name}
     output: CommandOutput = await command.run(inputs)
 
     expected_output_lines = [
-        f"{file_name.name}:1: This line has a {search_term}.",
-        f"{file_name.name}:2: Another line with a {search_term} too.",
-        f"{file_name.name}:4: Final line with a {search_term}."
+        f"{file_name}:1: This line has a {search_term}.",
+        f"{file_name}:2: Another line with a {search_term} too.",
+        f"{file_name}:4: Final line with a {search_term}."
     ]
 
     for line in expected_output_lines:
@@ -83,8 +83,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
 
   async def test_run_multiple_files_multiple_matches(self):
     """Verify correct reporting of matches across multiple files."""
-    file_name1 = self.temp_dir / "file1.txt"
-    file_name2 = self.temp_dir / "file2.txt"
+    file_name1 = "file1.txt"
+    file_name2 = "file2.txt"
     search_term = "test"
 
     file_content1 = f"This is a {search_term} line.\nAnother line.\n{search_term}ing again.\n"
@@ -96,26 +96,25 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(file_content2)
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': None}  # Search all files
+    inputs = {'content': search_term, 'path': None}
     output: CommandOutput = await command.run(inputs)
 
     expected_output_lines = [
-        f"{file_name1.name}:1: This is a {search_term} line.",
-        f"{file_name1.name}:3: {search_term}ing again.",
-        f"{file_name2.name}:1: A {search_term} in a different file.",
+        f"{file_name1}:1: This is a {search_term} line.",
+        f"{file_name1}:3: {search_term}ing again.",
+        f"{file_name2}:1: A {search_term} in a different file.",
     ]
 
     for line in expected_output_lines:
       self.assertIn(line, output.output)
 
     self.assertEqual(output.errors, "")
-    self.assertIn("Searched 2 files, found 3 matches.",
-                  output.summary)  # Corrected file count to 2
+    self.assertIn("Searched 2 files, found 3 matches.", output.summary)
 
   async def test_run_with_path_argument(self):
     """Verify search is restricted to the specified file when 'path' argument is used."""
-    file_to_search = self.temp_dir / "target_file.txt"
-    other_file = self.temp_dir / "another_file.txt"
+    file_to_search = "target_file.txt"
+    other_file = "another_file.txt"
     search_term = "important_word"
 
     async with aiofiles.open(file_to_search, mode='w') as f:
@@ -124,28 +123,26 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(f"This file also has the {search_term}.\n")
 
     command = SearchFileCommand(file_access_policy=self.file_access_policy)
-    inputs = {'content': search_term, 'path': str(file_to_search)}
+    inputs = {'content': search_term, 'path': file_to_search}
     output: CommandOutput = await command.run(inputs)
 
-    expected_output_line = f"{file_to_search.name}:1: Line one with the {search_term}."
+    expected_output_line = f"{file_to_search}:1: Line one with the {search_term}."
 
     self.assertIn(expected_output_line, output.output)
-    self.assertNotIn(
-        str(other_file.name),
-        output.output)  # Ensure other file's content is not in output
+    self.assertNotIn(other_file, output.output)
     self.assertEqual(output.errors, "")
     self.assertIn("Searched 1 files, found 1 matches.", output.summary)
 
   async def test_run_repository_wide_search(self):
     """Verify search covers the entire repository, including subdirectories, when no 'path' argument is provided."""
-    subdir1 = self.temp_dir / "subdir1"
-    subdir2 = self.temp_dir / "subdir2"
+    subdir1 = pathlib.Path("subdir1")
+    subdir2 = pathlib.Path("subdir2")
     subdir1.mkdir(exist_ok=True)
     subdir2.mkdir(exist_ok=True)
 
-    file_main = self.temp_dir / "main_file.txt"
-    file_subdir1 = subdir1 / "sub_file1.txt"
-    file_subdir2 = subdir2 / "sub_file2.txt"
+    file_main = "main_file.txt"
+    file_subdir1 = str(subdir1 / "sub_file1.txt")
+    file_subdir2 = str(subdir2 / "sub_file2.txt")
     search_term = "repo_match"
 
     async with aiofiles.open(file_main, mode='w') as f:
@@ -160,17 +157,40 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     output: CommandOutput = await command.run(inputs)
 
     expected_output_lines = [
-        f"{file_main.name}:1: Here is a {search_term} in the main directory.",
-        f"{file_subdir1.parent.name}/{file_subdir1.name}:1: A {search_term} inside subdir1.",
-        f"{file_subdir2.parent.name}/{file_subdir2.name}:1: {search_term} is also here in subdir2."
+        f"{file_main}:1: Here is a {search_term} in the main directory.",
+        f"{file_subdir1}:1: A {search_term} inside subdir1.",
+        f"{file_subdir2}:1: {search_term} is also here in subdir2."
     ]
 
     for line in expected_output_lines:
       self.assertIn(line, output.output)
 
     self.assertEqual(output.errors, "")
-    self.assertIn("Searched 3 files, found 3 matches.",
-                  output.summary)  # 3 files created for this test
+    self.assertIn("Searched 3 files, found 3 matches.", output.summary)
+
+  async def test_run_large_number_of_matches(self):
+    """Verify correct handling of the match_limit and summary reporting."""
+    file_name = "large_match_file.txt"
+    search_term = "limit_test"
+    num_matches = 250  # More than the default match_limit of 200
+    file_content = "\n".join(
+        [f"This line has a {search_term}." for _ in range(num_matches)])
+
+    async with aiofiles.open(file_name, mode='w') as f:
+      await f.write(file_content)
+
+    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    inputs = {'content': search_term, 'path': file_name}
+    output: CommandOutput = await command.run(inputs)
+
+    self.assertIn(f"Too many matches to display ({num_matches}, limit is 200).",
+                  output.output)
+    self.assertIn(
+        f"Files with matches:\npath,lines_match,file_line_count\n{file_name}, {num_matches}, {num_matches}",
+        output.output)
+    self.assertEqual(output.errors, "")
+    self.assertIn(f"Searched 1 files, found {num_matches} matches.",
+                  output.summary)
 
 
 if __name__ == '__main__':
