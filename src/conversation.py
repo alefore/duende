@@ -119,13 +119,11 @@ class ConversationFactory:
     self.on_message_added_callback = options.on_message_added_callback
     self.on_state_changed_callback = options.on_state_changed_callback
 
-  def New(self, name: str,
-                command_registry: CommandRegistry) -> Conversation:
+  def New(self, name: str, command_registry: CommandRegistry) -> Conversation:
     with self._lock:
       reserved_id = self._next_id
       self._next_id += 1
-    output = Conversation(reserved_id, name,
-                          command_registry,
+    output = Conversation(reserved_id, name, command_registry,
                           self.on_message_added_callback,
                           self.on_state_changed_callback)
     self._conversations[reserved_id] = output
