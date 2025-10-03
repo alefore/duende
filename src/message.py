@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, NamedTuple
+from typing import List, Dict, Any, NamedTuple
 from datetime import datetime, timezone
 
 from agent_command import CommandInput, CommandOutput
@@ -6,17 +6,17 @@ from agent_command import CommandInput, CommandOutput
 
 class ContentSection(NamedTuple):
   content: str
-  command: Optional[CommandInput] = None
-  command_output: Optional[CommandOutput] = None
-  summary: Optional[str] = None
+  command: CommandInput | None = None
+  command_output: CommandOutput | None = None
+  summary: str | None = None
 
 
 class Message:
 
   def __init__(self,
                role: str,
-               content_sections: Optional[List[ContentSection]] = None,
-               creation_time: Optional[datetime] = None):
+               content_sections: List[ContentSection] | None = None,
+               creation_time: datetime | None = None):
     self.role = role
     self._content_sections: List[
         ContentSection] = content_sections if content_sections is not None else []
