@@ -1,8 +1,10 @@
 import aiofiles
 import asyncio
 import logging
-import re
 import pathlib
+import re
+import shutil
+import tempfile
 from typing import NamedTuple, NewType, Pattern, Sequence
 
 from agent_loop import AgentLoop
@@ -127,7 +129,17 @@ class DMValidator(DoneValuesValidator):
 
   async def _expand_in_tmp_copy(self, implementation) -> pathlib.Path:
     """Makes a tmp copy of output_path, implementing marker_name."""
-    return pathlib.Path()  # {{🍄 expand in tmp copy}}
+    # ✨ expand in tmp copy
+    tmp_file_name = tempfile.mktemp(suffix=self._output_path.suffix)
+    tmp_path = pathlib.Path(tmp_file_name)
+    async with aiofiles.open(self._output_path, mode='r') as src_f:
+      content = await src_f.read()
+    async with aiofiles.open(tmp_path, mode='w') as dst_f:
+      await dst_f.write(content)
+
+    await _expand_marker(tmp_path, self._marker_name, implementation)
+    return tmp_path
+    # ✨
 
 
 class CodeSpecsWorkflow(AgentWorkflow):
