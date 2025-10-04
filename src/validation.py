@@ -3,6 +3,7 @@ import subprocess
 import logging
 from typing import NamedTuple
 import asyncio
+from abc import ABC, abstractmethod
 
 
 class ValidationResult(NamedTuple):
@@ -11,14 +12,24 @@ class ValidationResult(NamedTuple):
   error: str
 
 
-class ValidationManager:
+class ValidationManager(ABC):
 
   def __init__(self) -> None:
-    self.validation_script: str = "agent/validate.sh"
     self.validation_output: ValidationResult | None = None
 
   def RegisterChange(self) -> None:
     self.validation_output = None
+
+  @abstractmethod
+  async def Validate(self) -> ValidationResult:
+    pass
+
+
+class ValidateShellValidationManager(ValidationManager):
+
+  def __init__(self) -> None:
+    super().__init__()
+    self.validation_script: str = "agent/validate.sh"
 
   async def Validate(self) -> ValidationResult:
     if self.validation_output is None:
@@ -58,4 +69,4 @@ def CreateValidationManager() -> ValidationManager | None:
     logging.info(f"{script_path}: Validation script is not executable.")
     return None
 
-  return ValidationManager()
+  return ValidateShellValidationManager()
