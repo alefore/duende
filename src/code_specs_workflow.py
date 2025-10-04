@@ -111,7 +111,19 @@ class DMValidator(DoneValuesValidator):
     assert isinstance(implementation, str)
     cmd_to_run = self._validator.format(
         **{'path': str(await self._expand_in_tmp_copy(implementation))})
-    return ValidationResult(True, "", "")  # {{🍄 run validation}}
+    # ✨ run validation
+    proc = await asyncio.create_subprocess_shell(
+        cmd_to_run,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+
+    success = proc.returncode == 0
+    error = stderr.decode().strip()
+    output = stdout.decode().strip()
+
+    return ValidationResult(success=success, output=output, error=error)
+    # ✨
 
   async def _expand_in_tmp_copy(self, implementation) -> pathlib.Path:
     """Makes a tmp copy of output_path, implementing marker_name."""
