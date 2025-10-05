@@ -9,12 +9,16 @@ from typing import NamedTuple, NewType, Pattern, Sequence
 
 from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
+from command_registry import CommandRegistry
 from conversation import Conversation, ConversationId, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
 from agent_command import VariableMap, VariableName
 from done_command import DoneValuesValidator
+from list_files_command import ListFilesCommand
+from read_file_command import ReadFileCommand
+from write_file_command import WriteFileCommand
 from validation import ValidationResult
 
 logging.basicConfig(level=logging.INFO)
@@ -22,11 +26,28 @@ logger = logging.getLogger(__name__)
 
 implementation_variable = VariableName('implementation')
 
+# The local path to a DM file (including the `.dm.` part).
+dm_path_variable = VariableName('dm_path')
 
-class DMAndValidator(NamedTuple):
+# A shell command that can be used to validate that the output file (with some
+# DM markers expanded) is correct. If the DM file being expanded contains unit
+# tests, this typically just runs it.
+validator_variable = VariableName('validator')
+
+# A comma-separated list of local files that someone implementing a DM marker
+# may want to have access to.
+relevant_paths_variable = VariableName('relevant_paths')
+
+
+class PathAndValidator(NamedTuple):
   dm_path: pathlib.Path
-  validator: str
+  validator: DMValidator
 
+
+# A string with a shell command including the token `{path}`, which will be
+# expanded (with `validator.format(…)`) to the path to be validated. Validation
+# is successful if this command exits with 0.
+DMValidator = NewType('DMValidator', str)
 
 MarkerName = NewType('MarkerName', str)
 
@@ -34,45 +55,43 @@ MarkerName = NewType('MarkerName', str)
 def _get_comment_char(path: pathlib.Path) -> str:
   """Returns the comment character based on the file extension (e.g., `#`).
 
-  Supports these extensions: .py, .sh, .cc, .h"""
+  Supported extensions: py, sh, cc, h, js, ts, java, css, html"""
   #  {{🍄 get comment char}}
   raise ValueError(f"Unknown file suffix: {path.suffix}")
 
 
-def _validate_implementation_string(implementation: str,
-                                    marker_name: MarkerName, comment_char: str):
-  """raises ValueError if implementation lacks correct beginning+end lines."""
-  #  {{🍄 validate implementation string}}
+class MarkerImplementation:
+
+  def __init__(self, name: MarkerName, value: str) -> None:
+    """Stores attributes and validates the format of `value`.
+
+    Raises:
+         ValueError if value lacks valid beginning and end comments."""
+    raise NotImplementedError()  # {{🍄 marker implementation constructor}}
+
+  # {{🍄 `name` and `value` getters}}
+
+  async def save(self, path: pathlib.Path) -> None:
+    """Rewrites `path`, storing our implementation.
+
+    Raises:
+        ValueError if the marker doesn't occur exactly once in `path`."""
+    raise NotImplementedError()  # {{🍄 marker implementation save}}
 
 
-async def _expand_marker(path: pathlib.Path, name: MarkerName,
-                         implementation: str):
-  """Rewrites `path`, replacing the marker `name` with an implementation.
-
-  Raises an exception if `implementation` can't be validated; or if the marker
-  doesn't occur exactly once in the file."""
-  # {{🍄 expand marker}}
+async def _run_validator(path: pathlib.Path,
+                         validator: DMValidator) -> ValidationResult:
+  """Runs `validator` (expanding `path`), returning ValidationResult."""
+  raise NotImplementedError()  # {{🍄 def run validator}}
 
 
-class DMValidator(DoneValuesValidator):
+async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
+  """Returns a list of all markers in `path`.
 
-  def __init__(self, inputs: DMAndValidator, output_path: pathlib.Path,
-               marker_name: MarkerName):
-    self._validator = inputs.validator
-    self._output_path = output_path
-    self._marker_name = marker_name
-
-  async def validate(self, inputs: VariableMap) -> ValidationResult:
-    """Validates an implementation of the marker."""
-    implementation = inputs[implementation_variable]
-    assert isinstance(implementation, str)
-    cmd_to_run = self._validator.format(
-        **{'path': str(await self._expand_in_tmp_copy(implementation))})
-    return ValidationResult(True, "", "")  # {{🍄 run validation}}
-
-  async def _expand_in_tmp_copy(self, implementation) -> pathlib.Path:
-    """Makes a tmp copy of output_path, implementing marker_name."""
-    return pathlib.Path()  # {{🍄 expand in tmp copy}}
+  Raises:
+      ValueError if the file is not a valid DM file or the path does not include
+      the `.dm` suffix."""
+  raise NotImplementedError()  # {{🍄 list markers}}
 
 
 class CodeSpecsWorkflow(AgentWorkflow):
@@ -84,59 +103,85 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     inputs = await self._get_initial_parameters()
     output_path = await self._prepare_output(inputs)
-    relevant_files = await self._find_relevant_files(output_path)
-    await self._implement_all_markers(inputs, output_path, relevant_files)
+    relevant_paths = await self._find_relevant_paths(output_path)
+    await self._implement_file(inputs, output_path, relevant_paths)
 
     logger.info("CodeSpecsWorkflow completed successfully.")
 
-  async def _get_initial_parameters(self) -> DMAndValidator:
+  def _get_command_registry(self, variables: set[VariableName],
+                            validator: DoneValuesValidator) -> CommandRegistry:
+    """Creates a command registry with a `done` command expecting `variables`.
+
+    The registry includes only `read_file`, `list_files` and `done`."""
+    raise NotImplementedError()  # {{🍄 get command registry}}
+
+  async def _get_initial_parameters(self) -> PathAndValidator:
     """Ask the user for a valid DM file.
 
-    Runs an AgentLoop asking the user for:
+    Runs an AgentLoop where the user specifies values for dm_path_variable and
+    validator_variable (given to `done` and validated)."""
 
-    1. The path to the file
+    class DoneValidator(DoneValuesValidator):
+      """Validates inputs given to `done`.
 
-    2. A command that can be used to validate an implementation of the file.
-       This command must not contain the path to the file directly,
-       but should have a `{path}` token that we'll expand (with `format`).
+      Confirms that `inputs[dm_path_variable]` is a valid DM specs file and that
+      `inputs[validator_variable]` …
 
-    The AgentLoop gives these parameters to the `done` command. The `done`
-    command validates that the file is correct.
-    """
-    return DMAndValidator(pathlib.Path(), '')  # {{🍄 initial parameters }}
+      * … includes the string `{path}`
+      * … successfully validates `inputs[dm_path_variable]`."""
+      raise NotImplementedError()  # {{🍄 initial validator}}
 
-  async def _prepare_output(self, inputs: DMAndValidator) -> pathlib.Path:
-    """Reats the DM file and prepares the output file.
+    raise NotImplementedError  # {{🍄 initial parameters }}
 
-    Prepends the "DO NOT EDIT" header at the top."""
-    return pathlib.Path()  # {{🍄 prepare output }}
+  async def _prepare_output(self, inputs: PathAndValidator) -> pathlib.Path:
+    """Reads the input DM file and prepares the output file.
 
-  async def _find_relevant_files(
+    No markers are expanded. Prepends the "DO NOT EDIT" header at the top."""
+    raise NotImplementedError()  # {{🍄 prepare output }}
+
+  async def _find_relevant_paths(
       self, path: pathlib.Path) -> dict[MarkerName, set[pathlib.Path]]:
     """Finds all relevant files to implement each DM marker.
 
-    To do this, for each marker in `path` starts an AgentLoop asking the
-    Conversational AI to focus exclusively on the specific marker and to
-    identify all the relevant files. The conversational AI should list all local
-    files that may contain relevant information for an implementer of the
-    marker. The conversational AI should give these paths as a parameter to the
-    `done` command; `done` command verifies that these files all exist.
+    Does it by starting concurrent conversations for all markers."""
+    raise NotImplementedError()  # {{🍄 find relevant files loop}}
 
-    These conversations are started concurrently.
+  async def _find_relevant_paths_marker(
+      self, path: pathlib.Path, marker: MarkerName) -> set[pathlib.Path]:
+    """Finds all relevant files to implement a single DM marker.
 
-    Returns:
-      A dictionary containing all markers and their relevant files."""
-    return {}  # {{🍄 find relevant files}}
+    Runs an AgentLoop focused exclusively on `marker`, to identify the
+    approriate value for relevant_paths_variable."""
 
-  async def _implement_all_markers(
-      self, inputs: DMAndValidator, output_path: pathlib.Path,
-      relevant_files: dict[MarkerName, set[pathlib.Path]]) -> None:
-    """Implements all DM markers.
+    class DoneValidator(DoneValuesValidator):
+      """Verifies that all relevant_paths_variable values are readable."""
+      raise NotImplementedError()  # {{🍄 relevant paths validator}}
 
-    Starts a concurrent conversation for each DM marker. The conversation
-    must call `done` to implement the marker, passing the implementation as
-    required parameter `implementation_variable`."""
-    # {{🍄 implement}}
+    raise NotImplementedError()  # {{🍄 find relevant files}}
+
+  async def _implement_file(
+      self, inputs: PathAndValidator, output_path: pathlib.Path,
+      relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
+    """Implements all DM markers sequentially."""
+    raise NotImplementedError()  # {{🍄 implement_file}}
+
+  async def _implement_marker(self, marker: MarkerName,
+                              relevant_paths: set[pathlib.Path],
+                              validator: DMValidator,
+                              output_path: pathlib.Path) -> None:
+    """Runs an AgentLoop and uses the output to implement `marker`.
+
+    The AgentLoop is focused on `marker`. Instructs the AI to read all
+    `relevant_paths` before doing anything else. The AI should then pass the
+    implementation code to `done` (see `implementation_variable`).
+
+    Once the `AgentLoop` returns, expands the marker in `output_path`."""
+
+    class DoneValidator(DoneValuesValidator):
+      """Validates implementation of marker on a tmp copy of output path."""
+      raise NotImplementedError()  # {{🍄 implement validator}}
+
+    raise NotImplementedError()  # {{🍄 implement all markers}}
 
 
 class CodeSpecsWorkflowFactory(AgentWorkflowFactory):
