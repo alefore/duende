@@ -16,6 +16,7 @@ from conversation_state import ConversationState
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
 from done_command import DoneCommand, DoneValuesValidator
+from file_access_policy import FileAccessPolicy
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
 from write_file_command import WriteFileCommand

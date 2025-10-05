@@ -16,6 +16,7 @@ from conversation_state import ConversationState
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
 from done_command import DoneCommand, DoneValuesValidator
+from file_access_policy import FileAccessPolicy
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
 from write_file_command import WriteFileCommand
@@ -268,7 +269,52 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
       1. Be authorized by the file_access_policy.
       2. Be readable (not just exist, but confirm that it can be opened)."""
-      raise NotImplementedError()  # {{🍄 relevant paths validator}}
+
+      # ✨ relevant paths validator
+      def __init__(self, file_access_policy: FileAccessPolicy) -> None:
+        self._file_access_policy = file_access_policy
+
+      async def validate(self, inputs: VariableMap) -> ValidationResult:
+        relevant_paths_value = inputs.get(relevant_paths_variable)
+
+        if not isinstance(relevant_paths_value, str):
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"Variable '{relevant_paths_variable}' must be a string.")
+
+        if not relevant_paths_value:
+          return ValidationResult(success=True, output='', error='')
+
+        paths = [p.strip() for p in relevant_paths_value.split(',')]
+        for path_str in paths:
+          path = pathlib.Path(path_str)
+
+          if not self._file_access_policy.allow_access(str(path)):
+            return ValidationResult(
+                success=False,
+                output='',
+                error=f"Path '{path_str}' is not authorized by file access policy."
+            )
+
+          if not path.is_file():
+            return ValidationResult(
+                success=False,
+                output='',
+                error=f"Relevant path '{path_str}' does not exist or is not a file."
+            )
+
+          try:
+            async with aiofiles.open(path, mode="r") as f:
+              await f.read(1)  # Try to read a character to ensure readability
+          except Exception as e:
+            return ValidationResult(
+                success=False,
+                output='',
+                error=f"Relevant path '{path_str}' is not readable: {e}")
+        return ValidationResult(success=True, output='', error='')
+
+    # ✨
 
     raise NotImplementedError()  # {{🍄 find relevant files}}
 
