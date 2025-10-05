@@ -414,7 +414,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       """Validates implementation of marker on a tmp copy of output path."""
       raise NotImplementedError()  # {{🍄 implement validator}}
 
-    raise NotImplementedError()  # {{🍄 implement all markers}}
+    raise NotImplementedError()  # {{🍄 implement single marker}}
 
 
 class CodeSpecsWorkflowFactory(AgentWorkflowFactory):
