@@ -14,8 +14,8 @@ from conversation import Conversation, ConversationId, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
-from agent_command import VariableMap, VariableName, VariableValue
-from done_command import DoneValuesValidator
+from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
+from done_command import DoneCommand, DoneValuesValidator
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
 from write_file_command import WriteFileCommand
@@ -108,9 +108,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     logger.info("CodeSpecsWorkflow completed successfully.")
 
-  def _get_command_registry(self, variables: set[VariableName],
+  def _get_command_registry(self, arguments: list[Argument],
                             validator: DoneValuesValidator) -> CommandRegistry:
-    """Creates a command registry with a `done` command expecting `variables`.
+    """Creates a command registry with a `done` command expecting `arguments`.
 
     The registry includes only `read_file`, `list_files` and `done`."""
     raise NotImplementedError()  # {{🍄 get command registry}}
