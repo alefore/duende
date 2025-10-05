@@ -262,7 +262,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
     approriate value for relevant_paths_variable."""
 
     class DoneValidator(DoneValuesValidator):
-      """Verifies that all relevant_paths_variable values are readable."""
+      """Verifies that all inputs[relevant_paths_variable] values are readable.
+
+      Each path must:
+
+      1. Be authorized by the file_access_policy.
+      2. Be readable (not just exist, but confirm that it can be opened)."""
       raise NotImplementedError()  # {{🍄 relevant paths validator}}
 
     raise NotImplementedError()  # {{🍄 find relevant files}}
