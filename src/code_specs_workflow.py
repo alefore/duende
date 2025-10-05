@@ -126,7 +126,15 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """Ask the user for a valid DM file.
 
     Runs an AgentLoop where the user specifies values for dm_path_variable and
-    validator_variable (given to `done` and validated)."""
+    validator_variable (given to `done` and validated).
+
+    The starting message for the AgentLoop should instruct the conversational AI
+    to prompt the user for the appropriate values. Something like:
+
+    > Please ask the user (through text conversation) for approprivate values to
+    > use for the variables expected by `done`. Once the user has given you
+    > appropriate values, your goal is achieved and you should run `done`.
+    """
 
     class DoneValidator(DoneValuesValidator):
       """Validates inputs given to `done`.
