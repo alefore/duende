@@ -253,7 +253,22 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """Finds all relevant paths to implement each DM marker.
 
     Does it by starting concurrent conversations for all markers."""
-    raise NotImplementedError()  # {{🍄 find relevant paths loop}}
+    # ✨ find relevant paths loop
+    markers = await _list_markers(path)
+    tasks = []
+    for marker in markers:
+      tasks.append(self._find_relevant_paths_marker(path, marker))
+
+    # Run all tasks concurrently and collect results
+    all_relevant_paths_for_markers = await asyncio.gather(*tasks)
+
+    # Aggregate results into a dictionary
+    result_map: dict[MarkerName, set[pathlib.Path]] = {}
+    for marker_name, relevant_paths_set in zip(markers,
+                                               all_relevant_paths_for_markers):
+      result_map[marker_name] = relevant_paths_set
+    return result_map
+    # ✨
 
   async def _find_relevant_paths_marker(
       self, path: pathlib.Path, marker: MarkerName) -> set[pathlib.Path]:
