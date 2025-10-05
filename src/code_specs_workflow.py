@@ -316,7 +316,66 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     # ✨
 
-    raise NotImplementedError()  # {{🍄 find relevant paths}}
+    # ✨ find relevant paths
+    done_arguments = [
+        Argument(
+            name=relevant_paths_variable,
+            arg_type=ArgumentContentType.STRING,
+            description="Comma-separated list of relevant file paths.",
+            required=False)
+    ]
+    conversation = self._options.conversation_factory.New(
+        f"Find relevant paths for marker: {marker}",
+        self._get_command_registry(
+            done_arguments,
+            DoneValidator(self._options.agent_loop_options.file_access_policy)))
+    start_message = Message(
+        role="user",
+        content_sections=[
+            ContentSection(
+                content=(
+                    f"The current DM marker is '{marker}'. The DM file is at "
+                    f"'{path}'. Your task is to identify all *other* files "
+                    "(besides the DM file itself) that are relevant to "
+                    "implementing this marker. You should read the contents "
+                    "of the DM file (and any other relevant files you find), "
+                    "and then call `done` with the `relevant_paths` argument. "
+                    "This argument should be a comma-separated list of all "
+                    "identified relevant file paths, *including* the DM file "
+                    f"itself ('{path}')."))
+        ])
+    agent_loop = AgentLoop(
+        AgentLoopOptions(
+            conversation=conversation,
+            start_message=start_message,
+            commands_registry=conversation.command_registry,
+            confirmation_state=self._options.agent_loop_options
+            .confirmation_state,
+            file_access_policy=self._options.agent_loop_options
+            .file_access_policy,
+            conversational_ai=self._options.agent_loop_options.conversational_ai
+        ))
+    await agent_loop.run()
+
+    last_message = conversation.messages[-1]
+    last_content_section = last_message.GetContentSections()[-1]
+    assert last_content_section.command_output, "Expected a CommandOutput from the 'done' command."
+    done_command_output_variables = last_content_section.command_output.output_variables
+
+    relevant_paths_str = done_command_output_variables.get(
+        relevant_paths_variable, '')
+    assert isinstance(relevant_paths_str, str)
+
+    found_paths: set[pathlib.Path] = set()
+    if relevant_paths_str:
+      for p_str in relevant_paths_str.split(','):
+        stripped_p_str = p_str.strip()
+        if stripped_p_str:
+          found_paths.add(pathlib.Path(stripped_p_str))
+    found_paths.add(path)  # Always include the DM file itself
+
+    return found_paths
+    # ✨
 
   async def _implement_file(
       self, inputs: PathAndValidator, output_path: pathlib.Path,
