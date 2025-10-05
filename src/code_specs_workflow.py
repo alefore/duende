@@ -233,11 +233,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     done_command_output_variables = last_content_section.command_output.output_variables
 
-    dm_path = pathlib.Path(str(done_command_output_variables[dm_path_variable]))
-    validator = DMValidator(
-        str(done_command_output_variables[validator_variable]))
-
-    return PathAndValidator(dm_path=dm_path, validator=validator)
+    dm_path = done_command_output_variables[dm_path_variable]
+    assert isinstance(dm_path, pathlib.Path)
+    validator_str = done_command_output_variables[validator_variable]
+    assert isinstance(validator_str, str)
+    return PathAndValidator(
+        dm_path=dm_path, validator=DMValidator(validator_str))
     # ✨
 
   async def _prepare_output(self, inputs: PathAndValidator) -> pathlib.Path:
