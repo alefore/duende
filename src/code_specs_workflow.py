@@ -178,13 +178,13 @@ class CodeSpecsWorkflow(AgentWorkflow):
         return await _run_validator(dm_path, DMValidator(validator_value))
         # ✨
 
-    raise NotImplementedError  # {{🍄 initial parameters }}
+    raise NotImplementedError  # {{🍄 initial parameters}}
 
   async def _prepare_output(self, inputs: PathAndValidator) -> pathlib.Path:
     """Reads the input DM file and prepares the output file.
 
     No markers are expanded. Prepends the "DO NOT EDIT" header at the top."""
-    raise NotImplementedError()  # {{🍄 prepare output }}
+    raise NotImplementedError()  # {{🍄 prepare output}}
 
   async def _find_relevant_paths(
       self, path: pathlib.Path) -> dict[MarkerName, set[pathlib.Path]]:
