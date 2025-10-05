@@ -14,7 +14,7 @@ from conversation import Conversation, ConversationId, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
-from agent_command import VariableMap, VariableName
+from agent_command import VariableMap, VariableName, VariableValue
 from done_command import DoneValuesValidator
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
@@ -90,7 +90,7 @@ async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
 
   Raises:
       ValueError if the file is not a valid DM file or the path does not include
-      the `.dm` suffix."""
+      the `.dm.` suffix."""
   raise NotImplementedError()  # {{🍄 list markers}}
 
 
@@ -163,7 +163,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       self, inputs: PathAndValidator, output_path: pathlib.Path,
       relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
     """Implements all DM markers sequentially."""
-    raise NotImplementedError()  # {{🍄 implement_file}}
+    raise NotImplementedError()  # {{🍄 implement file}}
 
   async def _implement_marker(self, marker: MarkerName,
                               relevant_paths: set[pathlib.Path],

@@ -14,7 +14,7 @@ from conversation import Conversation, ConversationId, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
-from agent_command import VariableMap, VariableName
+from agent_command import VariableMap, VariableName, VariableValue
 from done_command import DoneValuesValidator
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
@@ -90,7 +90,7 @@ async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
 
   Raises:
       ValueError if the file is not a valid DM file or the path does not include
-      the `.dm` suffix."""
+      the `.dm.` suffix."""
   raise NotImplementedError()  # {{🍄 list markers}}
 
 
@@ -129,7 +129,47 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
       * … includes the string `{path}`
       * … successfully validates `inputs[dm_path_variable]`."""
-      raise NotImplementedError()  # {{🍄 initial validator}}
+
+      # ✨ initial validator
+      async def validate(self, inputs: VariableMap) -> ValidationResult:
+        dm_path_value = inputs.get(dm_path_variable)
+        validator_value = inputs.get(validator_variable)
+
+        if not isinstance(dm_path_value, str) or not dm_path_value:
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"Variable '{dm_path_variable}' must be a non-empty string."
+          )
+
+        if not isinstance(validator_value, str) or not validator_value:
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"Variable '{validator_variable}' must be a non-empty string."
+          )
+
+        if '.dm.' not in dm_path_value:
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"DM file path '{dm_path_value}' must contain '.dm.'.")
+
+        if '{path}' not in validator_value:
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"Validator '{validator_value}' must contain '{{path}}'.")
+
+        dm_path = pathlib.Path(dm_path_value)
+        if not dm_path.is_file():
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"DM file '{dm_path_value}' does not exist.")
+
+        return await _run_validator(dm_path, DMValidator(validator_value))
+        # ✨
 
     raise NotImplementedError  # {{🍄 initial parameters }}
 
@@ -163,7 +203,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       self, inputs: PathAndValidator, output_path: pathlib.Path,
       relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
     """Implements all DM markers sequentially."""
-    raise NotImplementedError()  # {{🍄 implement_file}}
+    raise NotImplementedError()  # {{🍄 implement file}}
 
   async def _implement_marker(self, marker: MarkerName,
                               relevant_paths: set[pathlib.Path],
