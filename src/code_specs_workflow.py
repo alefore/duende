@@ -250,14 +250,14 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def _find_relevant_paths(
       self, path: pathlib.Path) -> dict[MarkerName, set[pathlib.Path]]:
-    """Finds all relevant files to implement each DM marker.
+    """Finds all relevant paths to implement each DM marker.
 
     Does it by starting concurrent conversations for all markers."""
-    raise NotImplementedError()  # {{🍄 find relevant files loop}}
+    raise NotImplementedError()  # {{🍄 find relevant paths loop}}
 
   async def _find_relevant_paths_marker(
       self, path: pathlib.Path, marker: MarkerName) -> set[pathlib.Path]:
-    """Finds all relevant files to implement a single DM marker.
+    """Finds all relevant paths to implement a single DM marker.
 
     Runs an AgentLoop focused exclusively on `marker`, to identify the
     approriate value for relevant_paths_variable."""
@@ -316,7 +316,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     # ✨
 
-    raise NotImplementedError()  # {{🍄 find relevant files}}
+    raise NotImplementedError()  # {{🍄 find relevant paths}}
 
   async def _implement_file(
       self, inputs: PathAndValidator, output_path: pathlib.Path,
