@@ -87,9 +87,9 @@ class MarkerImplementation:
       raise ValueError("Implementation value cannot be empty.")
 
     start_marker_pattern = re.compile(
-        f"^{re.escape(expected_comment_char)} ✨ {re.escape(name)}\\s*$")
+        f"^\\s*{re.escape(expected_comment_char)} ✨ {re.escape(name)}\\s*$")
     end_marker_pattern = re.compile(
-        f"^{re.escape(expected_comment_char)} ✨\\s*$")
+        f"^\\s*{re.escape(expected_comment_char)} ✨\\s*$")
 
     if not start_marker_pattern.match(lines[0]):
       raise ValueError(
@@ -124,8 +124,14 @@ class MarkerImplementation:
 
     comment_char = _get_comment_char(path)
     marker_pattern = re.compile(
-        f"{re.escape(comment_char)}\\s*{{🍄\\s*{re.escape(self._name)}?\\s*}}")
+        r"{comment_char}\s*{open_tag}🍄\s*{name}\s*{close_tag}*".format(
+            open_tag=re.escape("{{"),
+            close_tag=re.escape("}}"),
+            comment_char=re.escape(comment_char),
+            name=re.escape(self.name)))
+    logging.info(marker_pattern)
 
+    logging.info(content)
     lines = content.splitlines()
     found_marker_indices = []
     for i, line in enumerate(lines):
@@ -134,7 +140,7 @@ class MarkerImplementation:
 
     if len(found_marker_indices) != 1:
       raise ValueError(
-          f"Marker '{{🍄 {self._name}}}' found {len(found_marker_indices)} times in '{path}'. Expected exactly one."
+          f"Marker '{{{{🍄 {self._name}}}}}' found {len(found_marker_indices)} times in '{path}'. Expected exactly one."
       )
 
     marker_line_index = found_marker_indices[0]
@@ -529,15 +535,17 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """Runs an AgentLoop and uses the output to implement `marker`.
 
     The AgentLoop is focused on `marker`. Instructs the AI to read all
-    `relevant_paths` before doing anything else. The AI should then pass the
-    implementation code to `done` (see `implementation_variable`).
+    `relevant_paths` *and* `output_path` before doing anything else. The AI
+    should then pass the implementation code to `done` (see
+    `implementation_variable`). The prompt given to the AI is crafted carefully,
+    to explain how it must infer the desired intent from `output_path`.
 
     Once the `AgentLoop` returns, expands the marker in `output_path`."""
 
-    # ✨ implement validator
     class DoneValidator(DoneValuesValidator):
       """Validates implementation of marker on a tmp copy of output path."""
 
+      # ✨ implement validator
       def __init__(self, marker_name: MarkerName,
                    file_access_policy: FileAccessPolicy,
                    original_output_path: pathlib.Path,
@@ -581,38 +589,59 @@ class CodeSpecsWorkflow(AgentWorkflow):
         Argument(
             name=implementation_variable,
             arg_type=ArgumentContentType.STRING,
-            description=f"The code to implement the marker. Must start with '{comment_char} ✨ {marker}' and end with '{comment_char} ✨'."
+            description="The code to implement the marker, including `✨` start and end markers.",
         )
     ]
-    conversation_title = f"Implement marker: {marker}"
-    registry = self._get_command_registry(
-        done_arguments,
-        DoneValidator(
-            marker_name=marker,
-            file_access_policy=self._options.agent_loop_options
-            .file_access_policy,
-            original_output_path=output_path,
-            dm_validator=validator))
+
+    files_to_read = [f"- '{output_path}'"]
+    for p in sorted(list(relevant_paths)):
+      if p != output_path:  # Avoid duplicating output_path if it's already in relevant_paths
+        files_to_read.append(f"- '{p}'")
+    files_to_read_bullet_list = "\n".join(files_to_read)
 
     conversation = self._options.conversation_factory.New(
-        conversation_title, registry)
+        f"Implement marker: {marker}",
+        self._get_command_registry(
+            done_arguments,
+            DoneValidator(marker,
+                          self._options.agent_loop_options.file_access_policy,
+                          output_path, validator),
+        ),
+    )
 
-    relevant_paths_str = ', '.join(
-        [str(p) for p in relevant_paths if p != output_path])
-    start_message_content = (
-        f"You are tasked with implementing the DM marker '{marker}'. "
-        f"The output file is located at '{output_path}'.\n"
-        f"You should read the following relevant files to gather context: "
-        f"{relevant_paths_str or 'None'}. "
-        "Please use the `read_file` command to inspect these files.\n"
-        "Once you have gathered enough context, you must implement the marker. "
-        "Your implementation should be provided using the `done` command, "
-        f"assigning the code to the '{implementation_variable}' variable. "
-        f"The code must start with the line '{comment_char} ✨ {marker}' "
-        f"and end with the line '{comment_char} ✨'.")
     start_message = Message(
         role="user",
-        content_sections=[ContentSection(content=start_message_content)])
+        content_sections=[
+            ContentSection(
+                content=(
+                    "You are tasked with implementing a Duende Mushroom (DM) marker. "
+                    "A DM marker, like '{{🍄 name}}', indicates a specific location in the code "
+                    "where functionality needs to be added.\n\n"
+                    "To implement this marker, you will provide the *code content* for an "
+                    "implementation block. This block will replace the line containing the "
+                    f"'{{{{🍄 {marker}}}}}' marker in the file '{output_path}'.\n\n"
+                    "The implementation block *must* strictly follow this format:\n"
+                    f"- It *must* begin with a line exactly like: '{comment_char} ✨ {marker}'.\n"
+                    f"- It *must* end with a line exactly like: '{comment_char} ✨'.\n\n"
+                    "Before attempting any implementation, you *must* read the contents "
+                    "of the following files to gather all necessary context:\n"
+                    f"{files_to_read_bullet_list}\n\n"
+                    f"The specific DM marker you are implementing is '{{{{🍄 {marker}}}}}' "
+                    f"in the file '{output_path}'. Carefully analyze the code surrounding "
+                    "this marker in '{output_path}' and the contents of all the relevant files "
+                    "to fully understand the desired functionality and how your "
+                    "implementation should integrate.\n\n"
+                    "Once you have written the complete and correct implementation code, "
+                    "call the `done` command. The `done` command requires a "
+                    f"variable named `{implementation_variable}`. The value for "
+                    f"`{implementation_variable}` *must* be your full implementation block "
+                    "as a single string, including both the "
+                    f"'{comment_char} ✨ {marker}' beginning marker and the "
+                    f"'{comment_char} ✨' ending marker. "
+                    "Do not try to write to any files directly; simply provide the "
+                    "complete implementation block via the `done` command."))
+        ],
+    )
 
     agent_loop = AgentLoop(
         self._options.agent_loop_options._replace(
