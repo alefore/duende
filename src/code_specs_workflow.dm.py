@@ -64,7 +64,8 @@ def _get_comment_char(path: pathlib.Path) -> str:
 
 class MarkerImplementation:
 
-  def __init__(self, name: MarkerName, value: str) -> None:
+  def __init__(self, name: MarkerName, value: str,
+               expected_comment_char: str) -> None:
     """Stores attributes and validates the format of `value`.
 
     Raises:

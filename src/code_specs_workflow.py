@@ -70,21 +70,79 @@ def _get_comment_char(path: pathlib.Path) -> str:
 
 class MarkerImplementation:
 
-  def __init__(self, name: MarkerName, value: str) -> None:
+  def __init__(self, name: MarkerName, value: str,
+               expected_comment_char: str) -> None:
     """Stores attributes and validates the format of `value`.
 
     Raises:
          ValueError if value lacks valid beginning and end comments."""
-    raise NotImplementedError()  # {{🍄 marker implementation constructor}}
+    # ✨ marker implementation constructor
+    self._name = name
+    self._value = value
 
-  # {{🍄 `name` and `value` getters}}
+    # Validate the format of 'value'
+    lines = value.splitlines()
+    if not lines:
+      raise ValueError("Implementation value cannot be empty.")
+
+    start_marker_pattern = re.compile(
+        f"^{re.escape(expected_comment_char)} ✨ {re.escape(name)}\\s*$")
+    end_marker_pattern = re.compile(
+        f"^{re.escape(expected_comment_char)} ✨\\s*$")
+
+    if not start_marker_pattern.match(lines[0]):
+      raise ValueError(
+          f"Implementation value must start with a line matching '{expected_comment_char} ✨ {name}'. Got: '{lines[0]}'"
+      )
+    if not end_marker_pattern.match(lines[-1]):
+      raise ValueError(
+          f"Implementation value must end with a line matching '{expected_comment_char} ✨'. Got: '{lines[-1]}'"
+      )
+    # ✨
+
+  # ✨ `name` and `value` getters
+  @property
+  def name(self) -> MarkerName:
+    return self._name
+
+  @property
+  def value(self) -> str:
+    return self._value
+
+  # ✨
 
   async def save(self, path: pathlib.Path) -> None:
     """Rewrites `path`, storing our implementation.
 
     Raises:
         ValueError if the marker doesn't occur exactly once in `path`."""
-    raise NotImplementedError()  # {{🍄 marker implementation save}}
+    # ✨ marker implementation save
+    async with aiofiles.open(
+        path, mode='r') as f:
+      content = await f.read()
+
+    comment_char = _get_comment_char(path)
+    marker_pattern = re.compile(
+        f"{re.escape(comment_char)}\\s*{{🍄\\s*{re.escape(self._name)}?\\s*}}")
+
+    lines = content.splitlines()
+    found_marker_indices = []
+    for i, line in enumerate(lines):
+      if marker_pattern.search(line):
+        found_marker_indices.append(i)
+
+    if len(found_marker_indices) != 1:
+      raise ValueError(
+          f"Marker '{{🍄 {self._name}}}' found {len(found_marker_indices)} times in '{path}'. Expected exactly one."
+      )
+
+    marker_line_index = found_marker_indices[0]
+    lines[marker_line_index:marker_line_index + 1] = self._value.splitlines()
+    new_content = '\\n'.join(lines)
+
+    async with aiofiles.open(path, mode='w') as f:
+      await f.write(new_content)
+    # ✨
 
 
 async def _run_validator(path: pathlib.Path,
