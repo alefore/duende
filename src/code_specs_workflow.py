@@ -4,6 +4,7 @@ import logging
 import pathlib
 import re
 import shutil
+import subprocess
 import tempfile
 from typing import NamedTuple, NewType, Pattern, Sequence
 
