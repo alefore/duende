@@ -92,8 +92,8 @@ async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
   """Returns a list of all markers in `path`.
 
   Raises:
-      ValueError if the file is not a valid DM file or the path does not include
-      the `.dm.` suffix."""
+      ValueError if the file does not contain any markers or contains repeated
+      markers."""
   raise NotImplementedError()  # {{🍄 list markers}}
 
 

@@ -155,9 +155,44 @@ async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
   """Returns a list of all markers in `path`.
 
   Raises:
-      ValueError if the file is not a valid DM file or the path does not include
-      the `.dm.` suffix."""
-  raise NotImplementedError()  # {{🍄 list markers}}
+      ValueError if the file does not contain any markers or contains repeated
+      markers."""
+  # ✨ list markers
+  async with aiofiles.open(
+      path, mode='r') as f:
+    content = await f.read()
+
+  # Pattern to match {{🍄 marker_name}}
+  # marker_name is optional and can contain any characters except '}'
+  marker_pattern = re.compile(r"\{\{🍄\s*([^}]*?)\s*\}\}")
+
+  found_marker_names: list[MarkerName] = []
+  unique_marker_names: set[MarkerName] = set()
+
+  for line in content.splitlines():
+    match = marker_pattern.search(line)
+    if match:
+      marker_name = MarkerName(match.group(1).strip())
+      found_marker_names.append(marker_name)
+      unique_marker_names.add(marker_name)
+
+  if not found_marker_names:
+    raise ValueError(f"No DM markers found in '{path}'")
+
+  if len(found_marker_names) != len(unique_marker_names):
+    # Find repeated markers
+    seen = set()
+    repeated = set()
+    for name in found_marker_names:
+      if name in seen:
+        repeated.add(name)
+      else:
+        seen.add(name)
+    raise ValueError(
+        f"Repeated DM markers found in '{path}': {', '.join(sorted(repeated))}")
+
+  return unique_marker_names
+  # ✨
 
 
 class CodeSpecsWorkflow(AgentWorkflow):
