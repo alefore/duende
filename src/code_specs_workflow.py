@@ -266,6 +266,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       async def validate(self, inputs: VariableMap) -> ValidationResult:
         dm_path_value = inputs.get(dm_path_variable)
         validator_value = inputs.get(validator_variable)
+        logging.info('Inputs: %s', inputs.items())
 
         if not isinstance(dm_path_value, str) or not dm_path_value:
           return ValidationResult(
