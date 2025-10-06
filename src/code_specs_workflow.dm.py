@@ -1,3 +1,5 @@
+"""Implementation of workflow to expand DM markers per doc/code-specs.md."""
+
 import aiofiles
 import asyncio
 import logging
@@ -194,8 +196,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """Runs an AgentLoop and uses the output to implement `marker`.
 
     The AgentLoop is focused on `marker`. Instructs the AI to read all
-    `relevant_paths` before doing anything else. The AI should then pass the
-    implementation code to `done` (see `implementation_variable`).
+    `relevant_paths` *and* `output_path` before doing anything else. The AI
+    should then pass the implementation code to `done` (see
+    `implementation_variable`). The prompt given to the AI is crafted carefully,
+    to explain how it must infer the desired intent from `output_path`.
 
     Once the `AgentLoop` returns, expands the marker in `output_path`."""
 
