@@ -56,7 +56,7 @@ MarkerName = NewType('MarkerName', str)
 def _get_comment_char(path: pathlib.Path) -> str:
   """Returns the comment character based on the file extension (e.g., `#`).
 
-  Supported extensions: py, sh, cc, h, js, ts, java, css, html"""
+  Supported extensions: py, sh, cc, h, js, ts, java"""
   #  {{🍄 get comment char}}
   raise ValueError(f"Unknown file suffix: {path.suffix}")
 
