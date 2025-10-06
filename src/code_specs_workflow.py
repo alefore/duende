@@ -14,7 +14,8 @@ from command_registry import CommandRegistry
 from conversation import Conversation, ConversationId, ConversationFactory
 from message import Message, ContentSection
 from conversation_state import ConversationState
-from agent_workflow import AgentWorkflow, AgentWorkflowFactory, AgentWorkflowOptions
+from agent_workflow import AgentWorkflow, AgentWorkflowFactory
+from agent_workflow_options import AgentWorkflowOptions
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
 from done_command import DoneCommand, DoneValuesValidator
 from file_access_policy import FileAccessPolicy
