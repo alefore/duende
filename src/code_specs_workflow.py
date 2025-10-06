@@ -148,7 +148,22 @@ class MarkerImplementation:
 async def _run_validator(path: pathlib.Path,
                          validator: DMValidator) -> ValidationResult:
   """Runs `validator` (expanding `path`), returning ValidationResult."""
-  raise NotImplementedError()  # {{🍄 def run validator}}
+  # ✨ def run validator
+  command = validator.format(path=path)
+  logger.info(f"Running validator command: {command}")
+  process = await asyncio.create_subprocess_shell(
+      command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+  stdout, stderr = await process.communicate()
+
+  if process.returncode == 0:
+    return ValidationResult(
+        success=True, output=stdout.decode().strip(), error='')
+  else:
+    return ValidationResult(
+        success=False,
+        output=stdout.decode().strip(),
+        error=stderr.decode().strip())
+  # ✨
 
 
 async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
@@ -562,7 +577,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         Argument(
             name=implementation_variable,
             arg_type=ArgumentContentType.STRING,
-            description=f"The code to implement the marker. Must start with '{comment_char} ✨ {{marker.name}}' and end with '{comment_char} ✨'."
+            description=f"The code to implement the marker. Must start with '{comment_char} ✨ {marker}' and end with '{comment_char} ✨'."
         )
     ]
     conversation_title = f"Implement marker: {marker}"
