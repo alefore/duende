@@ -264,11 +264,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
       # ✨ initial validator
       async def validate(self, inputs: VariableMap) -> ValidationResult:
-        dm_path_value = inputs.get(dm_path_variable)
+        dm_path = inputs.get(dm_path_variable)
         validator_value = inputs.get(validator_variable)
         logging.info('Inputs: %s', inputs.items())
 
-        if not isinstance(dm_path_value, str) or not dm_path_value:
+        if not isinstance(dm_path, pathlib.Path) or not dm_path:
           return ValidationResult(
               success=False,
               output='',
@@ -282,11 +282,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
               error=f"Variable '{validator_variable}' must be a non-empty string."
           )
 
-        if '.dm.' not in dm_path_value:
+        if '.dm.' not in str(dm_path):
           return ValidationResult(
               success=False,
               output='',
-              error=f"DM file path '{dm_path_value}' must contain '.dm.'.")
+              error=f"DM file path '{dm_path}' must contain '.dm.'.")
 
         if '{path}' not in validator_value:
           return ValidationResult(
@@ -294,12 +294,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
               output='',
               error=f"Validator '{validator_value}' must contain '{{path}}'.")
 
-        dm_path = pathlib.Path(dm_path_value)
         if not dm_path.is_file():
           return ValidationResult(
               success=False,
               output='',
-              error=f"DM file '{dm_path_value}' does not exist.")
+              error=f"DM file '{dm_path}' does not exist.")
 
         return await _run_validator(dm_path, DMValidator(validator_value))
         # ✨
