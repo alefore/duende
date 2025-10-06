@@ -24,7 +24,6 @@ from selection_manager import SelectionManager
 from ask_command import AskCommand
 
 from agent_plugin_loader import load_plugins, NoPluginFilesFoundError, NoPluginClassFoundError, InvalidPluginClassError
-from agent_plugin_interface import AgentPlugin
 
 
 class TrackedFlagStr(NamedTuple):
@@ -50,13 +49,20 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       type=str,
       default=os.path.expanduser('~/.openai/api_key'))
 
-  group = parser.add_mutually_exclusive_group(required=False)
-  group.add_argument('--task', type=str, help="File path for task prompt.")
-  group.add_argument(
+  # Use a separate group for mutually exclusive workflow-related flags.
+  workflow_group = parser.add_mutually_exclusive_group(required=False)
+  workflow_group.add_argument(
+      '--task', type=str, help="File path for task prompt.")
+  workflow_group.add_argument(
       '--input',
       action='append',
       type=str,
       help="File path(s) for the input document(s) to be reviewed against principles."
+  )
+  workflow_group.add_argument(
+      '--workflow',
+      type=str,
+      help="The name of the workflow to run (e.g., 'code_specs_workflow', 'implement_and_review_workflow'). If specified, none of the following flags may be specified: --task, --input, --evaluate-evaluators."
   )
 
   parser.add_argument(
@@ -227,6 +233,54 @@ async def CreateAgentWorkflowOptions(
           command_registry=ask_registry,
           validation_manager=validation_manager,
           confirm_regex=confirm_regex))
+
+  if args.workflow:
+    incompatible_flags = []
+    if args.task:
+      incompatible_flags.append('--task')
+    if args.input:
+      incompatible_flags.append('--input')
+    if args.evaluate_evaluators:
+      incompatible_flags.append('--evaluate-evaluators')
+
+    if incompatible_flags:
+      print(
+          f"Error: When --workflow is specified, none of the following flags may be specified: {', '.join(incompatible_flags)}",
+          file=sys.stderr)
+      sys.exit(1)
+
+    # The WebServerState will handle the instantiation based on args.workflow.
+    # We just need to create the common AgentLoopOptions.
+    conversation_name = 'workflow-driven-conversation'
+    conversation = conversation_factory.New(
+        name=conversation_name, command_registry=registry)
+    start_message = Message(
+        'system',
+        content_sections=[
+            ContentSection(
+                content='Starting a workflow as specified by the --workflow flag.',
+                summary='Workflow initiation')
+        ])
+
+    common_agent_loop_options = AgentLoopOptions(
+        conversation=conversation,
+        start_message=start_message,
+        commands_registry=registry,
+        confirmation_state=confirmation_state,
+        file_access_policy=file_access_policy,
+        conversational_ai=GetConversationalAI(args, registry),
+        confirm_regex=confirm_regex,
+        skip_implicit_validation=args.skip_implicit_validation,
+        validation_manager=validation_manager,
+    )
+    return AgentWorkflowOptions(
+        agent_loop_options=common_agent_loop_options,
+        conversation_factory=conversation_factory,
+        selection_manager=SelectionManager(),
+        original_task_prompt_content='',
+        confirm_done=args.confirm,
+        do_review=args.review,
+        review_first=args.review_first)
 
   if args.input:
     return AgentWorkflowOptions(

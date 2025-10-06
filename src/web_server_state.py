@@ -49,7 +49,14 @@ class WebServerState:
 
     logging.info(str(self._agent_workflow_options))
     agent_workflow: AgentWorkflow | None = None
-    if args.input:
+
+    if args.workflow:
+      factory = self._workflow_factory_container.get(args.workflow)
+      if not factory:
+        logging.error(f"Unknown workflow: {args.workflow}")
+        raise ValueError(f"Unknown workflow: {args.workflow}")
+      agent_workflow = await factory.new(self._agent_workflow_options, {})
+    elif args.input:
       agent_workflow = PrincipleReviewWorkflow(self._agent_workflow_options)
     elif args.evaluate_evaluators:
       agent_workflow = ReviewEvaluatorTestWorkflow(self._agent_workflow_options)
