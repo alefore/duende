@@ -11,17 +11,16 @@ async def _ListFileDetails(
     directory: str, file_access_policy: FileAccessPolicy) -> tuple[str, str]:
   details: list[str] = []
   errors: list[str] = []
-  async for file in list_all_files(directory, file_access_policy):
-    file_path = os.path.join(directory, file)
+  async for file_path in list_all_files(directory, file_access_policy):
     try:
       async with aiofiles.open(file_path, 'r') as f:
         lines = await f.readlines()
         line_count = len(lines)
         # os.path.getsize is synchronous, should be fine for now, or use aiofiles.os.stat
         byte_count = os.path.getsize(file_path)
-        details.append(f"{file}: {line_count} lines, {byte_count} bytes")
+        details.append(f"{file_path}: {line_count} lines, {byte_count} bytes")
     except Exception as e:
-      errors.append(f"Error: {file}: Error reading: {str(e)}")
+      errors.append(f"Error: {file_path}: Error reading: {str(e)}")
   return "\n".join(details), "\n".join(errors)
 
 
