@@ -103,6 +103,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
   def __init__(self, options: AgentWorkflowOptions) -> None:
     self._options = options
 
+  def _new_agent_loop_options(
+      self, conversation: Conversation,
+      command_registry: CommandRegistry) -> AgentLoopOptions:
+    return self._options.agent_loop_options._replace()  # {{🍄 new options}}
+
   async def run(self) -> None:
 
     inputs = await self._get_initial_parameters()
