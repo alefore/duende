@@ -1,4 +1,5 @@
 import asyncio
+import pathlib
 import subprocess
 import sys
 from enum import Enum, auto
@@ -26,7 +27,7 @@ class ResetFileCommand(AgentCommand):
 
   async def run(self, inputs: VariableMap) -> CommandOutput:
     path = inputs[VariableName('path')]
-    assert isinstance(path, str)
+    assert isinstance(path, pathlib.Path)
     errors: list[str] = []
 
     try:
