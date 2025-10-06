@@ -68,12 +68,19 @@ class AgentLoop:
         self.conversation.GetId())
 
     await self.conversation.SetState(ConversationState.RUNNING_COMMANDS)
-    command_outputs, done_command_received = await self._execute_commands(
-        commands)
+    command_outputs, done_command_output = await self._execute_commands(commands
+                                                                       )
     for content_section in command_outputs:
       next_message.PushSection(content_section)
 
-    if done_command_received and not has_human_guidance:
+    if done_command_output and not has_human_guidance:
+      await self.conversation.AddMessage(
+          Message(
+              role="user",
+              content_sections=[
+                  ContentSection(
+                      content='', command_output=done_command_output)
+              ]))
       return None
 
     if not self.options.skip_implicit_validation:
@@ -177,10 +184,13 @@ class AgentLoop:
 
   # Return value indicates whether `done` was received.
   async def _execute_commands(
-      self, commands: list[CommandInput]) -> Tuple[list[ContentSection], bool]:
+      self, commands: list[CommandInput]
+  ) -> Tuple[list[ContentSection], CommandOutput | None]:
     outputs: list[ContentSection] = []
     for cmd_input in commands:
       outputs.extend(await self._execute_one_command(cmd_input))
 
-    return outputs, any(
-        o.command_output and o.command_output.task_done for o in outputs)
+    return outputs, next((o.command_output
+                          for o in outputs
+                          if o.command_output and o.command_output.task_done),
+                         None)
