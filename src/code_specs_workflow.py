@@ -328,16 +328,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
                     "your goal is achieved and you should run `done`."))
         ])
     agent_loop = AgentLoop(
-        AgentLoopOptions(
+        self._options.agent_loop_options._replace(
             conversation=conversation,
             start_message=start_message,
-            commands_registry=conversation.command_registry,
-            confirmation_state=self._options.agent_loop_options
-            .confirmation_state,
-            file_access_policy=self._options.agent_loop_options
-            .file_access_policy,
-            conversational_ai=self._options.agent_loop_options.conversational_ai
-        ))
+            commands_registry=conversation.command_registry))
     await agent_loop.run()
 
     # Get the last message from the conversation
@@ -476,15 +470,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
                     f"itself ('{path}')."))
         ])
     agent_loop = AgentLoop(
-        AgentLoopOptions(
+        self._options.agent_loop_options._replace(
             conversation=conversation,
             start_message=start_message,
             commands_registry=conversation.command_registry,
-            confirmation_state=self._options.agent_loop_options
-            .confirmation_state,
-            file_access_policy=self._options.agent_loop_options
-            .file_access_policy,
-            conversational_ai=self._options.agent_loop_options.conversational_ai
         ))
     await agent_loop.run()
 
@@ -612,16 +601,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
         content_sections=[ContentSection(content=start_message_content)])
 
     agent_loop = AgentLoop(
-        AgentLoopOptions(
+        self._options.agent_loop_options._replace(
             conversation=conversation,
             start_message=start_message,
-            commands_registry=conversation.command_registry,
-            confirmation_state=self._options.agent_loop_options
-            .confirmation_state,
-            file_access_policy=self._options.agent_loop_options
-            .file_access_policy,
-            conversational_ai=self._options.agent_loop_options.conversational_ai
-        ))
+            commands_registry=conversation.command_registry))
     await agent_loop.run()
 
     last_message = conversation.messages[-1]
