@@ -41,16 +41,16 @@ validator_variable = VariableName('validator')
 # may want to have access to.
 relevant_paths_variable = VariableName('relevant_paths')
 
+# A string with a shell command including the token `{path}`, which will be
+# expanded (with `validator.format(…)`) to the path to be validated. Validation
+# is successful if this command exits with 0.
+DMValidator = NewType('DMValidator', str)
+
 
 class PathAndValidator(NamedTuple):
   dm_path: pathlib.Path
   validator: DMValidator
 
-
-# A string with a shell command including the token `{path}`, which will be
-# expanded (with `validator.format(…)`) to the path to be validated. Validation
-# is successful if this command exits with 0.
-DMValidator = NewType('DMValidator', str)
 
 MarkerName = NewType('MarkerName', str)
 
