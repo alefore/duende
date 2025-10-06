@@ -54,7 +54,9 @@ class WebServerState:
       factory = self._workflow_factory_container.get(args.workflow)
       if not factory:
         logging.error(f"Unknown workflow: {args.workflow}")
-        raise ValueError(f"Unknown workflow: {args.workflow}")
+        raise ValueError(
+            f"Unknown workflow: {args.workflow}. "
+            f"Valid values: {self._workflow_factory_container.factory_names()}")
       agent_workflow = await factory.new(self._agent_workflow_options, {})
     elif args.input:
       agent_workflow = PrincipleReviewWorkflow(self._agent_workflow_options)
