@@ -461,7 +461,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
       self, inputs: PathAndValidator, output_path: pathlib.Path,
       relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
     """Implements all DM markers sequentially."""
-    raise NotImplementedError()  # {{🍄 implement file}}
+    # ✨ implement file
+    markers = await _list_markers(output_path)
+    for marker in markers:
+      await self._implement_marker(marker, relevant_paths[marker],
+                                   inputs.validator, output_path)
+    # ✨
 
   async def _implement_marker(self, marker: MarkerName,
                               relevant_paths: set[pathlib.Path],
