@@ -138,7 +138,7 @@ class MarkerImplementation:
 
     marker_line_index = found_marker_indices[0]
     lines[marker_line_index:marker_line_index + 1] = self._value.splitlines()
-    new_content = '\\n'.join(lines)
+    new_content = '\n'.join(lines)
 
     async with aiofiles.open(path, mode='w') as f:
       await f.write(new_content)
@@ -475,11 +475,111 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     Once the `AgentLoop` returns, expands the marker in `output_path`."""
 
+    # ✨ implement validator
     class DoneValidator(DoneValuesValidator):
       """Validates implementation of marker on a tmp copy of output path."""
-      raise NotImplementedError()  # {{🍄 implement validator}}
 
-    raise NotImplementedError()  # {{🍄 implement single marker}}
+      def __init__(self, marker_name: MarkerName,
+                   file_access_policy: FileAccessPolicy,
+                   original_output_path: pathlib.Path,
+                   dm_validator: DMValidator) -> None:
+        self._marker_name = marker_name
+        self._file_access_policy = file_access_policy
+        self._original_output_path = original_output_path
+        self._dm_validator = dm_validator
+
+      async def validate(self, inputs: VariableMap) -> ValidationResult:
+        implementation_value = inputs.get(implementation_variable)
+
+        if not isinstance(implementation_value,
+                          str) or not implementation_value:
+          return ValidationResult(
+              success=False,
+              output='',
+              error=f"Variable '{implementation_variable}' must be a non-empty string."
+          )
+
+        try:
+          comment_char = _get_comment_char(self._original_output_path)
+          marker_impl = MarkerImplementation(self._marker_name,
+                                             implementation_value, comment_char)
+        except ValueError as e:
+          return ValidationResult(success=False, output='', error=str(e))
+
+        # Create a temporary directory and copy the original_output_path to it.
+        # Then apply the marker implementation to the temporary file.
+        with tempfile.TemporaryDirectory() as tmpdir:
+          tmp_path = pathlib.Path(tmpdir) / self._original_output_path.name
+          shutil.copy(self._original_output_path, tmp_path)
+          await marker_impl.save(tmp_path)
+          return await _run_validator(tmp_path, self._dm_validator)
+
+    # ✨
+
+    # ✨ implement single marker
+    comment_char = _get_comment_char(output_path)
+    done_arguments = [
+        Argument(
+            name=implementation_variable,
+            arg_type=ArgumentContentType.STRING,
+            description=f"The code to implement the marker. Must start with '{comment_char} ✨ {{marker.name}}' and end with '{comment_char} ✨'."
+        )
+    ]
+    conversation_title = f"Implement marker: {marker}"
+    registry = self._get_command_registry(
+        done_arguments,
+        DoneValidator(
+            marker_name=marker,
+            file_access_policy=self._options.agent_loop_options
+            .file_access_policy,
+            original_output_path=output_path,
+            dm_validator=validator))
+
+    conversation = self._options.conversation_factory.New(
+        conversation_title, registry)
+
+    relevant_paths_str = ', '.join(
+        [str(p) for p in relevant_paths if p != output_path])
+    start_message_content = (
+        f"You are tasked with implementing the DM marker '{marker}'. "
+        f"The output file is located at '{output_path}'.\n"
+        f"You should read the following relevant files to gather context: "
+        f"{relevant_paths_str or 'None'}. "
+        "Please use the `read_file` command to inspect these files.\n"
+        "Once you have gathered enough context, you must implement the marker. "
+        "Your implementation should be provided using the `done` command, "
+        f"assigning the code to the '{implementation_variable}' variable. "
+        f"The code must start with the line '{comment_char} ✨ {marker}' "
+        f"and end with the line '{comment_char} ✨'.")
+    start_message = Message(
+        role="user",
+        content_sections=[ContentSection(content=start_message_content)])
+
+    agent_loop = AgentLoop(
+        AgentLoopOptions(
+            conversation=conversation,
+            start_message=start_message,
+            commands_registry=conversation.command_registry,
+            confirmation_state=self._options.agent_loop_options
+            .confirmation_state,
+            file_access_policy=self._options.agent_loop_options
+            .file_access_policy,
+            conversational_ai=self._options.agent_loop_options.conversational_ai
+        ))
+    await agent_loop.run()
+
+    last_message = conversation.messages[-1]
+    last_content_section = last_message.GetContentSections()[-1]
+    assert last_content_section.command_output, "Expected a CommandOutput from the 'done' command."
+    done_command_output_variables = last_content_section.command_output.output_variables
+
+    implementation_str = done_command_output_variables[implementation_variable]
+    assert isinstance(implementation_str, str)
+
+    marker_implementation = MarkerImplementation(marker, implementation_str,
+                                                 comment_char)
+    await marker_implementation.save(output_path)
+    # ✨
 
 
 class CodeSpecsWorkflowFactory(AgentWorkflowFactory):
