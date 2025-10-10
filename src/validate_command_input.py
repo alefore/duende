@@ -53,9 +53,9 @@ def validate_command_input(cmd_input: CommandInput,
     name: VariableName = syntax_arg.name
     value: VariableValue | None = cmd_input.args.get(syntax_arg.name)
     if value is not None:
-      assert isinstance(value, str)
       if _IsPath(syntax_arg.arg_type):
-        warnings.extend(_ValidatePathArg(syntax_arg, value, file_access_policy))
+        warnings.extend(
+            _ValidatePathArg(syntax_arg, str(value), file_access_policy))
     elif syntax_arg.required:
       warnings.append(f"Missing required argument: {syntax_arg.name}")
 
