@@ -147,7 +147,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       `inputs[validator_variable]` …
 
       * … includes the string `{path}`
-      * … successfully validates `inputs[dm_path_variable]`."""
+      * … validates a copy of `inputs[dm_path_variable]` in /tmp."""
       raise NotImplementedError()  # {{🍄 initial validator}}
 
     raise NotImplementedError  # {{🍄 initial parameters}}

@@ -266,7 +266,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       `inputs[validator_variable]` …
 
       * … includes the string `{path}`
-      * … successfully validates `inputs[dm_path_variable]`."""
+      * … validates a copy of `inputs[dm_path_variable]` in /tmp."""
 
       # ✨ initial validator
       async def validate(self, inputs: VariableMap) -> ValidationResult:
@@ -306,7 +306,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
               output='',
               error=f"DM file '{dm_path}' does not exist.")
 
-        return await _run_validator(dm_path, DMValidator(validator_value))
+        with tempfile.NamedTemporaryFile(dir='/tmp', delete=True) as tmp_file:
+          tmp_path = pathlib.Path(tmp_file.name)
+          shutil.copy(dm_path, tmp_path)
+          return await _run_validator(tmp_path, DMValidator(validator_value))
         # ✨
 
     # ✨ initial parameters
