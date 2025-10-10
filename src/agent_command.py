@@ -17,7 +17,7 @@ class CommandOutput(NamedTuple):
   output: str
   errors: str
   summary: str
-  output_variables: dict[VariableName, VariableValue] = {}
+  output_variables: VariableMap = VariableMap({})
   task_done: bool = False
   thought_signature: bytes | None = None
 
