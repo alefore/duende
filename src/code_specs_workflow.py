@@ -173,8 +173,8 @@ async def _run_validator(path: pathlib.Path,
   # ✨
 
 
-async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
-  """Returns a list of all markers in `path`.
+async def _list_markers(path: pathlib.Path) -> list[MarkerName]:
+  """Returns all markers in `path` in the order in which they appear.
 
   Raises:
       ValueError if the file does not contain any markers or contains repeated
@@ -189,31 +189,25 @@ async def _list_markers(path: pathlib.Path) -> set[MarkerName]:
   marker_pattern = re.compile(r"\{\{🍄\s*([^}]*?)\s*\}\}")
 
   found_marker_names: list[MarkerName] = []
-  unique_marker_names: set[MarkerName] = set()
+  repeated: set[MarkerName] = set()
 
   for line in content.splitlines():
     match = marker_pattern.search(line)
     if match:
       marker_name = MarkerName(match.group(1).strip())
-      found_marker_names.append(marker_name)
-      unique_marker_names.add(marker_name)
+      if marker_name in found_marker_names:
+        repeated.add(marker_name)
+      else:
+        found_marker_names.append(marker_name)
 
   if not found_marker_names:
     raise ValueError(f"No DM markers found in '{path}'")
 
-  if len(found_marker_names) != len(unique_marker_names):
-    # Find repeated markers
-    seen = set()
-    repeated = set()
-    for name in found_marker_names:
-      if name in seen:
-        repeated.add(name)
-      else:
-        seen.add(name)
+  if repeated:
     raise ValueError(
         f"Repeated DM markers found in '{path}': {', '.join(sorted(repeated))}")
 
-  return unique_marker_names
+  return found_marker_names
   # ✨
 
 
