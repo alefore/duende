@@ -14,6 +14,7 @@ from command_registry import CommandRegistry
 from command_registry_factory import create_command_registry, create_ask_command_registry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
+from workflow_registry import StandardWorkflowFactoryContainer
 from chatgpt import ChatGPT
 from conversation import Conversation, ConversationFactory, ConversationFactoryOptions
 from message import Message, ContentSection
@@ -59,10 +60,13 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       type=str,
       help="File path(s) for the input document(s) to be reviewed against principles."
   )
+
+  known_workflows = ', '.join(
+      StandardWorkflowFactoryContainer().factory_names())
   workflow_group.add_argument(
       '--workflow',
       type=str,
-      help="The name of the workflow to run (e.g., 'code_specs_workflow', 'implement_and_review_workflow'). If specified, none of the following flags may be specified: --task, --input, --evaluate-evaluators."
+      help=f"The name of the workflow to run (e.g., {known_workflows}). If specified, none of the following flags may be specified: --task, --input, --evaluate-evaluators."
   )
 
   parser.add_argument(
