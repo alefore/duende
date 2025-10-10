@@ -10,7 +10,6 @@ import subprocess
 import tempfile
 from typing import NamedTuple, NewType, Pattern, Sequence
 
-from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from command_registry import CommandRegistry
 from conversation import Conversation, ConversationId, ConversationFactory

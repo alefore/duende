@@ -7,7 +7,7 @@ from typing import cast, Generator, Tuple, Union
 
 from validation import ValidationManager
 from agent_command import CommandInput, CommandOutput
-from agent_loop_options import AgentLoopOptions
+from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
 from confirmation import ConfirmationState
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
@@ -16,7 +16,7 @@ from validate_command_input import CommandValidationError, validate_command_inpu
 logging.basicConfig(level=logging.INFO)
 
 
-class AgentLoop:
+class AgentLoop(BaseAgentLoop):
 
   def __init__(self, options: AgentLoopOptions):
     self.options = options
@@ -194,3 +194,9 @@ class AgentLoop:
                           for o in outputs
                           if o.command_output and o.command_output.task_done),
                          None)
+
+
+class AgentLoopFactory(BaseAgentLoopFactory):
+
+  def new(self, options: AgentLoopOptions) -> BaseAgentLoop:
+    return AgentLoop(options)

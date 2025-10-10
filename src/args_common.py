@@ -6,6 +6,7 @@ import sys
 from typing import Any, Callable, NamedTuple, Pattern, Tuple
 
 from agent_loop_options import AgentLoopOptions
+from agent_loop import AgentLoopFactory
 from agent_workflow import AgentWorkflow
 from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
@@ -279,6 +280,7 @@ async def CreateAgentWorkflowOptions(
     )
     return AgentWorkflowOptions(
         agent_loop_options=common_agent_loop_options,
+        agent_loop_factory=AgentLoopFactory(),
         conversation_factory=conversation_factory,
         selection_manager=SelectionManager(),
         original_task_prompt_content='',
@@ -306,6 +308,7 @@ async def CreateAgentWorkflowOptions(
             skip_implicit_validation=args.skip_implicit_validation,
             validation_manager=validation_manager,
         ),
+        agent_loop_factory=AgentLoopFactory(),
         conversation_factory=conversation_factory,
         selection_manager=SelectionManager(),
         principle_paths=args.principle,
@@ -360,6 +363,7 @@ async def CreateAgentWorkflowOptions(
 
   return AgentWorkflowOptions(
       agent_loop_options=common_agent_loop_options,
+      agent_loop_factory=AgentLoopFactory(),
       conversation_factory=conversation_factory,
       selection_manager=selection_manager,
       original_task_prompt_content=task_file_content,

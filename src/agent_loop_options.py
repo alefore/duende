@@ -1,3 +1,4 @@
+import abc
 from typing import Pattern, NamedTuple
 
 from command_registry import CommandRegistry
@@ -20,3 +21,17 @@ class AgentLoopOptions(NamedTuple):
   confirm_regex: Pattern[str] | None = None
   skip_implicit_validation: bool = False
   validation_manager: ValidationManager | None = None
+
+
+class BaseAgentLoop(abc.ABC):
+
+  @abc.abstractmethod
+  async def run(self) -> None:
+    pass
+
+
+class BaseAgentLoopFactory(abc.ABC):
+
+  @abc.abstractmethod
+  def new(self, options: AgentLoopOptions) -> BaseAgentLoop:
+    pass
