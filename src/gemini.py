@@ -9,6 +9,7 @@ from agent_command import ArgumentContentType, CommandInput, CommandSyntax, Vari
 from conversation import Conversation
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
+import tenacity
 
 
 def _parse_arg_type(arg: ArgumentContentType) -> genai.types.Type:
@@ -59,6 +60,16 @@ class GeminiConversation(ConversationalAIConversation):
     logging.info(config)
     self.chat = self.client.aio.chats.create(model=model_name, config=config)
 
+  @tenacity.retry(
+      wait=tenacity.wait_exponential(multiplier=1, min=4, max=10),
+      stop=tenacity.stop_after_attempt(5),
+      retry=tenacity.retry_if_exception_type(Exception),
+      before_sleep=tenacity.before_sleep_log(logging.root, logging.INFO))
+  async def _send_message_with_retries(
+      self,
+      gemini_parts: list[genai.types.Part | str | genai.types.PartDict]) -> Any:
+    return await self.chat.send_message(list(gemini_parts))
+
   async def SendMessage(self, message: Message) -> Message:
     await self.conversation.AddMessage(message)
 
@@ -89,7 +100,7 @@ class GeminiConversation(ConversationalAIConversation):
       # We have to call `list(…)` around `gemini_parts` because list is not
       # covariant:
       # https://mypy.readthedocs.io/en/stable/common_issues.html#variance
-      response = await self.chat.send_message(list(gemini_parts))
+      response = await self._send_message_with_retries(list(gemini_parts))
       logging.info(f"Response: {response}")
     except Exception as e:
       logging.exception("Failed to communicate with Gemini API.")
