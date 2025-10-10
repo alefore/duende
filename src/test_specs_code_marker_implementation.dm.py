@@ -1,10 +1,12 @@
-import unittest
+import aiofiles
 import asyncio
-import os
-import tempfile
-import shutil
+import logging
 import pathlib
-from typing import Optional
+import re
+import shutil
+import subprocess
+import tempfile
+from typing import NamedTuple, NewType, Pattern, Sequence
 
 from code_specs_workflow import MarkerImplementation, MarkerName, _get_comment_char
 from file_access_policy import CurrentDirectoryFileAccessPolicy
@@ -85,7 +87,7 @@ class MarkerImplementationTest(unittest.IsolatedAsyncioTestCase):
       self) -> None:
     """Successfully handles leading/trailing whitespace around marker name.
 
-    Example: line is: "# {{" + "     🍄   marker    }}"."""
+    Example: line is: "#    {{" + "🍄   my marker foo   }}"."""
     # {{🍄 test save implementation with leading and trailing whitespace}}
 
 
