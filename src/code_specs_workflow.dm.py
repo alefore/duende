@@ -1,4 +1,4 @@
-"""Implementation of workflow to expand DM markers per doc/code-specs.md."""
+"""Implementation of workflow to implement DM markers per doc/code-specs.md."""
 
 import aiofiles
 import asyncio
@@ -6,6 +6,7 @@ import dataclasses
 import logging
 import pathlib
 import re
+import os
 import shutil
 import subprocess
 import tempfile
@@ -45,9 +46,11 @@ def _comment_string(file_extension: FileExtension, input: str) -> str:
   raise ValueError(f"Unknown file extension: {file_extension}")
 
 
-# Matches code lines that contain a DM marker: "{{" + "🍄" + an arbitrary name
-# (which may contain spaces, such as "test method foo") + "}}". The first match
-# group captures the name,  with leading/trailing spaces stripped away.
+# _marker_pattern is a regex that can be used (with `re.search`) to find code
+# lines that contain a DM marker: "{{" + "🍄" + an arbitrary name (which may
+# contain spaces, such as "test method foo") + "}}". The first match group
+# captures the name,  with leading/trailing spaces stripped away. Must be
+# applied to individual lines (i.e., not to the whole file).
 _marker_pattern = re.compile(r'...')  #  {{🍄 marker pattern}}
 
 
@@ -60,7 +63,7 @@ class _Validator:
   some particular directory).
 
   Validation is successful if the command exits with 0. If the DM file being
-  expanded contains unit tests, this typically just runs it.
+  implemented contains unit tests, this typically just runs it.
   """
   command: str
 
@@ -69,6 +72,8 @@ class _Validator:
     raise NotImplementedError()  # {{🍄 validator post init}}
 
   async def validate_path(self, dm_path: pathlib.Path) -> ValidationResult:
+    env = os.environ.copy()
+    env['DM_PATH'] = str(dm_path)
     raise NotImplementedError()  # {{🍄 validator validate}}
 
 
@@ -88,15 +93,17 @@ class _PathAndValidator:
   dm_path: pathlib.Path
   validator: _Validator
 
-  def __post_init__(self):
+  async def validate_fields(self):
     """Validates fields, conditionally raising ValueError.
 
     Raises a ValueError with a specific and detailed description in these cases:
 
     - `dm_path` does not contain a ".dm." part.
-    - `_list_markers` doesn't accept `dm_path`.
+    - `_list_markers(dm_path)` raises.
+
+    We can't use `__post_init__` because we want `async` validation.
     """
-    #  {{🍄 PathAndValidator post init}}
+    #  {{🍄 PathAndValidator validate fields}}
 
   async def prepare_output(self) -> pathlib.Path:
     """Copies `dm_path`'s contents to a new file sans the `.dm` part.
@@ -108,14 +115,14 @@ class _PathAndValidator:
     * The entire (unmodified) contents of `dm_path`.
 
     Returns:
-      The path where the copy was made. For example, if `dm_path` is
+      The path where the copy was made. Example: if `dm_path` is
       "foo/bar/quux.dm.py", returns "foo/bar/quux.py".
     """
     raise NotImplementedError()  # {{🍄 prepare output}}
 
 
 # If the end user specifies files with globs (e.g., `src/bar/*/age*/fo*.py`),
-# the conversational AI should try to expand it and help the user.
+# the conversational AI should try to search for it and help the user.
 dm_path_variable = VariableName('dm_path')
 
 validator_variable = VariableName('validator')
@@ -147,7 +154,8 @@ class _MarkerImplementation:
     """Rewrites `path`, storing our implementation.
 
     Raises:
-        ValueError if the marker doesn't occur exactly once in `path`."""
+        ValueError if the marker doesn't occur exactly once in `path` (based on
+        `_marker_pattern`)."""
     raise NotImplementedError()  # {{🍄 marker implementation save}}
 
 
@@ -234,26 +242,42 @@ class CodeSpecsWorkflow(AgentWorkflow):
   async def _implement_file(
       self, inputs: _PathAndValidator, output_path: pathlib.Path,
       relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
-    """Implements all DM markers sequentially."""
+    """Implements all DM markers sequentially.
+
+    As it iterates, runs `save` on the return values from `_implement_marker`.
+    """
     raise NotImplementedError()  # {{🍄 implement file}}
 
-  async def _implement_marker(self, marker: MarkerName,
+  async def _implement_marker(self, marker: MarkerName, marker_index: int,
+                              markers_len: int,
                               relevant_paths: set[pathlib.Path],
                               validator: _Validator,
-                              output: pathlib.Path) -> None:
-    """Implements a specific marker.
+                              dm_path: pathlib.Path) -> _MarkerImplementation:
+    """Finds a suitable implementation for `marker` from `dm_path`.
 
-    Runs an AgentLoop focused exclusively on `marker`, telling the AI to read
-    all `relevant_paths` *and* `output` before doing anything else. The AI
+    Runs an AgentLoop focused exclusively on `marker`. The AI
     outputs the implementation code to `done` through `implementation_variable`.
     The prompt given to the AI is crafted carefully, to explain how it must
-    infer the desired intent from `output`.
+    infer the desired intent from `dm_path`.
 
-    Before returning, saves the validated implementation in `output`.
+    Arguments:
+      marker: The marker to implement.
+      marker_index: The position of this marker in the list of markers.
+      markers_len: The total number of markers.
+      relevant_paths: A list of relevant paths. We tell the AI that it must
+        read all these paths as well as `dm_path` before doing anything else.
+      validator: The validator used to verify a plausible implementation.
+      dm_path: The input file with the context for implementing `marker`.
+
+    Returns:
+      A validated _MarkerImplementation that customers can call `save` on.
     """
 
     class DoneValidator(DoneValuesValidator):
-      """Validates the implementation on a /tmp copy of `output`."""
+      """Validates the implementation (through _MarkerImplementation.save).
+
+      To avoid overwriting `dm_path`, works on a temporary copy.
+      """
       raise NotImplementedError()  # {{🍄 implement validator}}
 
     raise NotImplementedError()  # {{🍄 implement single marker}}
