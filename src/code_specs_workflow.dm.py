@@ -25,6 +25,7 @@ from done_command import DoneCommand, DoneValuesValidator
 from file_access_policy import FileAccessPolicy
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
+from search_file_command import SearchFileCommand
 from write_file_command import WriteFileCommand
 from validation import ValidationResult
 
@@ -33,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 # A FileExtension like "py" or "html".
 FileExtension = NewType("FileExtension", str)
+
+MUSHROOM = "🍄"
 
 
 def _comment_string(file_extension: FileExtension, input: str) -> str:
@@ -127,7 +130,8 @@ dm_path_variable = VariableName('dm_path')
 
 validator_variable = VariableName('validator')
 
-# Value is a block of code that implement a DM marker.
+# Value is a block of code that implement a DM marker. See _MarkerImplementation
+# for constraints on allowed values.
 implementation_variable = VariableName('implementation')
 
 # Value is a comma-separated list of local files that someone implementing a DM
@@ -144,7 +148,8 @@ class _MarkerImplementation:
     """Sets _name, _value, _file_extension from inputs.
 
     Raises:
-      ValueError if value lacks beginning or end comments (matching name).
+      ValueError unless `value` starts and ends with appropriate `✨` comments
+        (per doc/code-specs.md).
     """
     raise NotImplementedError()  # {{🍄 marker implementation constructor}}
 
@@ -164,7 +169,11 @@ async def _run_agent_loop(workflow_options: AgentWorkflowOptions,
                           done_command: DoneCommand) -> VariableMap:
   """Creates and runs a BaseAgentLoop.
 
-    The new conversation has: ReadFileCommand, ListFilesCommand, done_command.
+    The new conversation has access to these agent commands: ReadFileCommand,
+    ListFilesCommand, SearchFileCommand, and done_command.
+
+    asserts that the VariableMap can be extracted successfully from the last
+    message.
 
     Args:
       agent_loop_factory: The factory used to create the BaseAgentLoop.
@@ -197,23 +206,23 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """Obtains values to initialize a _PathAndValidator.
 
     Calls `_run_agent_loop` passing a done_command with `arguments` matching
-    `dm_path_variable` and `validator_variable`. The starting message is this:
-
-    > Ask the user (through text conversation) for approprivate values for the
-    > variables expected by `done`. Describe these variables to the user to help
-    > them understand what is expected (specifically, mention the $DM_PATH
-    > environment variable of `validator`).
-    >
-    > Once the user has given you appropriate values, your goal is achieved and
-    > you should run `done`.
+    `dm_path_variable` and `validator_variable`.
     """
 
-    class DoneValidator(DoneValuesValidator):
+    async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Validates that a _PathAndValidator can be created from `inputs`.
 
       If _PathAndValidator(…) raises an exception, gives a friendly error
       message to the AI."""
       raise NotImplementedError()  # {{🍄 initial parameters validator}}
+
+    start_message_content = """Ask the user (through text conversation) for approprivate values for the variables expected by `done`. Describe these variables to the user to help them understand what is expected (specifically, mention the $DM_PATH environment variable of `validator`).
+
+If the user mentions a file that doesn't exist, try to look for likely typos in their input. Try also to list files in the directory to see if you can guess what the user may have meant.
+
+If the dm_path is a Python file, suggest that the validator could be `mypy` (with an appropriate MYPATH="…" value) or `python3` (with an appropriate PYTHONPATH="…" value).
+
+Once the user has given you appropriate values, your goal is achieved and you should run `done`."""
 
     raise NotImplementedError  # {{🍄 initial parameters}}
 
@@ -230,12 +239,23 @@ class CodeSpecsWorkflow(AgentWorkflow):
     approriate value for relevant_paths_variable.
     """
 
-    class DoneValidator(DoneValuesValidator):
+    async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Verifies that all inputs[relevant_paths_variable] values are readable.
 
       The files must be readable, and file_access_policy must allow access.
       """
       raise NotImplementedError()  # {{🍄 relevant paths validator}}
+
+    start_message_content = f"""Before you do anything else, read file "{path}".
+
+Your goal is to identify local file paths that are relevant to replace the line that contains '{{{{🍄 {marker}}}}}' with some valid code.
+
+These relevant paths should be given to the `{relevant_paths_variable}` argument of the `done` command.
+
+Example: `done(relevant_paths='src/foo.py,src/bar.cc')`
+
+Feel free to use `list_files` and `search_file` to explore the codebase.
+"""
 
     raise NotImplementedError()  # {{🍄 find relevant paths}}
 
@@ -248,38 +268,47 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """
     raise NotImplementedError()  # {{🍄 implement file}}
 
-  async def _implement_marker(self, marker: MarkerName, marker_index: int,
-                              markers_len: int,
-                              relevant_paths: set[pathlib.Path],
-                              validator: _Validator,
-                              dm_path: pathlib.Path) -> _MarkerImplementation:
-    """Finds a suitable implementation for `marker` from `dm_path`.
+  async def _implement_marker(
+      self, marker: MarkerName, relevant_paths: set[pathlib.Path],
+      validator: _Validator,
+      output_path: pathlib.Path) -> _MarkerImplementation:
+    """Finds a suitable implementation for `marker` from `output_path`.
 
     Runs an AgentLoop focused exclusively on `marker`. The AI
     outputs the implementation code to `done` through `implementation_variable`.
     The prompt given to the AI is crafted carefully, to explain how it must
-    infer the desired intent from `dm_path`.
+    infer the desired intent from `output_path`.
 
     Arguments:
       marker: The marker to implement.
-      marker_index: The position of this marker in the list of markers.
-      markers_len: The total number of markers.
-      relevant_paths: A list of relevant paths. We tell the AI that it must
-        read all these paths as well as `dm_path` before doing anything else.
+      relevant_paths: A list of relevant paths. Tells the AI that it must
+        read all these paths as well as `output_path` before doing anything else.
       validator: The validator used to verify a plausible implementation.
-      dm_path: The input file with the context for implementing `marker`.
+      output_path: The input file with the context for implementing `marker`. We
+        don't actually update it (our customer does).
 
     Returns:
       A validated _MarkerImplementation that customers can call `save` on.
     """
 
-    class DoneValidator(DoneValuesValidator):
+    async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Validates the implementation (through _MarkerImplementation.save).
 
       To avoid overwriting `dm_path`, works on a temporary copy.
       """
       raise NotImplementedError()  # {{🍄 implement validator}}
 
+    file_extension = FileExtension(output_path.suffix)
+    start_message_content = f"""Your goal is to provide the *code content* that will replace the line containing the '{{{{{MUSHROOM} {marker}}}}}' marker in the file '{output_path}'.
+
+Before you do anything else, read the following files: {', '.join(map(str, relevant_paths))}
+
+The implementation block *must* strictly follow this format:
+
+* It must begin with line containing nothing but "{_comment_string(file_extension, '✨ ' + marker)}" (preceded by whitespace characters to match the indentation of the block that contains the implementation).
+* It must end with a line containing nothing but "{_comment_string(file_extension, '✨')}" (also preceded by whitespace).
+
+Once you have the complete and correct implementation code, call the `done` command. The `done` command requires an argument `{implementation_variable}` which *must* be your full implementation block as a single string."""
     raise NotImplementedError()  # {{🍄 implement single marker}}
 
 
