@@ -248,7 +248,7 @@ Once the user has given you appropriate values, your goal is achieved and you sh
 
     start_message_content = f"""Before you do anything else, read file "{path}".
 
-Your goal is to identify local file paths that are relevant to replace the line that contains '{{{{🍄 {marker}}}}}' with some valid code.
+Your goal is to identify local file paths that are relevant to replace the line that contains '{{{{{MUSHROOM} {marker}}}}}' with some valid code.
 
 These relevant paths should be given to the `{relevant_paths_variable}` argument of the `done` command.
 
