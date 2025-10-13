@@ -203,36 +203,46 @@ class _MarkerImplementation:
     raise NotImplementedError()  # {{🍄 marker implementation save}}
 
 
+async def _prepare_initial_message(
+    start_message_content: str, relevant_files: list[pathlib.Path]) -> Message:
+  """Creates the first message for an AgentLoop conversation.
+
+  {{🌱 `relevant_files` are read asynchronously}}
+  {{🌱 The output contains `start_message_content` in its first section}}
+  {{🌱 If `relevant_files` is empty, the output has just one section}}
+  {{🌱 There is a content section in the start message given to the AgentLoop
+       for each entries in `relevant_files`. It starts with a line
+       "File "{path}" follows:" (with the corresponding path) and includes
+       the entire contents of the file.}}
+  """
+  raise NotImplementedError()  # {{🍄 prepare initial message}}
+
+
+async def _prepare_command_registry(
+    done_command: DoneCommand,
+    file_access_policy: FileAccessPolicy) -> CommandRegistry:
+  """Creates a command registry suitable for _run_agent_loop.
+
+  {{🌱 The command registry given has exactly these agent commands:
+       ReadFileCommand(…), ListFilesCommand(…), SearchFileCommand(…),
+       done_command}}
+  """
+  raise NotImplementedError()  # {{🍄 prepare command registry}}
+
+
 async def _run_agent_loop(workflow_options: AgentWorkflowOptions,
-                          conversation_name: str, start_message_content: str,
-                          relevant_files: list[pathlib.Path],
-                          done_command: DoneCommand) -> VariableMap:
+                          conversation_name: str, start_message: Message,
+                          command_registry: CommandRegistry) -> VariableMap:
   """Creates and runs a BaseAgentLoop.
 
-    {{🌱 The command registry given has exactly agent commands:
-         ReadFileCommand, ListFilesCommand, SearchFileCommand, done_command}}
-    {{🌱 `relevant_files` are read asynchronously}}
-    {{🌱 The first content section of the message given to the AgentLoop is
-         `start_mesage_content`}}
-    {{🌱 There is a content section in the start message given to the AgentLoop
-         for each entries in `relevant_files`. It starts with a line
-         "File "{path}" follows:" (with the corresponding path) and includes
-         the entire contents of the file.}}
-    {{🌱 Returns the VariableMap with all the values given to DoneCommand}}
+  {{🌱 Returns the VariableMap with all the values given to DoneCommand}}
+  {{🌱 The conversation started has name `conversation_name`}}
+  {{🌱 `start_message` is given as the initial message}}
 
-    Args:
-      agent_loop_factory: The factory used to create the BaseAgentLoop.
-      conversation_name: The name for the conversation that will be created.
-      start_message_content: The initial prompt (for start_message).
-      files_to_append: A list of files whose contents should be includes in the
-        start_message.
-      done_command: The `done` command to use, allowing customers to control
-        (1) which variables are expected, and (2) how to validate state.
-
-    Returns:
-      Output variables given to the final `done` command (extracted from the
-      final message in the conversation).
-    """
+  Returns:
+    Output variables given to the final `done` command (extracted from the
+    final message in the conversation).
+  """
   raise NotImplementedError()  # {{🍄 run agent loop}}
 
 
