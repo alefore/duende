@@ -17,7 +17,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -194,17 +194,17 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "The implementation block *must* strictly follow this format:"
         "\n"
         "* It must begin with line containing nothing but "
-        "\"{_comment_string(file_extension, '✨ ' + marker)}\" "
+        f"\"{comment_string(file_extension, '✨ ' + marker.name)}\" "
         "(preceded by whitespace characters to match "
         "the indentation of the block that contains the implementation)."
         "\n"
         "It must end with a line containing "
-        "nothing but \"{_comment_string(file_extension, '✨')}\" "
+        f"nothing but \"{comment_string(file_extension, '✨')}\" "
         "(also preceded by whitespace)."
         "\n"
         "Once you have the complete and correct implementation code, "
         "call the `done` command. "
-        "The `done` command requires an argument `{implementation_variable}` "
+        f"The `done` command requires an argument `{implementation_variable}` "
         "which *must* be your full implementation block as a single string.")
     raise NotImplementedError()  # {{🍄 implement single marker}}
 
