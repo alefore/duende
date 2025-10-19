@@ -17,7 +17,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, prepare_command_registry, prepare_initial_message, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -60,11 +60,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
   async def _get_initial_parameters(self) -> PathAndValidator:
     """Obtains values to initialize a PathAndValidator.
 
-    Calls `_run_agent_loop` passing a done_command with `arguments` matching
-    `dm_path_variable` and `validator_variable`.
+    Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
+    `prepare_initial_message`.
     """
 
-    async def done_validate(inputs: VariableMap) -> ValidationResult:
+    async def done_validator(inputs: VariableMap) -> ValidationResult:
       """Validates that a PathAndValidator can be created from `inputs`.
 
       If PathAndValidator(…) raises an exception, gives a friendly error
@@ -94,21 +94,35 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def _find_relevant_paths(
       self, path: pathlib.Path) -> dict[MarkerName, set[pathlib.Path]]:
-    """Concurrently runs find_relevant_paths_for_marker for all markers."""
+    """Finds all relevant markers.
+
+    {{🦔 Calls `find_relevant_paths_for_marker` exactly once for each marker
+         found in `path`.}}
+    {{🦔 Calls to `find_relevant_paths_for_marker` happen concurrently.}}
+    {{🦔 The output contains one entry for each marker found in `path`.}}
+    {{🦔 The output values correspond to the outputs of
+         `_find_relevant_paths_for_marker` for each key (marker).}}
+    """
     raise NotImplementedError()  # {{🍄 find relevant paths loop}}
 
   async def _find_relevant_paths_for_marker(
       self, path: pathlib.Path, marker: MarkerName) -> set[pathlib.Path]:
     """Finds all relevant paths to implement a single DM marker.
 
-    Runs an AgentLoop focused exclusively on `marker`, to identify the
-    approriate value for relevant_paths_variable.
+    Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
+    `prepare_initial_message`. The agent is focused exclusively on `marker`,
+    with the goal of identifying the best value for `relevant_paths_variable`.
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Verifies that all inputs[relevant_paths_variable] values are readable.
 
-      The files must be readable, and file_access_policy must allow access.
+      {{🦔 If no files are given, validation fails, with a message that at least
+           one relevant file should be given.}}
+      {{🦔 All files must be readable (both by the OS as well as allowed by the
+           `file_access_policy`). If one isn't, validation fails.}}
+      {{🦔 If all files are readable (both by the OS and `file_access_policy`),
+           validation succeeds.}}
       """
       raise NotImplementedError()  # {{🍄 relevant paths validator}}
 
@@ -132,8 +146,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
       relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
     """Implements all DM markers in `inputs.output_path()` sequentially.
 
-    As it iterates, runs `save` to update `inputs.output_path()` with the return
-    values from `_implement_marker`.
+    {{🦔 The calls to `_implement_marker` happen sequentially.}}
+    {{🦔 The output of a call to `_implement_marker` is stored through
+         `MarkerImplementation.save` on `inputs.output_path()`.}}
+    {{🦔 The output of a call to `_implement_marker` is stored before the next
+         call begins (so that the next call already sees the output of the
+         previous call).}}
     """
     raise NotImplementedError()  # {{🍄 implement file}}
 
@@ -142,11 +160,14 @@ class CodeSpecsWorkflow(AgentWorkflow):
       validator: Validator, output_path: pathlib.Path) -> MarkerImplementation:
     """Finds a suitable implementation for `marker` from `output_path`.
 
-    Runs an AgentLoop focused exclusively on `marker`. The AI outputs the
-    implementation code to `done` through `implementation_variable`. The prompt
-    given to the AI is crafted carefully, to explain how it must infer the
-    desired intent from `output_path`. All `relevant_paths` are passed to
-    _run_agent_loop.
+    Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
+    `prepare_initial_message`. The agent is focused exclusively on `marker`,
+
+    The AI outputs the implementation code to `done` through
+    `implementation_variable`.
+
+    {{🦔 For each file in `relevant_paths`, there's a section in the initial
+         message given to the AI.}}
 
     Arguments:
       marker: The marker to implement.
