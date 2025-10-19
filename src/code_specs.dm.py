@@ -13,8 +13,10 @@ import tempfile
 from typing import Awaitable, Callable, NamedTuple, NewType, Pattern, Sequence
 
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
+from agent_loop_options import AgentLoopOptions
 from agent_workflow_options import AgentWorkflowOptions
 from command_registry import CommandRegistry
+from done_command import DoneCommand, DoneValuesValidator
 from file_access_policy import FileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import Message, ContentSection
@@ -114,7 +116,7 @@ class Validator:
   command: str
 
   def __post_init__(self):
-    """Raises ValueError if the command doesn't include the string "DMPATH.
+    """Raises ValueError if the command doesn't include the string "DMPATH".
 
     {{🦔 Raises for incorrect string: "MYPYPATH=foo mypy {path}"}}
     {{🦔 Raises for incorrect string: "MYPYPATH=foo mypy $DM_PATH"}}
