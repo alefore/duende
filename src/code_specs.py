@@ -431,6 +431,7 @@ async def prepare_initial_message(
 
 
 async def prepare_command_registry(
+    done_command_arguments: list[Argument],
     done_validator_callback: Callable[[VariableMap],
                                       Awaitable[ValidationResult]],
     file_access_policy: FileAccessPolicy) -> CommandRegistry:
@@ -456,13 +457,6 @@ async def prepare_command_registry(
     async def validate(self, inputs: VariableMap) -> ValidationResult:
       return await self._callback(inputs)
 
-  done_command_arguments = [
-      Argument(
-          name=VariableName("implementation"),
-          arg_type=ArgumentContentType.STRING,
-          description="The code to implement the marker, including `✨` start and end markers.",
-          required=True)
-  ]
   registry.Register(
       DoneCommand(
           arguments=done_command_arguments,
