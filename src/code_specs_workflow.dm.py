@@ -79,7 +79,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "for the variables expected by `done`. "
         "Describe these variables to the user "
         "to help them understand what is expected "
-        "(mention the $DM_PATH environment variable of `validator`)."
+        "(mention the $DMPATH environment variable of `validator`)."
         "\n"
         "If the user mentions a file that doesn't exist, "
         "try to look for likely typos in their input. "
@@ -197,7 +197,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
     start_message_content = (
         "GOAL: provide the *code content* "
         "that will replace the line containing the "
-        f"'{{{{{MUSHROOM} {marker}}}}}' marker in the file '{output_path}'."
+        f"'{{{{{MUSHROOM} {marker.name}}}}}' marker "
+        f"in the file '{output_path}'."
         "\n"
         "The implementation block *must* strictly follow this format:"
         "\n"
