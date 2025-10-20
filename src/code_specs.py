@@ -112,6 +112,8 @@ class MarkerImplementation:
       raise ValueError(
           f"Implementation must end with '{expected_end_comment}', but found '{lines[-1]}'"
       )
+
+
 # ✨
 
 # {{🦔 A call to MarkerImplementation.name returns the correct name}}
@@ -140,6 +142,10 @@ class MarkerImplementation:
     {{🦔 Raises ValueError if the marker occurs twice in `path`}}
     {{🦔 Raises FileNotFound if the file does not exist}}
     {{🦔 Raises ValueError if `path` contains a ".dm." part}}
+    {{🦔 The value written (the implementation) is reindented according to the
+         rules of `_value_indent`; the number of desired spaces is equal to the
+         number of spaces before the first non-space character in the line that
+         contains the marker.}}
 
     Raises:
       ValueError if `path` has a `.dm.` part. DM files themselves should never
@@ -147,47 +153,100 @@ class MarkerImplementation:
     """
     # ✨ marker implementation save
     if ".dm." in path.name:
-      raise ValueError(
-          f"DM files themselves should never be updated. Found .dm. in {path}")
+      raise ValueError(f"DM files themselves should never be updated: {path}")
 
     try:
       async with aiofiles.open(path, mode="r") as f:
-        original_content = await f.read()
+        content = await f.read()
     except FileNotFoundError:
       raise FileNotFoundError(f"File not found: {path}")
 
-    # Construct marker_string using concatenation to avoid {{ and }} literals
-    marker_string_start = '{' + '{'
-    marker_string_end = '}' + '}'
-    marker_string = marker_string_start + self._name.char + " " + self._name.name + marker_string_end
-
-    lines = original_content.splitlines()
-
+    lines = content.splitlines()
     char_pattern = marker_pattern(self._name.char)
-    matched_lines_indices = []
+    found_marker_lines: list[tuple[int, str]] = []
 
     for i, line in enumerate(lines):
       match = char_pattern.search(line)
       if match and match.group(1).strip() == self._name.name:
-        matched_lines_indices.append(i)
+        found_marker_lines.append((i, line))
 
-    if not matched_lines_indices:
-      raise ValueError(f"Marker '{marker_string}' not found in file: {path}")
-    if len(matched_lines_indices) > 1:
+    if not found_marker_lines:
       raise ValueError(
-          f"Marker '{marker_string}' occurs multiple times in file: {path}")
+          f"Marker '{{{{'{self._name.char} {self._name.name}'}}}}' not found in file '{path}'."
+      )
+    if len(found_marker_lines) > 1:
+      raise ValueError(
+          f"Marker '{{{{'{self._name.char} {self._name.name}'}}}}' found multiple times in file '{path}'."
+      )
 
-    marker_line_index = matched_lines_indices[0]
+    marker_line_num, marker_line_content = found_marker_lines[0]
 
-    new_lines = lines[:marker_line_index] + self._value.splitlines(
-    ) + lines[marker_line_index + 1:]
-    new_content = "\n".join(new_lines)
+    # Calculate indentation
+    indentation = len(marker_line_content) - len(marker_line_content.lstrip())
+
+    # Re-indent the implementation
+    indented_value = self._value_indent(indentation)
+
+    # Replace the marker line with the implementation
+    new_lines = lines[:marker_line_num] + indented_value.splitlines(
+    ) + lines[marker_line_num + 1:]
 
     async with aiofiles.open(path, mode="w") as f:
-      await f.write(new_content)
+      await f.write("\n".join(new_lines))
+    # ✨
 
+  def _value_indent(self, desired_spaces: int) -> str:
+    """Returns a copy of `_value` with the desired leading spaces.
 
-# ✨
+    First finds the longest whitespace prefix that all non-empty `_value` lines
+    contain and removes it (from all lines). Then prepends to all lines a prefix
+    of the desired length.
+
+    {{🦔 If an input (`_value`) is empty, the corresponding line in the output
+         is empty.}}
+    {{🦔 If the whitespace prefixes are removed (from all input and output
+         lines), the output is identical to `_value`.}}
+    {{🦔 All lines in the output must begin with `desired_spaces` spaces or
+         be empty.}}
+    {{🦔 The output must contain at least one line where, if `desired_spaces`
+         spaces are removed (from the start), the line starts
+         with a non-space character.}}
+    """
+    # ✨ marker implementation value indent
+    lines = self._value.splitlines()
+    if not lines:
+      return ""
+
+    # Find the minimum common leading whitespace for non-empty lines
+    min_indent = float('inf')
+    has_content_line = False
+    for line in lines:
+      if line.strip():  # Only consider non-empty lines for common indent
+        leading_spaces = len(line) - len(line.lstrip(' '))
+        min_indent = min(min_indent, leading_spaces)
+        has_content_line = True
+
+    # If no lines had content, default min_indent to 0
+    if not has_content_line:
+      min_indent = 0
+    else:
+      min_indent = int(
+          min_indent)  # Ensure it's an integer after min operations
+
+    # Remove the common leading whitespace and prepend desired_spaces
+    indented_lines = []
+    prefix = " " * desired_spaces
+    for line in lines:
+      if not line:  # If the line is entirely empty (not just whitespace)
+        indented_lines.append("")
+      else:
+        # Remove min_indent characters from the beginning
+        # If a line is shorter than min_indent, this will result in an empty string.
+        trimmed_line = line[min_indent:]
+        indented_lines.append(prefix + trimmed_line)
+
+    return "\n".join(indented_lines)
+    # ✨
 
 
 @dataclasses.dataclass(frozen=True)

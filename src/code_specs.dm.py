@@ -94,12 +94,35 @@ class MarkerImplementation:
     {{🦔 Raises ValueError if the marker occurs twice in `path`}}
     {{🦔 Raises FileNotFound if the file does not exist}}
     {{🦔 Raises ValueError if `path` contains a ".dm." part}}
+    {{🦔 The value written (the implementation) is reindented according to the
+         rules of `_value_indent`; the number of desired spaces is equal to the
+         number of spaces before the first non-space character in the line that
+         contains the marker.}}
 
     Raises:
       ValueError if `path` has a `.dm.` part. DM files themselves should never
       be updated.
     """
     raise NotImplementedError()  # {{🍄 marker implementation save}}
+
+  def _value_indent(self, desired_spaces: int) -> str:
+    """Returns a copy of `_value` with the desired leading spaces.
+
+    First finds the longest whitespace prefix that all non-empty `_value` lines
+    contain and removes it (from all lines). Then prepends to all lines a prefix
+    of the desired length.
+
+    {{🦔 If an input (`_value`) is empty, the corresponding line in the output
+         is empty.}}
+    {{🦔 If the whitespace prefixes are removed (from all input and output
+         lines), the output is identical to `_value`.}}
+    {{🦔 All lines in the output must begin with `desired_spaces` spaces or
+         be empty.}}
+    {{🦔 The output must contain at least one line where, if `desired_spaces`
+         spaces are removed (from the start), the line starts
+         with a non-space character.}}
+    """
+    raise NotImplementedError()  # {{🍄 marker implementation value indent}}
 
 
 @dataclasses.dataclass(frozen=True)
