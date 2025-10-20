@@ -54,14 +54,17 @@ class CodeSpecsWorkflow(AgentWorkflow):
     input = await self._get_initial_parameters()
     if not input.output_path().exists():
       await input.overwrite(input.output_path())
-      relevant_paths = await self._find_relevant_paths(input.output_path())
-      await self._implement_file(input, relevant_paths)
+    relevant_paths = await self._find_relevant_paths(input.output_path())
+    await self._implement_file(input, relevant_paths)
 
   async def _get_initial_parameters(self) -> PathAndValidator:
     """Obtains values to initialize a PathAndValidator.
 
     Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
     `prepare_initial_message`.
+
+    {{🦔 The done command arguments given to `prepare_command_registry` are
+         `dm_path_variable` and `validator_variable`.}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -112,6 +115,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
     Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
     `prepare_initial_message`. The agent is focused exclusively on `marker`,
     with the goal of identifying the best value for `relevant_paths_variable`.
+
+    {{🦔 The only done command argument given to `prepare_command_registry` is
+         `relevant_paths_variable`.}}
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
@@ -168,6 +174,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 For each file in `relevant_paths`, there's a section in the initial
          message given to the AI.}}
+    {{🦔 The only done command argument given to `prepare_command_registry` is
+         `implementation_variable`.}}
 
     Arguments:
       marker: The marker to implement.
@@ -185,7 +193,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
       """Calls validator.validate_marker_implementation to validate."""
       raise NotImplementedError()  # {{🍄 implement validator}}
 
-    file_extension = FileExtension(output_path.suffix)
+    file_extension = FileExtension(output_path.suffix[1:])
     start_message_content = (
         "GOAL: provide the *code content* "
         "that will replace the line containing the "
