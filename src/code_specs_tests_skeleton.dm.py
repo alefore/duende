@@ -56,11 +56,6 @@ path_to_test_variable = VariableName('path_to_tests')
 tests_skeleton_variable = VariableName('tests_skeleton')
 
 
-def _list_tests(tests_path: pathlib.Path) -> list[TestName]:
-  """Uses pytest to return a list of all the tests defined in tests_path."""
-  raise NotImplementedError()  #  {{🍄 list tests}}
-
-
 class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
   """Turns a DM file with HEDGEHOG markers into a DM file for the tests."""
 
@@ -134,6 +129,13 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         f"the tests should be in a subclass either of `unittest.TestCase` "
         f"or `unittest.IsolatedAsyncioTestCase`)."
         f"\n"
+        f"The input file may contain repeated {{{HEDGEHOG} …}} markers; "
+        f"for example, multiple functions may share an identical property. "
+        f"However, {{{MUSHROOM} …}} markers must be identical in the output. "
+        f"That means that if you find repeated {HEDGEHOG} markers, "
+        f"you must add more information inside the output markers "
+        f"in order to disambiguate them."
+        f"\n"
         f"Please try to pick meaningful names for the tests "
         f"(as in the example `test_foo_bar_name_here`) based on both "
         f"(1) the text inside the curly braces (after the \"{HEDGEHOG}\", "
@@ -161,8 +163,11 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
       """Validates that tests_skeleton_variable has the right markers.
 
       Fails if the set of markers given in tests_skeleton_variable (per
-      `code_spec.get_markers(MUSHROOM, output)` doesn't match the set of in
-      `code_spec.get_markers(HEDGEHOG, input)`.
+      `code_spec.get_markers(MUSHROOM, output)` isn't valid
+      (for example, it contains repeated markers).
+
+      Also fails if the number of HEDGEHOG markers in the input
+      isn't exactly the same as the number of MUSHROOM markers in the output.
       """
       raise NotImplementedError()  # {{🍄 tests skeleton validator}}
 
