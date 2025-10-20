@@ -74,28 +74,26 @@ class CodeSpecsWorkflow(AgentWorkflow):
       If PathAndValidator(…) raises an exception, gives a friendly error
       message to the AI."""
       # ✨ initial parameters validator
+      dm_path_value = inputs.get(dm_path_variable)
+      validator_command_str = inputs.get(validator_variable)
+
+      if not isinstance(dm_path_value, str):
+        return ValidationResult(
+            success=False,
+            output="",
+            error=f"The path for '{dm_path_variable}' must be a string.")
+      if not isinstance(validator_command_str, str):
+        return ValidationResult(
+            success=False,
+            output="",
+            error=f"The validator command for '{validator_variable}' must be a string."
+        )
+
       try:
-        dm_path_value = inputs.get(dm_path_variable)
-        validator_command_str = inputs.get(validator_variable)
-
-        if not isinstance(dm_path_value, str):
-          return ValidationResult(
-              success=False,
-              output="",
-              error=f"The file path for '{dm_path_variable}' is missing or invalid. Please provide a valid path."
-          )
-        if not isinstance(validator_command_str, str):
-          return ValidationResult(
-              success=False,
-              output="",
-              error=f"The validator command for '{validator_variable}' is missing or invalid. Please provide a valid shell command string."
-          )
-
-        validator_instance = Validator(command=validator_command_str)
         path_and_validator = PathAndValidator(
-            dm_path=pathlib.Path(dm_path_value), validator=validator_instance)
+            dm_path=pathlib.Path(dm_path_value),
+            validator=Validator(command=validator_command_str))
         await path_and_validator.validate_fields()
-
         return ValidationResult(
             success=True,
             output="Initial parameters validated successfully.",
@@ -104,11 +102,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
         return ValidationResult(
             success=False, output="", error=f"Validation failed: {e}")
       except Exception as e:
-        # Catch any other unexpected exceptions.
         return ValidationResult(
             success=False,
             output="",
-            error=f"An unexpected error occurred during validation: {e}. Please check your inputs."
+            error=f"An unexpected error occurred during validation: {e}. Please check the provided values."
         )
       # ✨
 
