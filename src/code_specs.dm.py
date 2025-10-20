@@ -127,9 +127,11 @@ class Validator:
   async def validate_path(self, dm_path: pathlib.Path) -> ValidationResult:
     """Runs `command` on `dm_path` to validate it.
 
-    # {{🦔 Returns failure for "false # $DMPATH"}}
-    # {{🦔 Returns success for "true # $DMPATH"}}
-    # {{🦔 Correctly passes `dm_path` through the `DMPATH` env variable}}
+    {{🦔 Returns failure for "false # $DMPATH"}}
+    {{🦔 Returns success for "true # $DMPATH"}}
+    {{🦔 Correctly passes `dm_path` through the `DMPATH` env variable}}
+    {{🦔 Command `TEST=foo sh -c 'test "$TEST" = "foo"' # $DMPATH` succeeds.
+         This validates that we can actually processes shell syntax.}}
     """
     env = os.environ.copy()
     env['DMPATH'] = str(dm_path)
