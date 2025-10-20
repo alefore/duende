@@ -337,6 +337,10 @@ class Validator:
 # ✨
 
 
+class RepeatedMarkersError(ValueError):
+  pass
+
+
 async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
   """Returns all markers in `path` in appearance order.
 
@@ -348,12 +352,13 @@ async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
   {{🦔 Spaces are correctly removed from a marker named "  foo bar  "}}
   {{🦔 Returns all markers in a file with ten markers}}
   {{🦔 The order of markers returned in a file with ten markers is correct}}
-  {{🦔 Raises ValueError for a file with a repeated marker (among others)}}
-  {{🦔 A file with three repeated markers raises ValueError; the description
-      mentions all markers explicitly}}
+  {{🦔 Raises RepeatedMarkersError for a file with a repeated marker (among
+       others)}}
+  {{🦔 A file with three repeated markers raises RepeatedMarkersError; the
+       description mentions all markers explicitly}}
 
   Raises:
-      ValueError if the file contains repeated markers.
+      RepeatedMarkersError if the file contains repeated markers.
   """
   # ✨ list markers
   try:
@@ -362,35 +367,29 @@ async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
   except FileNotFoundError:
     raise FileNotFoundError(f"File not found: {path}")
 
-  lines = content.splitlines()
   found_markers: list[MarkerName] = []
-  seen_marker_names = set()
-  repeated_marker_names = set()
-
+  marker_counts: dict[MarkerName, int] = {}
   char_pattern = marker_pattern(char)
 
-  for line_num, line in enumerate(lines):
+  for line in content.splitlines():
     match = char_pattern.search(line)
     if match:
       marker_name_str = match.group(1).strip()
-      current_marker_name = MarkerName(char=char, name=marker_name_str)
+      marker = MarkerName(char=char, name=marker_name_str)
+      found_markers.append(marker)
+      marker_counts[marker] = marker_counts.get(marker, 0) + 1
 
-      if current_marker_name in seen_marker_names:
-        repeated_marker_names.add(current_marker_name)
-      else:
-        seen_marker_names.add(current_marker_name)
-        found_markers.append(current_marker_name)
+  repeated_markers = [
+      str(marker) for marker, count in marker_counts.items() if count > 1
+  ]
 
-  if repeated_marker_names:
-    repeated_markers_str = ", ".join(
-        sorted([f"'{m.name}'" for m in repeated_marker_names]))
-    raise ValueError(
-        f"File '{path}' contains repeated markers: {repeated_markers_str}.")
+  if repeated_markers:
+    raise RepeatedMarkersError(
+        f"File '{path}' contains repeated markers: {', '.join(repeated_markers)}"
+    )
 
   return found_markers
-
-
-# ✨
+  # ✨
 
 
 @dataclasses.dataclass(frozen=True)
