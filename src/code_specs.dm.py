@@ -174,6 +174,10 @@ class Validator:
     raise NotImplementedError()  # {{🍄 implement validator}}
 
 
+class RepeatedMarkersError(ValueError):
+  pass
+
+
 async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
   """Returns all markers in `path` in appearance order.
 
@@ -185,12 +189,13 @@ async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
   {{🦔 Spaces are correctly removed from a marker named "  foo bar  "}}
   {{🦔 Returns all markers in a file with ten markers}}
   {{🦔 The order of markers returned in a file with ten markers is correct}}
-  {{🦔 Raises ValueError for a file with a repeated marker (among others)}}
-  {{🦔 A file with three repeated markers raises ValueError; the description
-      mentions all markers explicitly}}
+  {{🦔 Raises RepeatedMarkersError for a file with a repeated marker (among
+       others)}}
+  {{🦔 A file with three repeated markers raises RepeatedMarkersError; the
+       description mentions all markers explicitly}}
 
   Raises:
-      ValueError if the file contains repeated markers.
+      RepeatedMarkersError if the file contains repeated markers.
   """
   raise NotImplementedError()  # {{🍄 list markers}}
 
