@@ -34,21 +34,6 @@ MUSHROOM = MarkerChar("🍄")
 
 TestName = NewType("TestName", str)
 
-
-@dataclasses.dataclass(frozen=True)
-class TestMetadata:
-  # The `description` string in the HEDGEHOG marker.
-  property: str
-  # A valid name for the test.
-  name: TestName
-
-
-@dataclasses.dataclass(frozen=True)
-class TestImplementation:
-  metadata: TestMetadata
-  code: str
-
-
 # Path to a file that contains `HEDGEHOG` markers describing properties that we
 # want to test.
 path_to_test_variable = VariableName('path_to_tests')
@@ -84,6 +69,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
            (per `code_specs.get_markers`).}}
       {{🦔 Validation succeeds if the file can be read and contains HEDGEHOG
            markers (per `code_specs.get_markers`).}}
+      {{🦔 Validation succeeds if the file contains repeated (identical)
+           HEDGEHOG markers (per `code_specs.get_markers`).}}
       """
       raise NotImplementedError()  # {{🍄 initial parameters validator}}
 
@@ -110,28 +97,36 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
          `path_to_test_variable`.}}
     {{🦔 After validating that the skeleton contains all tests, writes them to
          a `tests_…` file (e.g., for `src/foo.py`, writes `src/test_foo.py`).}}
+    {{🦔 `input` is passed as a relevant file to `prepare_initial_message`.'}}
     """
     start_message_content = (
         f"GOAL: Prepare a skeleton file for unit tests "
         f"based on the contents of file \"{input}\". "
         f"This file contains markers that look like this: "
-        f"\"{{{HEDGEHOG} property to validate}}\" "
+        f"\"{{{{{HEDGEHOG} property to validate}}}}\" "
         f"(where \"property to validate\" is a description "
         f"of what the test should do). "
         f"Your skeleton should contain a unit test "
         f"for each of these markers, something like this:"
         f"\n\n"
         f"    await def test_foo_bar_name_here(self) -> None:\n"
-        f"      pass  # {{{MUSHROOM} property to validate}}\n"
+        f"      pass  # {{{{{MUSHROOM} property to validate}}}}\n"
         f"\n"
         f"(The `await` keyword may not be necessary, "
         f"in which case it should be omitted; "
         f"the tests should be in a subclass either of `unittest.TestCase` "
         f"or `unittest.IsolatedAsyncioTestCase`)."
         f"\n"
-        f"The input file may contain repeated {{{HEDGEHOG} …}} markers; "
+        f"As you can see, you are not actually going to implement the tests, "
+        f"but you're just laying down the foundation. "
+        f"We are turning the {{{{{HEDGEHOG} …}}}} markers "
+        f"into {{{{{MUSHROOM} …}}}} markers, "
+        f"which will drive the implementation of the tests."
+        f"\n"
+        f"The input file may contain repeated {{{{{HEDGEHOG} …}}}} markers; "
         f"for example, multiple functions may share an identical property. "
-        f"However, {{{MUSHROOM} …}} markers must be identical in the output. "
+        f"However, {{{{{MUSHROOM} …}}}} markers "
+        f"must be identical in the output. "
         f"That means that if you find repeated {HEDGEHOG} markers, "
         f"you must add more information inside the output markers "
         f"in order to disambiguate them."
@@ -142,12 +137,6 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         f"and (2) the context around the line where the token occurs "
         f"(for example, if the token is given in a function's docstring, "
         f"it's very likely that it refers to tests for that function)."
-        f"\n"
-        f"As you can see, you are not actually going to implement the tests, "
-        f"but you're just laying down the foundation. "
-        f"We are turning the {{{HEDGEHOG} …}} markers "
-        f"into {{{MUSHROOM} …}} markers, "
-        f"which will drive the implementation of the tests."
         f"\n"
         f"Make sure to include this at the end of the file:"
         f"\n"
