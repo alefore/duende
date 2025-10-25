@@ -34,34 +34,26 @@ MarkerChar = NewType("MarkerChar", str)
 def comment_string(file_extension: FileExtension, input: str) -> str:
   """Turns `input` into a valid code comment based on `path`'s extension.
 
+  `input` may contain multiple lines.
+
   Supported extensions: py, sh, cc, h, js, ts, java, html, css
 
   {{🦔 "py" and "foo bar" returns "# foo bar"}}
-  {{🦔 "html" and "my test" returns "<!-- my test -->}}
+  {{🦔 "html" and "my test" returns "<!-- my test -->"}}
+  {{🦔 "html" and "foo\nbar\nquux" returns "<!-- foo\nbar\nquux -->"}}
+  {{🦔 "cc" and "foo\nbar" returns "// foo\n//bar"}}
   """
   #  {{🍄 get comment char}}
   raise ValueError(f"Unknown file extension: {file_extension}")
 
 
-def marker_pattern(char: str) -> re.Pattern:
-  """Returns a regex to search for code lines with DM markers.
-
-  A DM marker has the form "{{" + char + an arbitrary name (which may
-  contain spaces, such as "    test method foo  ") + "}}". The first match group
-  captures the name, with any leading/trailing spaces stripped away. Must be
-  applied to individual lines (i.e., not to the whole file).
-
-  {{🦔 Matches "      {{X foo}}" (with char "X")}}
-  {{🦔 Matches "  return Foo()   #  {{X bar}} blah" (char == "X")}}
-  {{🦔 Doesn't match with space before char: "{{ X foo}}" (char == "X")}}
-  {{🦔 Doesn't match random line "  if (kobolds_found) {"}}
-  """
-  return re.compile(r'...')  #  {{🍄 marker pattern}}
-
-
 class MarkerName(NamedTuple):
   char: MarkerChar
   name: str
+  """The name of the marker, which may contain newline characters.
+
+  Must be stripped of whitespace characters at the beginning and end.
+  """
 
 
 class MarkerImplementation:
@@ -85,11 +77,14 @@ class MarkerImplementation:
   async def save(self, path: pathlib.Path) -> None:
     """Rewrites `path`, storing our implementation.
 
-    {{🦔 The read operation is async}}
-    {{🦔 The write operation is async}}
-    {{🦔 Successfully expands a marker in a file with a single marker}}
-    {{🦔 Successfully expands the correct marker in a file with ten markers}}
-    {{🦔 The value is stored literally, without adding any leading spaces}}
+    All lines before
+    {{🦔 The read operation is async.}}
+    {{🦔 The write operation is async.}}
+    {{🦔 Successfully expands a marker in a file with a single marker.}}
+    {{🦔 Successfully expands a marker that spans multiple lines (i.e., that
+         has newline characters in the name).}}
+    {{🦔 Successfully expands the correct marker in a file with ten markers.}}
+    {{🦔 The value is stored literally, without adding any leading spaces.}}
     {{🦔 Raises ValueError if the marker doesn't occur in `path`}}
     {{🦔 Raises ValueError if the marker occurs twice in `path`}}
     {{🦔 Raises FileNotFound if the file does not exist}}
@@ -174,30 +169,40 @@ class Validator:
     raise NotImplementedError()  # {{🍄 implement validator}}
 
 
-class RepeatedMarkersError(ValueError):
-  pass
+class ConflictingMarkersError(ValueError):
+  """Two markers have a common line.
+
+  This is invalid: markers may not overlap.
+  """
 
 
-async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
-  """Returns all markers in `path` in appearance order.
+async def get_markers(char: MarkerChar,
+                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+  """Returns the positions (line index) of all markers in `path`.
 
   {{🦔 Reads `path` asynchronously}}
-  {{🦔 Returns [] for an empty file}}
+  {{🦔 Returns {} for an empty file}}
   {{🦔 Raises FileNotFound for a non-existent file}}
-  {{🦔 Returns [] for a file with 5 lines but no markers}}
+  {{🦔 Returns {} for a file with 5 lines but no markers}}
   {{🦔 Correctly returns a marker in a file with just 1 marker}}
-  {{🦔 Spaces are correctly removed from a marker named "  foo bar  "}}
-  {{🦔 Returns all markers in a file with ten markers}}
-  {{🦔 The order of markers returned in a file with ten markers is correct}}
-  {{🦔 Raises RepeatedMarkersError for a file with a repeated marker (among
-       others)}}
-  {{🦔 A file with three repeated markers raises RepeatedMarkersError; the
-       description mentions all markers explicitly}}
+  {{🦔 If a marker starts in the first line in the file, its value in the output
+       is [0].}}
+  {{🦔 If a marker starts in the last line, its value in the output is
+       `len(lines) - 1`.}}
+  {{🦔 Correctly handles a file where a marker starts in the first line and
+       finishes in the last line.}}
+  {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
+  {{🦔 Returns all markers in a file with ten markers.}}
+  {{🦔 The index of markers returned in a file with ten markers is correct.}}
+  {{🦔 A file can have repeated markers; the output just lists their
+       positions.}}
+  {{🦔 A file where two markers overlap (one ends in the same line where the
+       other begins) raises `ConflictingMarkersError`.}}
 
   Raises:
-      RepeatedMarkersError if the file contains repeated markers.
+      ConflictingMarkersError: if two markers share a common line.
   """
-  raise NotImplementedError()  # {{🍄 list markers}}
+  raise NotImplementedError()  # {{🍄 get markers}}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -244,17 +249,17 @@ class PathAndValidator:
     raise NotImplementedError()  # {{🍄 overwrite}}
 
 
-async def prepare_initial_message(
-    start_message_content: str, relevant_files: list[pathlib.Path]) -> Message:
+async def prepare_initial_message(start_message_content: str,
+                                  relevant_files: set[pathlib.Path]) -> Message:
   """Creates the first message for an AgentLoop conversation.
 
-  {{🦔 `relevant_files` are read asynchronously}}
-  {{🦔 The output contains `start_message_content` in its first section}}
-  {{🦔 If `relevant_files` is empty, the output has just one section}}
+  {{🦔 `relevant_files` are read asynchronously.}}
+  {{🦔 The output contains `start_message_content` in its first section.}}
+  {{🦔 If `relevant_files` is empty, the output has just one section.}}
   {{🦔 There is a content section in the start message given to the AgentLoop
-       for each entries in `relevant_files`. It starts with a line
-       "File "{path}" follows:" (with the corresponding path) and includes
-       the entire contents of the file.}}
+       for each entry in `relevant_files`. It starts with a line "File '{path}'
+       follows:" (with the corresponding path) and includes the entire contents
+       of the file.}}
   """
   raise NotImplementedError()  # {{🍄 prepare initial message}}
 
@@ -277,9 +282,9 @@ async def run_agent_loop(workflow_options: AgentWorkflowOptions,
                          command_registry: CommandRegistry) -> VariableMap:
   """Creates and runs a BaseAgentLoop.
 
-  {{🦔 Returns the VariableMap with all the values given to DoneCommand}}
-  {{🦔 The conversation started has name `conversation_name`}}
-  {{🦔 `start_message` is given as the initial message}}
+  {{🦔 Returns the `VariableMap` with all the values given to `DoneCommand`.}}
+  {{🦔 The conversation started has name `conversation_name`.}}
+  {{🦔 `start_message` is given as the initial message.}}
 
   Returns:
     Output variables given to the final `done` command (extracted from the
