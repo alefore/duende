@@ -105,7 +105,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """Prepares various files, moving old implementations aside."""
     return_value: pathlib.Path | None = None
     if input.output_path().exists():
-      # {{🦔 `input.output_path()` is copied to `input.output_path().old`.}}
+      # {{🦔 `input.output_path()` is copied to `input.output_path().old`
+      #      (for example, `src/foo.py` becomes `src/foo.py.old`).}}
       # {{🦔 `return_value` is set to the location of the copy (`….old`).}}
       raise NotImplementedError  # {{🍄 prepare output paths if old output}}
 
@@ -176,6 +177,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
     {{🦔 The output of a call to `_implement_marker` is stored before the next
          call begins (so that the next call already sees the output of the
          previous call).}}
+    {{🦔 The calls to `_implement_marker` happen in the order in which the
+         markers occur in the DM file.}}
     """
     raise NotImplementedError()  # {{🍄 implement file}}
 
@@ -241,7 +244,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"In your implementation, try to reuse as much as possible any old "
         f"implementation (from the `{output_path}.old` file). "
         f"Only change the implementation if this is strictly necessary: "
-        f"if the old implementation has bugs, "
+        f"if the old implementation has bugs "
+        f"(e.g., does not honor some documented property), "
         f"new requirements have been added, "
         f"or requirements have been removed/relaxed "
         f"(in ways that allow code simplifications).")
