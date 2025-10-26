@@ -232,6 +232,7 @@ class PathAndValidator:
     """Validates fields, conditionally raising ValueError.
 
     When searching for markers, uses MarkerChar('🍄').
+
     {{🦔 Doesn't raise if `dm_path` is a valid file with two 🍄 markers.}}
     {{🦔 Raises ValueError if `dm_path` is "foo.py" (lacks the `.dm.` part).}}
     {{🦔 Raises ValueError if `dm_path` is a valid file with no 🍄 markers.}}
