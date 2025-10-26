@@ -3,7 +3,9 @@
 
 import aiofiles
 import asyncio
+import collections
 import dataclasses
+import itertools
 import logging
 import pathlib
 import re
@@ -35,49 +37,143 @@ MarkerChar = NewType("MarkerChar", str)
 def comment_string(file_extension: FileExtension, input: str) -> str:
   """Turns `input` into a valid code comment based on `path`'s extension.
 
+  `input` may contain multiple lines.
+
   Supported extensions: py, sh, cc, h, js, ts, java, html, css
 
   {{🦔 "py" and "foo bar" returns "# foo bar"}}
-  {{🦔 "html" and "my test" returns "<!-- my test -->}}
+  {{🦔 "html" and "my test" returns "<!-- my test -->"}}
+  {{🦔 "html" and "foo\nbar\nquux" returns "<!-- foo\nbar\nquux -->"}}
+  {{🦔 "cc" and "foo\nbar" returns "// foo\n//bar"}}
+  {{🦔 "css" and "foo bar" returns "/* foo bar */"}}
+  {{🦔 "css" and "foo\nbar" returns "/* foo\nbar */"}}
   """
   # ✨ get comment char
-  if file_extension == "py" or file_extension == "sh":
+  if file_extension in ("py", "sh"):
     return f"# {input}"
-  elif file_extension == "cc" or file_extension == "h" or file_extension == "js" or file_extension == "ts" or file_extension == "java":
-    return f"// {input}"
   elif file_extension == "html":
     return f"<!-- {input} -->"
+  elif file_extension in ("cc", "h", "js", "ts", "java"):
+    return "\n".join([f"// {line}" for line in input.splitlines()])
   elif file_extension == "css":
     return f"/* {input} */"
-
-
-# ✨
+  # ✨
   raise ValueError(f"Unknown file extension: {file_extension}")
 
 
-def marker_pattern(char: str) -> re.Pattern:
-  """Returns a regex to search for code lines with DM markers.
-
-  A DM marker has the form "{{" + char + an arbitrary name (which may
-  contain spaces, such as "    test method foo  ") + "}}". The first match group
-  captures the name, with any leading/trailing spaces stripped away. Must be
-  applied to individual lines (i.e., not to the whole file).
-
-  {{🦔 Matches "      {{X foo}}" (with char "X")}}
-  {{🦔 Matches "  return Foo()   #  {{X bar}} blah" (char == "X")}}
-  {{🦔 Doesn't match with space before char: "{{ X foo}}" (char == "X")}}
-  {{🦔 Doesn't match random line "  if (kobolds_found) {"}}
-  """
-  # ✨ marker pattern
-  return re.compile(r'\{\{' + re.escape(char) + r'\s*(.*?)\s*\}\}')
-
-
-# ✨
-
-
-class MarkerName(NamedTuple):
+@dataclasses.dataclass(frozen=True)
+class MarkerName:
   char: MarkerChar
   name: str
+
+  def __post_init__(self) -> None:
+    object.__setattr__(self, 'name', self._fix_name(self.name))
+
+  def _fix_name(self, name: str) -> str:
+    """Fixes `name`, replacing any sequence of whitespace characters by ' '.
+
+    Whitespace characters at the beginning and end are removed.
+
+    {{🦔 Name " foo" is turned into "foo".}}
+    {{🦔 Name "foo " is turned into "foo".}}
+    {{🦔 Name " foo " is turned into "foo".}}
+    {{🦔 Name "Foo\nBar" is turned into "Foo Bar".}}
+    {{🦔 Name "  foo \n\n   \n   bar  " is turned into "foo bar".}}
+    """
+    # ✨ MarkerName fix name
+    return re.sub(r"\s+", " ", name).strip()
+    # ✨
+
+
+class MarkersOverlapError(ValueError):
+  """Two markers have a common line.
+
+  This is invalid: markers may not overlap.
+  """
+
+
+async def get_markers(char: MarkerChar,
+                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+  """Returns the positions (line index) of all markers in `path`.
+
+  {{🦔 Reads `path` asynchronously}}
+  {{🦔 Returns {} for an empty file}}
+  {{🦔 Raises FileNotFound for a non-existent file}}
+  {{🦔 Returns {} for a file with 5 lines but no markers}}
+  {{🦔 Correctly returns a marker in a file with just 1 marker}}
+  {{🦔 If a marker starts in the first line in the file, its value in the output
+       is [0].}}
+  {{🦔 If a marker starts in the last line, its value in the output is
+       `len(lines) - 1`.}}
+  {{🦔 Correctly handles a file where a marker starts in the first line and
+       finishes in the last line.}}
+  {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
+  {{🦔 Returns all markers in a file with ten markers.}}
+  {{🦔 The index of markers returned in a file with ten markers is correct.}}
+  {{🦔 A file can have repeated markers; the output just lists their
+       positions.}}
+  {{🦔 A file where two markers overlap (one ends in the same line where the
+       other begins) raises `MarkersOverlapError`.}}
+  {{🦔 The returned object is sorted by appearance order (i.e., iterating across
+       the keys of the returned dictionary matches the order in which the first
+       appearance of each marker was found in the file).}}
+
+  Raises:
+      MarkersOverlapError: if two markers share a common line.
+  """
+  # ✨ get markers
+  # 1. Read the entire file content.
+  async with aiofiles.open(
+      path, mode='r') as f:
+    content = await f.read()
+
+  # 2. Define the regex and find all matches.
+  #    finditer() returns matches in order, so no sorting is needed.
+  pattern = re.compile(r"\{\{" + re.escape(char) + r"\s*(.*?)\s*\}\}",
+                       re.DOTALL)
+  all_matches = list(pattern.finditer(content))
+  if not all_matches:
+    return {}
+
+  # 3. Validate markers.
+  #    Iterate over consecutive pairs and check for overlaps.
+  for prev_match, curr_match in itertools.pairwise(all_matches):
+    prev_end = prev_match.end()
+    curr_start = curr_match.start()
+
+    # Check 1: True Overlap (e.g., nesting)
+    if curr_start < prev_end:
+      raise MarkersOverlapError(
+          f"Markers overlap (nesting detected) near character {curr_start} "
+          f"in '{path}'")
+
+    # Check 2: Same-Line Overlap
+    gap_text = content[prev_end:curr_start]
+    if '\n' not in gap_text:
+      raise MarkersOverlapError(
+          f"Marker at char {curr_start} starts on the same line "
+          f"as the previous marker ended (char {prev_end}) in '{path}'")
+
+  # 4. If validation passed, build the result dictionary.
+  markers = collections.defaultdict(list)
+  current_line = 0
+  last_char_index = 0
+  for match in all_matches:
+    start_char_index = match.start()
+    # Count newlines *only in the new gap* since the last match
+    gap_text = content[last_char_index:start_char_index]
+    current_line += gap_text.count('\n')
+
+    # Store the calculated line number
+    name_str = match.group(1).strip()
+    marker_name = MarkerName(char=char, name=name_str)
+    markers[marker_name].append(current_line)
+
+    # Update our position for the next iteration
+    last_char_index = start_char_index
+
+  return dict(markers)
+  # ✨
 
 
 class MarkerImplementation:
@@ -97,29 +193,49 @@ class MarkerImplementation:
     self._value = value
     self._file_extension = file_extension
 
-    lines = value.splitlines()
-    if not lines:
-      raise ValueError("Implementation value cannot be empty.")
+    value_lines = [line for line in value.splitlines() if line.strip()]
 
-    expected_start_comment = comment_string(file_extension, f"✨ {name.name}")
-    expected_end_comment = comment_string(file_extension, "✨")
+    if not value_lines:
+      raise ValueError("Implementation block cannot be empty.")
 
-    if lines[0].strip() != expected_start_comment:
+    # An implementation block must contain at least two non-empty lines:
+    # one for the start marker and one for the end marker.
+    if len(value_lines) < 2:
       raise ValueError(
-          f"Implementation must start with '{expected_start_comment}', but found '{lines[0]}'"
-      )
-    if lines[-1].strip() != expected_end_comment:
-      raise ValueError(
-          f"Implementation must end with '{expected_end_comment}', but found '{lines[-1]}'"
+          "Implementation block must have at least a start and end marker line."
       )
 
+    first_line_stripped = value_lines[0].lstrip()
+    last_line_stripped = value_lines[-1].lstrip()
 
-# ✨
+    # Generate the expected start and end comment lines. We then strip any *inherent* leading
+    # whitespace that the `comment_string` function itself might add (e.g., "  // " for C-style
+    # comments). This allows the actual `value` lines to have arbitrary leading whitespace before
+    # their comment characters.
+    expected_start_comment_content = f"✨ {name.name}"
+    expected_start_comment_line_template = comment_string(
+        file_extension, expected_start_comment_content).lstrip()
 
-# {{🦔 A call to MarkerImplementation.name returns the correct name}}
-# {{🦔 A call to MarkerImplementation.value returns the correct value}}
-# ✨ `name` and `value` getters
+    expected_end_comment_content = "✨"
+    expected_end_comment_line_template = comment_string(
+        file_extension, expected_end_comment_content).lstrip()
 
+    if first_line_stripped != expected_start_comment_line_template:
+      raise ValueError(
+          f"Implementation block must start with appropriate '✨' comment. "
+          f"Expected (stripped): '{expected_start_comment_line_template}', "
+          f"Got (stripped): '{first_line_stripped}'")
+
+    if last_line_stripped != expected_end_comment_line_template:
+      raise ValueError(
+          f"Implementation block must end with appropriate '✨' comment. "
+          f"Expected (stripped): '{expected_end_comment_line_template}', "
+          f"Got (stripped): '{last_line_stripped}'")
+    # ✨
+
+  # {{🦔 A call to MarkerImplementation.name returns the correct name}}
+  # {{🦔 A call to MarkerImplementation.value returns the correct value}}
+  # ✨ `name` and `value` getters
   @property
   def name(self) -> MarkerName:
     return self._name
@@ -133,11 +249,13 @@ class MarkerImplementation:
   async def save(self, path: pathlib.Path) -> None:
     """Rewrites `path`, storing our implementation.
 
-    {{🦔 The read operation is async}}
-    {{🦔 The write operation is async}}
-    {{🦔 Successfully expands a marker in a file with a single marker}}
-    {{🦔 Successfully expands the correct marker in a file with ten markers}}
-    {{🦔 The value is stored literally, without adding any leading spaces}}
+    {{🦔 The read operation is async.}}
+    {{🦔 The write operation is async.}}
+    {{🦔 Successfully expands a marker in a file with a single marker.}}
+    {{🦔 Successfully expands a marker that spans multiple lines (i.e., that
+         has newline characters in the name).}}
+    {{🦔 Successfully expands the correct marker in a file with ten markers.}}
+    {{🦔 The value is stored literally, without adding any leading spaces.}}
     {{🦔 Raises ValueError if the marker doesn't occur in `path`}}
     {{🦔 Raises ValueError if the marker occurs twice in `path`}}
     {{🦔 Raises FileNotFound if the file does not exist}}
@@ -146,6 +264,7 @@ class MarkerImplementation:
          rules of `_value_indent`; the number of desired spaces is equal to the
          number of spaces before the first non-space character in the line that
          contains the marker.}}
+    {{🦔 Uses `get_markers` rather than redundantly implementing its logic.}}
 
     Raises:
       ValueError if `path` has a `.dm.` part. DM files themselves should never
@@ -153,46 +272,44 @@ class MarkerImplementation:
     """
     # ✨ marker implementation save
     if ".dm." in path.name:
-      raise ValueError(f"DM files themselves should never be updated: {path}")
-
-    try:
-      async with aiofiles.open(path, mode="r") as f:
-        content = await f.read()
-    except FileNotFoundError:
-      raise FileNotFoundError(f"File not found: {path}")
-
-    lines = content.splitlines()
-    char_pattern = marker_pattern(self._name.char)
-    found_marker_lines: list[tuple[int, str]] = []
-
-    for i, line in enumerate(lines):
-      match = char_pattern.search(line)
-      if match and match.group(1).strip() == self._name.name:
-        found_marker_lines.append((i, line))
-
-    if not found_marker_lines:
       raise ValueError(
-          f"Marker '{{{{'{self._name.char} {self._name.name}'}}}}' not found in file '{path}'."
-      )
-    if len(found_marker_lines) > 1:
-      raise ValueError(
-          f"Marker '{{{{'{self._name.char} {self._name.name}'}}}}' found multiple times in file '{path}'."
+          f"`path` ('{path}') must not contain '.dm.'. DM files themselves should never be updated."
       )
 
-    marker_line_num, marker_line_content = found_marker_lines[0]
+    # 1. Get marker positions.
+    all_markers = await get_markers(self._name.char, path)
+    if self._name not in all_markers:
+      raise ValueError(f"Marker '{self._name}' not found in '{path}'.")
+    if len(all_markers[self._name]) > 1:
+      raise ValueError(
+          f"Marker '{self._name}' occurs multiple times in '{path}'.")
 
-    # Calculate indentation
-    indentation = len(marker_line_content) - len(marker_line_content.lstrip())
+    marker_line_idx = all_markers[self._name][0]
 
-    # Re-indent the implementation
+    # 2. Read the file content.
+    async with aiofiles.open(
+        path, mode='r') as f:
+      lines = (await f.read()).splitlines()
+
+    # 3. Determine the indentation of the marker line.
+    marker_line = lines[marker_line_idx]
+    indentation = len(marker_line) - len(marker_line.lstrip())
+
+    # 4. Prepare the replacement content with correct indentation.
     indented_value = self._value_indent(indentation)
 
-    # Replace the marker line with the implementation
-    new_lines = lines[:marker_line_num] + indented_value.splitlines(
-    ) + lines[marker_line_num + 1:]
+    # 5. Reconstruct the file content.
+    new_lines = []
+    new_lines.extend(lines[:marker_line_idx])  # Lines before the marker
+    new_lines.extend(indented_value.splitlines())  # Insert the implementation
+    new_lines.extend(lines[marker_line_idx + 1:])  # Lines after the marker
 
-    async with aiofiles.open(path, mode="w") as f:
-      await f.write("\n".join(new_lines))
+    new_content = "\n".join(new_lines)
+
+    # 6. Write the updated content back to the file.
+    async with aiofiles.open(
+        path, mode='w') as f:
+      await f.write(new_content)
     # ✨
 
   def _value_indent(self, desired_spaces: int) -> str:
@@ -202,8 +319,8 @@ class MarkerImplementation:
     contain and removes it (from all lines). Then prepends to all lines a prefix
     of the desired length.
 
-    {{🦔 If an input (`_value`) is empty, the corresponding line in the output
-         is empty.}}
+    {{🦔 If an input line (from `_value`) is empty or only contains whitespace
+         characters, the corresponding line in the output is empty.}}
     {{🦔 If the whitespace prefixes are removed (from all input and output
          lines), the output is identical to `_value`.}}
     {{🦔 All lines in the output must begin with `desired_spaces` spaces or
@@ -219,33 +336,31 @@ class MarkerImplementation:
 
     # Find the minimum common leading whitespace for non-empty lines
     min_indent = float('inf')
-    has_content_line = False
+    has_non_empty_line = False
     for line in lines:
-      if line.strip():  # Only consider non-empty lines for common indent
-        leading_spaces = len(line) - len(line.lstrip(' '))
+      if line.strip():  # Consider only non-empty lines for common prefix
+        has_non_empty_line = True
+        leading_spaces = len(line) - len(line.lstrip())
         min_indent = min(min_indent, leading_spaces)
-        has_content_line = True
 
-    # If no lines had content, default min_indent to 0
-    if not has_content_line:
+    # If there are no non-empty lines, the common prefix is 0.
+    if not has_non_empty_line:
       min_indent = 0
-    else:
-      min_indent = int(
-          min_indent)  # Ensure it's an integer after min operations
+    else:  # Ensure min_indent is an integer if it's not infinity
+      min_indent = int(min_indent)
 
-    # Remove the common leading whitespace and prepend desired_spaces
-    indented_lines = []
-    prefix = " " * desired_spaces
+    reindented_lines = []
     for line in lines:
-      if not line:  # If the line is entirely empty (not just whitespace)
-        indented_lines.append("")
+      if not line.strip():  # If the line is empty or only whitespace
+        reindented_lines.append("")
       else:
-        # Remove min_indent characters from the beginning
-        # If a line is shorter than min_indent, this will result in an empty string.
-        trimmed_line = line[min_indent:]
-        indented_lines.append(prefix + trimmed_line)
+        # Remove the common minimum indentation and then add desired spaces
+        line_without_common_prefix = line[min_indent:]
+        reindented_lines.append(" " * desired_spaces +
+                                line_without_common_prefix)
 
-    return "\n".join(indented_lines)
+    # Join lines back with newline characters.
+    return "\n".join(reindented_lines)
     # ✨
 
 
@@ -272,7 +387,7 @@ class Validator:
     # ✨ validator post init
     if "DMPATH" not in self.command:
       raise ValueError("Validator command must include 'DMPATH'.")
-# ✨
+    # ✨
 
   async def validate_path(self, dm_path: pathlib.Path) -> ValidationResult:
     """Runs `command` on `dm_path` to validate it.
@@ -286,18 +401,26 @@ class Validator:
     env = os.environ.copy()
     env['DMPATH'] = str(dm_path)
     # ✨ validator validate
-    process = await asyncio.create_subprocess_shell(
-        self.command,
-        env=env,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await process.communicate()
-    return ValidationResult(
-        success=process.returncode == 0,
-        output=stdout.decode().strip(),
-        error=stderr.decode().strip())
-# ✨
+    env = os.environ.copy()
+    env['DMPATH'] = str(dm_path)
+    try:
+      process = await asyncio.create_subprocess_exec(
+          "/bin/bash",
+          "-c",
+          self.command,
+          env=env,
+          stdout=asyncio.subprocess.PIPE,
+          stderr=asyncio.subprocess.PIPE,
+      )
+      stdout, stderr = await process.communicate()
+      return ValidationResult(
+          success=process.returncode == 0,
+          output=stdout.decode().strip(),
+          error=stderr.decode().strip())
+    except Exception as e:
+      logging.error(f"Error executing validator command: {str(e)}")
+      return ValidationResult(success=False, output="", error=str(e))
+    # ✨
 
   async def validate_marker_implementation(
       self, source: pathlib.Path,
@@ -309,87 +432,16 @@ class Validator:
     {{🦔 Does not modify `source`}}
     {{🦔 Returns success when the implementation is correct}}
     {{🦔 Returns failure when the implementation is invalid}}
+    {{🦔 Uses `implementation.save` on the temporary copy of `source` (in order
+         to update the implementation of the marker in the file).}}
     """
     # ✨ implement validator
-    temp_dir = None
-    try:
-      temp_dir = pathlib.Path(tempfile.mkdtemp())
-      temp_file_path = temp_dir / source.name
-
-      # Copy the source file to the temporary location
-      async with aiofiles.open(
-          source, mode="r") as src_f:
-        content = await src_f.read()
-      async with aiofiles.open(temp_file_path, mode="w") as dest_f:
-        await dest_f.write(content)
-
-      # Apply the marker implementation to the temporary file
-      await implementation.save(temp_file_path)
-
-      # Validate the modified temporary file
-      validation_result = await self.validate_path(temp_file_path)
-      return validation_result
-    finally:
-      if temp_dir and temp_dir.exists():
-        shutil.rmtree(temp_dir)
-
-
-# ✨
-
-
-class RepeatedMarkersError(ValueError):
-  pass
-
-
-async def get_markers(char: MarkerChar, path: pathlib.Path) -> list[MarkerName]:
-  """Returns all markers in `path` in appearance order.
-
-  {{🦔 Reads `path` asynchronously}}
-  {{🦔 Returns [] for an empty file}}
-  {{🦔 Raises FileNotFound for a non-existent file}}
-  {{🦔 Returns [] for a file with 5 lines but no markers}}
-  {{🦔 Correctly returns a marker in a file with just 1 marker}}
-  {{🦔 Spaces are correctly removed from a marker named "  foo bar  "}}
-  {{🦔 Returns all markers in a file with ten markers}}
-  {{🦔 The order of markers returned in a file with ten markers is correct}}
-  {{🦔 Raises RepeatedMarkersError for a file with a repeated marker (among
-       others)}}
-  {{🦔 A file with three repeated markers raises RepeatedMarkersError; the
-       description mentions all markers explicitly}}
-
-  Raises:
-      RepeatedMarkersError if the file contains repeated markers.
-  """
-  # ✨ list markers
-  try:
-    async with aiofiles.open(path, mode="r") as f:
-      content = await f.read()
-  except FileNotFoundError:
-    raise FileNotFoundError(f"File not found: {path}")
-
-  found_markers: list[MarkerName] = []
-  marker_counts: dict[MarkerName, int] = {}
-  char_pattern = marker_pattern(char)
-
-  for line in content.splitlines():
-    match = char_pattern.search(line)
-    if match:
-      marker_name_str = match.group(1).strip()
-      marker = MarkerName(char=char, name=marker_name_str)
-      found_markers.append(marker)
-      marker_counts[marker] = marker_counts.get(marker, 0) + 1
-
-  repeated_markers = [
-      str(marker) for marker, count in marker_counts.items() if count > 1
-  ]
-
-  if repeated_markers:
-    raise RepeatedMarkersError(
-        f"File '{path}' contains repeated markers: {', '.join(repeated_markers)}"
-    )
-
-  return found_markers
-  # ✨
+    with tempfile.TemporaryDirectory() as tmpdir:
+      temp_source_path = pathlib.Path(tmpdir) / source.name
+      shutil.copy(source, temp_source_path)
+      await implementation.save(temp_source_path)
+      return await self.validate_path(temp_source_path)
+    # ✨
 
 
 @dataclasses.dataclass(frozen=True)
@@ -398,27 +450,41 @@ class PathAndValidator:
   dm_path: pathlib.Path
   validator: Validator
 
-  async def validate_fields(self):
+  async def validate_fields(self) -> None:
     """Validates fields, conditionally raising ValueError.
 
-    {{🦔 Doesn't raise if `dm_path` is a valid file with two markers}}
-    {{🦔 Raises ValueError if `dm_path` is "foo.py"}}
-    {{🦔 Raises ValueError if `dm_path` is a valid Python file with no markers}}
-    {{🦔 Raises ValueError if `dm_path` contains a repeated marker}}
+    When searching for markers, uses MarkerChar('🍄').
+
+    {{🦔 Doesn't raise if `dm_path` is a valid file with two 🍄 markers.}}
+    {{🦔 Raises ValueError if `dm_path` is "foo.py" (lacks the `.dm.` part).}}
+    {{🦔 Raises ValueError if `dm_path` is a valid file with no 🍄 markers.}}
+    {{🦔 Raises ValueError if `dm_path` contains a repeated 🍄 marker.}}
 
     We can't use `__post_init__` because we want `async` validation.
     """
     # ✨ PathAndValidator validate fields
     if ".dm." not in self.dm_path.name:
-      raise ValueError(f"DM file path '{self.dm_path}' must contain '.dm.'.")
+      raise ValueError(f"`dm_path` ('{self.dm_path}') must contain '.dm.'.")
 
     try:
-      markers = await get_markers(char='🍄', path=self.dm_path)
-      if not markers:
-        raise ValueError(f"DM file '{self.dm_path}' contains no markers.")
-    except FileNotFoundError:
-      raise ValueError(f"DM file '{self.dm_path}' does not exist.")
-# ✨
+      markers = await get_markers(MarkerChar('🍄'), self.dm_path)
+    except MarkersOverlapError as e:
+      raise ValueError(
+          f"Overlapping 🍄 markers found in '{self.dm_path}': {e}"
+      ) from e
+    except FileNotFoundError as e:
+      raise ValueError(f"File not found: '{self.dm_path}'") from e
+
+    if not markers:
+      raise ValueError(f"No 🍄 markers found in '{self.dm_path}'.")
+
+    for marker_name, positions in markers.items():
+      if len(positions) > 1:
+        raise ValueError(
+            f"Repeated 🍄 marker '{marker_name.name}' found in '{self.dm_path}' "
+            f"at lines: {', '.join(map(str, positions))}. Each marker name must be unique."
+        )
+    # ✨
 
   def output_path(self) -> pathlib.Path:
     """Returns `dm_path` without the `.dm` part.
@@ -426,8 +492,9 @@ class PathAndValidator:
     {{🦔 If `dm_path` is "foo/bar/quux.dm.py", returns "foo/bar/quux.py"}}
     """
     # ✨ PathAndValidator output path
-    return self.dm_path.parent / self.dm_path.name.replace(".dm.", ".")
-# ✨
+    return pathlib.Path(self.dm_path.parent /
+                        self.dm_path.name.replace(".dm.", "."))
+    # ✨
 
   async def overwrite(self, target: pathlib.Path) -> None:
     """Copies `dm_path`'s contents to `target` (overwriting it).
@@ -446,48 +513,69 @@ class PathAndValidator:
          file), starting at line 2 (of the output)}}
     """
     # ✨ overwrite
-    if not self.dm_path.exists():
-      raise FileNotFoundError(f"DM file not found: {self.dm_path}")
+    try:
+      async with aiofiles.open(self.dm_path, mode='r') as f:
+        dm_content = await f.read()
+    except FileNotFoundError:
+      # TODO: What is this stupidity of catching an exception just to raise it?
+      # Gemini is so stupid sometimes.
+      raise
 
-    async with aiofiles.open(self.dm_path, mode="r") as dm_f:
-      dm_content = await dm_f.read()
+    # Determine file extension for commenting
+    file_extension_str = self.dm_path.suffix.lstrip('.')
+    # If the file has a compound extension like .dm.py,
+    # we take the last part (e.g., 'py').
+    if '.dm.' in self.dm_path.name:
+      parts = self.dm_path.name.split('.')
+      # Find the index of '.dm.' and take the next part as the extension
+      try:
+        dm_index = parts.index('dm')
+        if dm_index + 1 < len(parts):
+          file_extension_str = parts[dm_index + 1]
+        else:  # Handle cases like 'foo.dm'
+          file_extension_str = ''
+      except ValueError:
+        # Should not happen if '.dm.' is in name but 'dm' part not found
+        file_extension_str = self.dm_path.suffix.lstrip('.')
 
-    output_content = "# DO NOT EDIT. This file is automatically generated by Duende.\n" + dm_content
+    file_extension = FileExtension(file_extension_str)
 
-    async with aiofiles.open(target, mode="w") as target_f:
-      await target_f.write(output_content)
+    auto_gen_comment = comment_string(
+        file_extension,
+        "DO NOT EDIT. This file is automatically generated by Duende.")
+
+    new_content = f"{auto_gen_comment}\n{dm_content}"
+
+    async with aiofiles.open(target, mode='w') as f:
+      await f.write(new_content)
+    # ✨
 
 
-# ✨
-
-
-async def prepare_initial_message(
-    start_message_content: str, relevant_files: list[pathlib.Path]) -> Message:
+async def prepare_initial_message(start_message_content: str,
+                                  relevant_files: set[pathlib.Path]) -> Message:
   """Creates the first message for an AgentLoop conversation.
 
-  {{🦔 `relevant_files` are read asynchronously}}
-  {{🦔 The output contains `start_message_content` in its first section}}
-  {{🦔 If `relevant_files` is empty, the output has just one section}}
+  {{🦔 `relevant_files` are read asynchronously.}}
+  {{🦔 The output contains `start_message_content` as its first section.}}
+  {{🦔 If `relevant_files` is empty, the output has just one section.}}
+  {{🦔 If a relevant file can't be read, raises an exception (or, rather, lets
+       the underlying exception bubble up, doesn't catch it).}}
   {{🦔 There is a content section in the start message given to the AgentLoop
-       for each entries in `relevant_files`. It starts with a line
-       "File "{path}" follows:" (with the corresponding path) and includes
-       the entire contents of the file.}}
+       for each entry in `relevant_files`. It starts with a line "File '{path}'
+       follows:" (with the corresponding path) and includes the entire contents
+       of the file.}}
   """
   # ✨ prepare initial message
-  content_sections: list[ContentSection] = []
-  content_sections.append(ContentSection(content=start_message_content))
+  content_sections = [ContentSection(content=start_message_content)]
 
-  for file_path in relevant_files:
-    async with aiofiles.open(file_path, mode="r") as f:
+  for file_path in sorted(relevant_files):
+    async with aiofiles.open(file_path, mode='r') as f:
       file_content = await f.read()
     content_sections.append(
-        ContentSection(
-            content=f"File \"{file_path}\" follows:\n{file_content}"))
+        ContentSection(content=f"File '{file_path}' follows:\n{file_content}"))
 
   return Message(role="user", content_sections=content_sections)
-
-
-# ✨
+  # ✨
 
 
 async def prepare_command_registry(
@@ -502,13 +590,7 @@ async def prepare_command_registry(
        done_command}}
   """
   # ✨ prepare command registry
-  registry = CommandRegistry()
-
-  registry.Register(ReadFileCommand(file_access_policy))
-  registry.Register(ListFilesCommand(file_access_policy))
-  registry.Register(SearchFileCommand(file_access_policy))
-
-  class _DoneValuesValidator(DoneValuesValidator):
+  class CallbackDoneValuesValidator(DoneValuesValidator):
 
     def __init__(self, callback: Callable[[VariableMap],
                                           Awaitable[ValidationResult]]):
@@ -517,15 +599,17 @@ async def prepare_command_registry(
     async def validate(self, inputs: VariableMap) -> ValidationResult:
       return await self._callback(inputs)
 
+  registry = CommandRegistry()
+  registry.Register(ReadFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(file_access_policy))
+  registry.Register(SearchFileCommand(file_access_policy))
   registry.Register(
       DoneCommand(
           arguments=done_command_arguments,
-          values_validator=_DoneValuesValidator(done_validator_callback)))
-
+          values_validator=CallbackDoneValuesValidator(
+              done_validator_callback)))
   return registry
-
-
-# ✨
+  # ✨
 
 
 async def run_agent_loop(workflow_options: AgentWorkflowOptions,
@@ -533,49 +617,37 @@ async def run_agent_loop(workflow_options: AgentWorkflowOptions,
                          command_registry: CommandRegistry) -> VariableMap:
   """Creates and runs a BaseAgentLoop.
 
-  {{🦔 Returns the VariableMap with all the values given to DoneCommand}}
-  {{🦔 The conversation started has name `conversation_name`}}
-  {{🦔 `start_message` is given as the initial message}}
+  {{🦔 Returns the `VariableMap` with all the values given to `DoneCommand`.}}
+  {{🦔 The conversation started has name `conversation_name`.}}
+  {{🦔 `start_message` is given as the initial message.}}
 
   Returns:
     Output variables given to the final `done` command (extracted from the
     final message in the conversation).
   """
   # ✨ run agent loop
-  # 1. Create a Conversation object.
   conversation = workflow_options.conversation_factory.New(
-      name=conversation_name, command_registry=command_registry)
+      conversation_name, command_registry)
 
-  # 2. Construct AgentLoopOptions by overriding relevant fields from workflow_options.
-  updated_agent_loop_options = workflow_options.agent_loop_options._replace(
+  # Create new AgentLoopOptions, overriding conversation, start_message, and commands_registry
+  # from the workflow_options's agent_loop_options.
+  agent_loop_options = workflow_options.agent_loop_options._replace(
       conversation=conversation,
       start_message=start_message,
-      commands_registry=command_registry,
-  )
+      commands_registry=command_registry)
 
-  # 3. Create an instance of AgentLoop using the factory.
-  agent_loop = workflow_options.agent_loop_factory.new(
-      updated_agent_loop_options)
+  agent_loop = workflow_options.agent_loop_factory.new(agent_loop_options)
 
-  # 4. Run the loop.
   await agent_loop.run()
 
-  # 5. Get the final message from the conversation.
-  if not conversation.messages:
-    # This case should ideally not happen if the agent loop completes successfully.
-    # Returning an empty VariableMap as a fallback.
-    return VariableMap({})
-
-  final_message = conversation.messages[-1]
-
-  # 6. Extract the output_variables from the done command's CommandOutput.
-  for section in final_message.GetContentSections():
-    if section.command_output and section.command_output.task_done:
-      return section.command_output.output_variables
-
-  # This part should ideally not be reached if the agent always calls 'done'.
-  # However, as a safeguard, return an empty VariableMap.
-  return VariableMap({})
-
-
-# ✨
+  # Extract the VariableMap from the final done command in the conversation.
+  final_output_variables: VariableMap = VariableMap({})
+  for message in reversed(conversation.GetMessagesList()):
+    for section in reversed(message.GetContentSections()):
+      if section.command_output and section.command_output.task_done:
+        final_output_variables = section.command_output.output_variables
+        break
+    if final_output_variables:
+      break
+  return final_output_variables
+  # ✨
