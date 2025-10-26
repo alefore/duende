@@ -42,18 +42,69 @@ def comment_string(file_extension: FileExtension, input: str) -> str:
   {{🦔 "html" and "my test" returns "<!-- my test -->"}}
   {{🦔 "html" and "foo\nbar\nquux" returns "<!-- foo\nbar\nquux -->"}}
   {{🦔 "cc" and "foo\nbar" returns "// foo\n//bar"}}
+  {{🦔 "css" and "foo bar" returns "/* foo bar */"}}
+  {{🦔 "css" and "foo\nbar" returns "/* foo\nbar */"}}
   """
   #  {{🍄 get comment char}}
   raise ValueError(f"Unknown file extension: {file_extension}")
 
 
-class MarkerName(NamedTuple):
+@dataclasses.dataclass(frozen=True)
+class MarkerName:
   char: MarkerChar
   name: str
-  """The name of the marker, which may contain newline characters.
 
-  Must be stripped of whitespace characters at the beginning and end.
+  def __post_init__(self) -> None:
+    object.__setattr__(self, 'name', self._fix_name(self.name))
+
+  def _fix_name(self, name: str) -> str:
+    """Fixes `name`, replacing any sequence of whitespace characters by ' '.
+
+    Whitespace characters at the beginning and end are removed.
+
+    {{🦔 Name " foo" is turned into "foo".}}
+    {{🦔 Name "foo " is turned into "foo".}}
+    {{🦔 Name " foo " is turned into "foo".}}
+    {{🦔 Name "Foo\nBar" is turned into "Foo Bar".}}
+    {{🦔 Name "  foo \n\n   \n   bar  " is turned into "foo bar".}}
+    """
+    raise NotImplementedError()  # {{🍄 MarkerName fix name}}
+
+
+class MarkersOverlapError(ValueError):
+  """Two markers have a common line.
+
+  This is invalid: markers may not overlap.
   """
+
+
+async def get_markers(char: MarkerChar,
+                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+  """Returns the positions (line index) of all markers in `path`.
+
+  {{🦔 Reads `path` asynchronously}}
+  {{🦔 Returns {} for an empty file}}
+  {{🦔 Raises FileNotFound for a non-existent file}}
+  {{🦔 Returns {} for a file with 5 lines but no markers}}
+  {{🦔 Correctly returns a marker in a file with just 1 marker}}
+  {{🦔 If a marker starts in the first line in the file, its value in the output
+       is [0].}}
+  {{🦔 If a marker starts in the last line, its value in the output is
+       `len(lines) - 1`.}}
+  {{🦔 Correctly handles a file where a marker starts in the first line and
+       finishes in the last line.}}
+  {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
+  {{🦔 Returns all markers in a file with ten markers.}}
+  {{🦔 The index of markers returned in a file with ten markers is correct.}}
+  {{🦔 A file can have repeated markers; the output just lists their
+       positions.}}
+  {{🦔 A file where two markers overlap (one ends in the same line where the
+       other begins) raises `MarkersOverlapError`.}}
+
+  Raises:
+      MarkersOverlapError: if two markers share a common line.
+  """
+  raise NotImplementedError()  # {{🍄 get markers}}
 
 
 class MarkerImplementation:
@@ -107,8 +158,8 @@ class MarkerImplementation:
     contain and removes it (from all lines). Then prepends to all lines a prefix
     of the desired length.
 
-    {{🦔 If an input (`_value`) is empty, the corresponding line in the output
-         is empty.}}
+    {{🦔 If an input line (from `_value`) is empty or only contains whitespace
+         characters, the corresponding line in the output is empty.}}
     {{🦔 If the whitespace prefixes are removed (from all input and output
          lines), the output is identical to `_value`.}}
     {{🦔 All lines in the output must begin with `desired_spaces` spaces or
@@ -165,44 +216,10 @@ class Validator:
     {{🦔 Does not modify `source`}}
     {{🦔 Returns success when the implementation is correct}}
     {{🦔 Returns failure when the implementation is invalid}}
+    {{🦔 Uses `implementation.save` on the temporary copy of `source` (in order
+         to update the implementation of the marker in the file).}}
     """
     raise NotImplementedError()  # {{🍄 implement validator}}
-
-
-class ConflictingMarkersError(ValueError):
-  """Two markers have a common line.
-
-  This is invalid: markers may not overlap.
-  """
-
-
-async def get_markers(char: MarkerChar,
-                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
-  """Returns the positions (line index) of all markers in `path`.
-
-  {{🦔 Reads `path` asynchronously}}
-  {{🦔 Returns {} for an empty file}}
-  {{🦔 Raises FileNotFound for a non-existent file}}
-  {{🦔 Returns {} for a file with 5 lines but no markers}}
-  {{🦔 Correctly returns a marker in a file with just 1 marker}}
-  {{🦔 If a marker starts in the first line in the file, its value in the output
-       is [0].}}
-  {{🦔 If a marker starts in the last line, its value in the output is
-       `len(lines) - 1`.}}
-  {{🦔 Correctly handles a file where a marker starts in the first line and
-       finishes in the last line.}}
-  {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
-  {{🦔 Returns all markers in a file with ten markers.}}
-  {{🦔 The index of markers returned in a file with ten markers is correct.}}
-  {{🦔 A file can have repeated markers; the output just lists their
-       positions.}}
-  {{🦔 A file where two markers overlap (one ends in the same line where the
-       other begins) raises `ConflictingMarkersError`.}}
-
-  Raises:
-      ConflictingMarkersError: if two markers share a common line.
-  """
-  raise NotImplementedError()  # {{🍄 get markers}}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -211,13 +228,14 @@ class PathAndValidator:
   dm_path: pathlib.Path
   validator: Validator
 
-  async def validate_fields(self):
+  async def validate_fields(self) -> None:
     """Validates fields, conditionally raising ValueError.
 
-    {{🦔 Doesn't raise if `dm_path` is a valid file with two markers}}
-    {{🦔 Raises ValueError if `dm_path` is "foo.py"}}
-    {{🦔 Raises ValueError if `dm_path` is a valid Python file with no markers}}
-    {{🦔 Raises ValueError if `dm_path` contains a repeated marker}}
+    When searching for markers, uses MarkerChar('🍄').
+    {{🦔 Doesn't raise if `dm_path` is a valid file with two 🍄 markers.}}
+    {{🦔 Raises ValueError if `dm_path` is "foo.py" (lacks the `.dm.` part).}}
+    {{🦔 Raises ValueError if `dm_path` is a valid file with no 🍄 markers.}}
+    {{🦔 Raises ValueError if `dm_path` contains a repeated 🍄 marker.}}
 
     We can't use `__post_init__` because we want `async` validation.
     """
@@ -254,8 +272,10 @@ async def prepare_initial_message(start_message_content: str,
   """Creates the first message for an AgentLoop conversation.
 
   {{🦔 `relevant_files` are read asynchronously.}}
-  {{🦔 The output contains `start_message_content` in its first section.}}
+  {{🦔 The output contains `start_message_content` as its first section.}}
   {{🦔 If `relevant_files` is empty, the output has just one section.}}
+  {{🦔 If a relevant file can't be read, raises an exception (or, rather, lets
+       the underlying exception bubble up, doesn't catch it).}}
   {{🦔 There is a content section in the start message given to the AgentLoop
        for each entry in `relevant_files`. It starts with a line "File '{path}'
        follows:" (with the corresponding path) and includes the entire contents
@@ -265,6 +285,7 @@ async def prepare_initial_message(start_message_content: str,
 
 
 async def prepare_command_registry(
+    done_command_arguments: list[Argument],
     done_validator_callback: Callable[[VariableMap],
                                       Awaitable[ValidationResult]],
     file_access_policy: FileAccessPolicy) -> CommandRegistry:
