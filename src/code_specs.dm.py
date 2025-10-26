@@ -102,6 +102,9 @@ async def get_markers(char: MarkerChar,
        positions.}}
   {{🦔 A file where two markers overlap (one ends in the same line where the
        other begins) raises `MarkersOverlapError`.}}
+  {{🦔 The returned object is sorted by appearance order (i.e., iterating across
+       the keys of the returned dictionary matches the order in which the first
+       appearance of each marker was found in the file).}}
 
   Raises:
       MarkersOverlapError: if two markers share a common line.
