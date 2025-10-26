@@ -52,8 +52,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def run(self) -> None:
     input = await self._get_initial_parameters()
-    if not input.output_path().exists():
-      await input.overwrite(input.output_path())
+    await self._prepare_output_path(input)
     relevant_paths = await self._find_relevant_paths(input.output_path())
     await self._implement_file(input, relevant_paths)
 
@@ -70,8 +69,14 @@ class CodeSpecsWorkflow(AgentWorkflow):
     async def done_validator(inputs: VariableMap) -> ValidationResult:
       """Validates that a PathAndValidator can be created from `inputs`.
 
-      If PathAndValidator(…) raises an exception, gives a friendly error
-      message to the AI."""
+      On any failure, gives a very friendly and helpful explanation message to
+      the AI.
+
+      {{🦔 If the dm_path has repeated (identical) MUSHROOM markers (per
+           `code_specs.get_markers`), validation fails with an explanation.}}
+      {{🦔 Catches exceptions from PathAndValidator and turns them into a
+           failed `ValidationResult`.}}
+      """
       raise NotImplementedError()  # {{🍄 initial parameters validator}}
 
     start_message_content = (
@@ -94,6 +99,19 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "Once the user has given you appropriate values, "
         "your goal is achieved and you should run `done`.")
     raise NotImplementedError  # {{🍄 initial parameters}}
+
+  async def _prepare_output_path(
+      self, input: PathAndValidator) -> pathlib.Path | None:
+    """Prepares various files, moving old implementations aside."""
+    return_value: pathlib.Path | None = None
+    if input.output_path().exists():
+      # {{🦔 `input.output_path()` is copied to `input.output_path().old`.}}
+      # {{🦔 `return_value` is set to the location of the copy (`….old`).}}
+      raise NotImplementedError  # {{🍄 prepare output paths if old output}}
+
+    # {{🦔 Unconditionally overwrites `input.output_path()` with
+    #   `input.dm_path` (after moving it to a temporary file).}}
+    raise NotImplementedError  # {{🍄 prepare output path}}
 
   async def _find_relevant_paths(
       self, path: pathlib.Path) -> dict[MarkerName, set[pathlib.Path]]:
@@ -173,14 +191,16 @@ class CodeSpecsWorkflow(AgentWorkflow):
     `implementation_variable`.
 
     {{🦔 For each file in `relevant_paths`, there's a section in the initial
-         message given to the AI.}}
+         message (prompt) given to the AI.}}
+    {{🦔 If `output_path + '.old'` exists, it gets included in the initial
+         message (as if it had been included in `relevant_paths`.}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
 
     Arguments:
       marker: The marker to implement.
-      relevant_paths: A list of relevant paths. Tells the AI that it must
-        read all these paths as well as `output_path` before doing anything else.
+      relevant_paths: A list of relevant paths for the initial prompt.
+
       validator: The validator used to verify a plausible implementation.
       output_path: The input file with the context for implementing `marker`. We
         do not actually update it (our customer does).
@@ -215,6 +235,17 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "call the `done` command. "
         f"The `done` command requires an argument `{implementation_variable}` "
         "which *must* be your full implementation block as a single string.")
+
+    # Content to append *conditionally* if `output_path + '.old'` exists:
+    additional_start_message_content_if_old_implementation_available = (
+        f"In your implementation, try to reuse as much as possible any old "
+        f"implementation (from the `{output_path}.old` file). "
+        f"Only change the implementation if this is strictly necessary: "
+        f"if the old implementation has bugs, "
+        f"new requirements have been added, "
+        f"or requirements have been removed/relaxed "
+        f"(in ways that allow code simplifications).")
+
     raise NotImplementedError()  # {{🍄 implement single marker}}
 
 
