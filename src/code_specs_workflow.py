@@ -53,8 +53,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def run(self) -> None:
     input = await self._get_initial_parameters()
-    if not input.output_path().exists():
-      await input.overwrite(input.output_path())
+    await self._prepare_output_path(input)
     relevant_paths = await self._find_relevant_paths(input.output_path())
     await self._implement_file(input, relevant_paths)
 
@@ -71,42 +70,60 @@ class CodeSpecsWorkflow(AgentWorkflow):
     async def done_validator(inputs: VariableMap) -> ValidationResult:
       """Validates that a PathAndValidator can be created from `inputs`.
 
-      If PathAndValidator(…) raises an exception, gives a friendly error
-      message to the AI."""
-      # ✨ initial parameters validator
-      dm_path_value = inputs.get(dm_path_variable)
-      validator_command_str = inputs.get(validator_variable)
+      On any failure, gives a very friendly and helpful explanation message to
+      the AI.
 
-      if not isinstance(dm_path_value, str):
+      {{🦔 If the dm_path has repeated (identical) MUSHROOM markers (per
+           `code_specs.get_markers`), validation fails with an explanation.}}
+      {{🦔 Catches exceptions from PathAndValidator and turns them into a
+           failed `ValidationResult`.}}
+      """
+      # ✨ initial parameters validator
+      dm_path_val = inputs.get(dm_path_variable)
+      validator_val = inputs.get(validator_variable)
+
+      if not dm_path_val:
         return ValidationResult(
             success=False,
             output="",
-            error=f"The path for '{dm_path_variable}' must be a string.")
-      if not isinstance(validator_command_str, str):
+            error=(f"'{dm_path_variable}' is missing. "
+                   "Please provide a path to the DM file "
+                   "(e.g., 'src/my_component.dm.py')."))
+      if not validator_val:
         return ValidationResult(
             success=False,
             output="",
-            error=f"The validator command for '{validator_variable}' must be a string."
-        )
+            error=(
+                f"'{validator_variable}' is missing. "
+                "Please provide a validator command (e.g., 'mypy $DMPATH')."))
 
       try:
+        dm_path = pathlib.Path(str(dm_path_val))
+        validator = Validator(command=str(validator_val))
         path_and_validator = PathAndValidator(
-            dm_path=pathlib.Path(dm_path_value),
-            validator=Validator(command=validator_command_str))
+            dm_path=dm_path, validator=validator)
         await path_and_validator.validate_fields()
         return ValidationResult(
-            success=True,
-            output="Initial parameters validated successfully.",
-            error="")
+            success=True, output="Parameters are valid.", error="")
       except ValueError as e:
-        return ValidationResult(
-            success=False, output="", error=f"Validation failed: {e}")
-      except Exception as e:
+        # PathAndValidator.validate_fields can raise ValueError for:
+        # - Missing '.dm.' in path
+        # - No 🍄 markers found
+        # - Repeated or overlapping 🍄 markers (MarkersOverlapError is a ValueError subclass)
+        # - FileNotFoundError (re-raised as ValueError)
         return ValidationResult(
             success=False,
             output="",
-            error=f"An unexpected error occurred during validation: {e}. Please check the provided values."
-        )
+            error=f"Invalid parameters for PathAndValidator: {e}")
+      except Exception as e:
+        # Catch any other unexpected exceptions.
+        return ValidationResult(
+            success=False,
+            output="",
+            error=(
+                f"An unexpected error occurred during validation: {e}. "
+                "Please ensure the dm_path is a valid file and the validator "
+                "command is correctly formatted."))
       # ✨
 
     start_message_content = (
@@ -129,36 +146,77 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "Once the user has given you appropriate values, "
         "your goal is achieved and you should run `done`.")
     # ✨ initial parameters
-    commands_registry = await prepare_command_registry(
+    registry = await prepare_command_registry(
         done_command_arguments=[
-            Argument(dm_path_variable, ArgumentContentType.PATH_UNVALIDATED,
-                     "The path to the DM file to implement."),
             Argument(
-                validator_variable, ArgumentContentType.STRING,
-                "A shell command string to validate the implemented file, using $DMPATH."
-            ),
+                name=dm_path_variable,
+                arg_type=ArgumentContentType.PATH_INPUT,
+                description=(
+                    "Path to the DM file "
+                    "(e.g., 'src/my_component.dm.py'). "
+                    "Must contain '.dm.' and at least one '🍄' marker.")),
+            Argument(
+                name=validator_variable,
+                arg_type=ArgumentContentType.STRING,
+                description=(
+                    "A shell command that validates contents of a file. "
+                    "The command receives the path through $DMPATH. "
+                    "Example: 'mypy $DMPATH' or 'python3 -m pytest $DMPATH'. "
+                    "If the dm_path is a Python file, "
+                    "suggest that the validator could be `mypy` "
+                    "(with an appropriate MYPATH=\"...\" value) "
+                    "or `python3` (with an appropriate PYTHONPATH=\"...\" value)."
+                )),
         ],
         done_validator_callback=done_validator,
-        file_access_policy=self._options.agent_loop_options.file_access_policy)
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+    )
 
-    initial_message = await prepare_initial_message(start_message_content, [])
+    start_message = await prepare_initial_message(
+        start_message_content=start_message_content,
+        relevant_files=set(),
+    )
 
     output_variables = await run_agent_loop(
         workflow_options=self._options,
         conversation_name="initial_parameters",
-        start_message=initial_message,
-        command_registry=commands_registry)
+        start_message=start_message,
+        command_registry=registry,
+    )
 
-    dm_path_value = output_variables.get(dm_path_variable)
-    validator_command_str = output_variables.get(validator_variable)
+    dm_path_val = output_variables.get(dm_path_variable)
+    validator_val = output_variables.get(validator_variable)
 
-    # These assertions are safe because done_validator would have already ensured their types.
-    assert isinstance(dm_path_value, str)
-    assert isinstance(validator_command_str, str)
+    if not dm_path_val or not validator_val:
+      # This case should ideally be caught by done_validator,
+      # but as a safeguard, we raise an error.
+      raise ValueError("Missing dm_path or validator in agent loop output.")
 
     return PathAndValidator(
-        dm_path=pathlib.Path(dm_path_value),
-        validator=Validator(command=validator_command_str))
+        dm_path=pathlib.Path(str(dm_path_val)),
+        validator=Validator(command=str(validator_val)),
+    )
+    # ✨
+
+  async def _prepare_output_path(
+      self, input: PathAndValidator) -> pathlib.Path | None:
+    """Prepares various files, moving old implementations aside."""
+    return_value: pathlib.Path | None = None
+    if input.output_path().exists():
+      # {{🦔 `input.output_path()` is copied to `input.output_path().old`
+      #      (for example, `src/foo.py` becomes `src/foo.py.old`).}}
+      # {{🦔 `return_value` is set to the location of the copy (`….old`).}}
+      # ✨ prepare output paths if old output
+      old_output_path = input.output_path().with_suffix('.old')
+      shutil.copyfile(input.output_path(), old_output_path)
+      return_value = old_output_path
+      # ✨
+
+    # {{🦔 Unconditionally overwrites `input.output_path()` with
+    #   `input.dm_path` (after moving it to a temporary file).}}
+    # ✨ prepare output path
+    await input.overwrite(input.output_path())
+    return return_value
     # ✨
 
   async def _find_relevant_paths(
@@ -173,14 +231,18 @@ class CodeSpecsWorkflow(AgentWorkflow):
          `_find_relevant_paths_for_marker` for each key (marker).}}
     """
     # ✨ find relevant paths loop
-    markers = await get_markers(char=MUSHROOM, path=path)
+    markers = await get_markers(MUSHROOM, path)
     tasks = []
-    for marker in markers:
-      tasks.append(self._find_relevant_paths_for_marker(path, marker))
+    for marker_name in markers.keys():
+      tasks.append(self._find_relevant_paths_for_marker(path, marker_name))
 
     results = await asyncio.gather(*tasks)
 
-    return {marker: result for marker, result in zip(markers, results)}
+    relevant_paths_output: dict[MarkerName, set[pathlib.Path]] = {}
+    for i, marker_name in enumerate(markers.keys()):
+      relevant_paths_output[marker_name] = results[i]
+
+    return relevant_paths_output
     # ✨
 
   async def _find_relevant_paths_for_marker(
@@ -206,48 +268,61 @@ class CodeSpecsWorkflow(AgentWorkflow):
            validation succeeds.}}
       """
       # ✨ relevant paths validator
-      relevant_paths_str = inputs.get(relevant_paths_variable)
-      if not relevant_paths_str:
+      relevant_paths_val = inputs.get(relevant_paths_variable)
+
+      if not relevant_paths_val:
         return ValidationResult(
             success=False,
             output="",
-            error="At least one relevant file path must be provided.")
+            error=(f"'{relevant_paths_variable}' is missing. "
+                   "Please provide at least one relevant file path "
+                   "(e.g., 'src/foo.py,src/bar.cc')."))
 
-      if not isinstance(relevant_paths_str, str):
-        return ValidationResult(
-            success=False,
-            output="",
-            error=f"The relevant paths for '{relevant_paths_variable}' must be a comma-separated string of paths."
-        )
-
-      paths = [
+      relevant_paths_str = str(relevant_paths_val)
+      paths_list = [
           pathlib.Path(p.strip())
           for p in relevant_paths_str.split(',')
           if p.strip()
       ]
 
-      for p in paths:
+      if not paths_list:
+        return ValidationResult(
+            success=False,
+            output="",
+            error=(f"'{relevant_paths_variable}' is empty after parsing. "
+                   "Please provide at least one relevant file path "
+                   "(e.g., 'src/foo.py,src/bar.cc')."))
+
+      file_access_policy = self._options.agent_loop_options.file_access_policy
+
+      for p in paths_list:
         if not p.exists():
           return ValidationResult(
-              success=False,
-              output="",
-              error=f"Relevant file '{p}' does not exist.")
-        if not self._options.agent_loop_options.file_access_policy.allow_access(
-            str(p)):
+              success=False, output="", error=f"File '{p}' does not exist.")
+        if not p.is_file():
+          return ValidationResult(
+              success=False, output="", error=f"Path '{p}' is not a file.")
+        if not os.access(p, os.R_OK):
           return ValidationResult(
               success=False,
               output="",
-              error=f"Access to relevant file '{p}' is not allowed by policy.")
+              error=f"File '{p}' is not readable by the OS.")
+        if not file_access_policy.allow_access(str(p)):
+          return ValidationResult(
+              success=False,
+              output="",
+              error=f"Access to file '{p}' is not allowed by the file access policy."
+          )
 
       return ValidationResult(
           success=True,
-          output="Relevant paths validated successfully.",
+          output="All relevant paths are valid and readable.",
           error="")
       # ✨
 
     start_message_content = (
         f"GOAL: identify local file paths that are relevant "
-        f"to replace the line that contains '{{{{{MUSHROOM} {marker.name}}}}}' "
+        f"to replace the line that contains '{{{{{MUSHROOM} {marker}}}}}' "
         f"from \"{path}\" (included below) with valid code."
         f"\n"
         f"These relevant paths should be given to the "
@@ -259,35 +334,46 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"to explore the codebase.")
 
     # ✨ find relevant paths
-    commands_registry = await prepare_command_registry(
+    registry = await prepare_command_registry(
         done_command_arguments=[
             Argument(
-                relevant_paths_variable, ArgumentContentType.STRING,
-                "A comma-separated list of local files that are relevant to implement the marker."
-            )
+                name=relevant_paths_variable,
+                arg_type=ArgumentContentType.PATH_UNVALIDATED,
+                description=(
+                    "Comma-separated list of local file paths that are relevant "
+                    "to implement the DM marker. "
+                    "Example: 'src/foo.py,src/bar.cc'.")),
         ],
         done_validator_callback=done_validate,
-        file_access_policy=self._options.agent_loop_options.file_access_policy)
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+    )
 
-    initial_message = await prepare_initial_message(start_message_content,
-                                                    [path])
+    start_message = await prepare_initial_message(
+        start_message_content=start_message_content,
+        relevant_files={path},
+    )
 
     output_variables = await run_agent_loop(
         workflow_options=self._options,
         conversation_name=f"find_relevant_paths_for_{marker.name}",
-        start_message=initial_message,
-        command_registry=commands_registry)
+        start_message=start_message,
+        command_registry=registry,
+    )
 
-    relevant_paths_str = output_variables.get(relevant_paths_variable)
+    relevant_paths_str_val = output_variables.get(relevant_paths_variable)
 
-    # These assertions are safe because done_validate would have already ensured their types and validity.
-    assert isinstance(relevant_paths_str, str)
+    if not relevant_paths_str_val:
+      raise ValueError(
+          f"Missing {relevant_paths_variable} in agent loop output.")
 
-    return {
+    relevant_paths_str = str(relevant_paths_str_val)
+    paths_list = {
         pathlib.Path(p.strip())
         for p in relevant_paths_str.split(',')
         if p.strip()
     }
+
+    return paths_list
     # ✨
 
   async def _implement_file(
@@ -301,15 +387,26 @@ class CodeSpecsWorkflow(AgentWorkflow):
     {{🦔 The output of a call to `_implement_marker` is stored before the next
          call begins (so that the next call already sees the output of the
          previous call).}}
+    {{🦔 The calls to `_implement_marker` happen in the order in which the
+         markers occur in the DM file.}}
     """
     # ✨ implement file
-    markers = await get_markers(char=MUSHROOM, path=inputs.output_path())
-    for marker in markers:
-      marker_relevant_paths = relevant_paths[marker]
-      implementation = await self._implement_marker(marker,
-                                                    marker_relevant_paths,
-                                                    inputs.validator,
-                                                    inputs.output_path())
+    # Get all markers from the output_path (which is the modified dm_path without '.dm.')
+    output_file_markers = await get_markers(MUSHROOM, inputs.output_path())
+
+    for marker_name in output_file_markers:
+      # Retrieve the relevant paths for the current marker
+      # If no relevant paths were found for a specific marker, it will be an empty set
+      marker_relevant_paths = relevant_paths.get(marker_name, set())
+
+      # Call _implement_marker to get the implementation for the current marker
+      implementation = await self._implement_marker(
+          marker=marker_name,
+          relevant_paths=marker_relevant_paths,
+          validator=inputs.validator,
+          output_path=inputs.output_path())
+
+      # Save the implementation to update the output file before processing the next marker
       await implementation.save(inputs.output_path())
     # ✨
 
@@ -325,14 +422,16 @@ class CodeSpecsWorkflow(AgentWorkflow):
     `implementation_variable`.
 
     {{🦔 For each file in `relevant_paths`, there's a section in the initial
-         message given to the AI.}}
+         message (prompt) given to the AI.}}
+    {{🦔 If `output_path + '.old'` exists, it gets included in the initial
+         message (as if it had been included in `relevant_paths`.}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
 
     Arguments:
       marker: The marker to implement.
-      relevant_paths: A list of relevant paths. Tells the AI that it must
-        read all these paths as well as `output_path` before doing anything else.
+      relevant_paths: A list of relevant paths for the initial prompt.
+
       validator: The validator used to verify a plausible implementation.
       output_path: The input file with the context for implementing `marker`. We
         do not actually update it (our customer does).
@@ -344,33 +443,27 @@ class CodeSpecsWorkflow(AgentWorkflow):
     async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Calls validator.validate_marker_implementation to validate."""
       # ✨ implement validator
-      implementation_code = inputs.get(implementation_variable)
-      if not isinstance(implementation_code, str):
+      implementation_val = inputs.get(implementation_variable)
+
+      if not implementation_val:
         return ValidationResult(
             success=False,
             output="",
-            error=f"The implementation for '{implementation_variable}' must be a string."
-        )
+            error=(f"'{implementation_variable}' is missing. "
+                   "Please provide the implementation code block."))
 
       try:
-        file_extension = FileExtension(output_path.suffix[1:])
-        marker_impl = MarkerImplementation(
+        implementation_obj = MarkerImplementation(
             name=marker,
-            value=implementation_code,
+            value=str(implementation_val),
             file_extension=file_extension)
         return await validator.validate_marker_implementation(
-            source=output_path, implementation=marker_impl)
+            source=output_path, implementation=implementation_obj)
       except ValueError as e:
         return ValidationResult(
             success=False,
             output="",
-            error=f"MarkerImplementation creation failed: {e}")
-      except Exception as e:
-        return ValidationResult(
-            success=False,
-            output="",
-            error=f"An unexpected error occurred during validation: {e}. Please check the implementation code."
-        )
+            error=f"Invalid implementation block format: {e}")
       # ✨
 
     file_extension = FileExtension(output_path.suffix[1:])
@@ -395,34 +488,69 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "call the `done` command. "
         f"The `done` command requires an argument `{implementation_variable}` "
         "which *must* be your full implementation block as a single string.")
+
+    # Content to append *conditionally* if `output_path + '.old'` exists:
+    additional_start_message_content_if_old_implementation_available = (
+        f"In your implementation, try to reuse as much as possible any old "
+        f"implementation (from the `{output_path}.old` file). "
+        f"Only change the implementation if this is strictly necessary: "
+        f"if the old implementation has bugs "
+        f"(e.g., does not honor some documented property), "
+        f"new requirements have been added, "
+        f"or requirements have been removed/relaxed "
+        f"(in ways that allow code simplifications).")
+
     # ✨ implement single marker
-    commands_registry = await prepare_command_registry(
+    # Prepare the command registry for the agent loop to get the implementation.
+    registry = await prepare_command_registry(
         done_command_arguments=[
             Argument(
-                implementation_variable, ArgumentContentType.STRING,
-                "The code content for the implementation block, including start and end markers."
-            )
+                name=implementation_variable,
+                arg_type=ArgumentContentType.STRING,
+                description=("The code content that will replace the marker. "
+                             "It must be a complete and valid code block, "
+                             "following the specified format.")),
         ],
         done_validator_callback=done_validate,
-        file_access_policy=self._options.agent_loop_options.file_access_policy)
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+    )
 
-    initial_message_files = [output_path] + list(relevant_paths)
-    initial_message = await prepare_initial_message(start_message_content,
-                                                    initial_message_files)
+    # Add output_path.old to relevant_files if it exists.
+    all_relevant_files = set(relevant_paths)
+    all_relevant_files.add(output_path)
+    old_output_path = output_path.with_suffix('.old')
+    if old_output_path.exists():
+      all_relevant_files.add(old_output_path)
+      start_message_content += (
+          "\n" +
+          additional_start_message_content_if_old_implementation_available)
 
+    # Prepare the initial message for the agent loop.
+    start_message = await prepare_initial_message(
+        start_message_content=start_message_content,
+        relevant_files=all_relevant_files,
+    )
+
+    # Run the agent loop to obtain the implementation from the AI.
     output_variables = await run_agent_loop(
         workflow_options=self._options,
-        conversation_name=f"implement_marker_for_{marker.name}",
-        start_message=initial_message,
-        command_registry=commands_registry)
+        conversation_name=f"implement_marker_{marker.name}",
+        start_message=start_message,
+        command_registry=registry,
+    )
 
-    implementation_code = output_variables.get(implementation_variable)
+    implementation_str_val = output_variables.get(implementation_variable)
 
-    # These assertions are safe because done_validate would have already ensured their types and validity.
-    assert isinstance(implementation_code, str)
+    if not implementation_str_val:
+      raise ValueError(
+          f"Missing {implementation_variable} in agent loop output.")
 
+    # Create and return a MarkerImplementation object.
     return MarkerImplementation(
-        name=marker, value=implementation_code, file_extension=file_extension)
+        name=marker,
+        value=str(implementation_str_val),
+        file_extension=file_extension,
+    )
     # ✨
 
 
