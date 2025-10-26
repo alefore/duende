@@ -2,7 +2,9 @@
 
 import aiofiles
 import asyncio
+import collections
 import dataclasses
+import itertools
 import logging
 import pathlib
 import re
@@ -128,7 +130,6 @@ class MarkerImplementation:
   async def save(self, path: pathlib.Path) -> None:
     """Rewrites `path`, storing our implementation.
 
-    All lines before
     {{🦔 The read operation is async.}}
     {{🦔 The write operation is async.}}
     {{🦔 Successfully expands a marker in a file with a single marker.}}
@@ -144,6 +145,7 @@ class MarkerImplementation:
          rules of `_value_indent`; the number of desired spaces is equal to the
          number of spaces before the first non-space character in the line that
          contains the marker.}}
+    {{🦔 Uses `get_markers` rather than redundantly implementing its logic.}}
 
     Raises:
       ValueError if `path` has a `.dm.` part. DM files themselves should never
