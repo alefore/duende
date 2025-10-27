@@ -15,7 +15,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -36,7 +36,7 @@ TestName = NewType("TestName", str)
 
 # Path to a file that contains `HEDGEHOG` markers describing properties that we
 # want to test.
-path_to_test_variable = VariableName('path_to_tests')
+path_to_test_variable = VariableName('path_to_test')
 
 tests_skeleton_variable = VariableName('tests_skeleton')
 
@@ -71,6 +71,7 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
            markers (per `code_specs.get_markers`).}}
       {{🦔 Validation succeeds if the file contains repeated (identical)
            HEDGEHOG markers (per `code_specs.get_markers`).}}
+      {{🦔 Does not require any variables other than `path_to_test_variable`.}}
       """
       raise NotImplementedError()  # {{🍄 initial parameters validator}}
 
@@ -94,9 +95,10 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     """Runs an AgentLoop to create a skeleton for the tests.
 
     {{🦔 The only done command argument given to `prepare_command_registry` is
-         `path_to_test_variable`.}}
+         `tests_skeleton_variable`.}}
     {{🦔 After validating that the skeleton contains all tests, writes them to
-         a `tests_…` file (e.g., for `src/foo.py`, writes `src/test_foo.py`).}}
+         a `tests_…` file (e.g., when `input` is `src/foo.py`, writes
+         `src/test_foo.py`).}}
     {{🦔 `input` is passed as a relevant file to `prepare_initial_message`.'}}
     """
     start_message_content = (
@@ -151,12 +153,15 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Validates that tests_skeleton_variable has the right markers.
 
-      Fails if the set of markers given in tests_skeleton_variable (per
-      `code_spec.get_markers(MUSHROOM, output)` isn't valid
-      (for example, it contains repeated markers).
 
-      Also fails if the number of HEDGEHOG markers in the input
-      isn't exactly the same as the number of MUSHROOM markers in the output.
+      {{🦔 Fails if the set of markers given in tests_skeleton_variable is
+           rejected by `code_spec.get_markers(MUSHROOM, output)`.}}
+      {{🦔 Fails if an identical marker (in the value of
+           `tests_skeleton_variable`) is repeated (more than one location, per
+           `code_spec.get_markers(MUSHROOM, output)`).}}
+      {{🦔 Fails if the number of HEDGEHOG markers in the input isn't exactly
+           the same as the number of MUSHROOM markers in the output.}}
+      {{🦔 Does not require any variables beyond `tests_skeleton_variable`.}}
       """
       raise NotImplementedError()  # {{🍄 tests skeleton validator}}
 
