@@ -16,7 +16,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -35,51 +35,11 @@ MUSHROOM = MarkerChar("🍄")
 
 TestName = NewType("TestName", str)
 
-
-@dataclasses.dataclass(frozen=True)
-class TestMetadata:
-  # The `description` string in the HEDGEHOG marker.
-  property: str
-  # A valid name for the test.
-  name: TestName
-
-
-@dataclasses.dataclass(frozen=True)
-class TestImplementation:
-  metadata: TestMetadata
-  code: str
-
-
 # Path to a file that contains `HEDGEHOG` markers describing properties that we
 # want to test.
-path_to_test_variable = VariableName('path_to_tests')
+path_to_test_variable = VariableName('path_to_test')
 
 tests_skeleton_variable = VariableName('tests_skeleton')
-
-
-def _list_tests(tests_path: pathlib.Path) -> list[TestName]:
-  """Uses pytest to return a list of all the tests defined in tests_path."""
-  # ✨ list tests
-  result = subprocess.run(['pytest', '--collect-only', '-q',
-                           str(tests_path)],
-                          capture_output=True,
-                          text=True,
-                          check=False)
-
-  if result.returncode != 0:
-    # Handle cases where pytest might fail, e.g., syntax errors in test_path
-    logging.error(f"pytest failed: {result.stderr}")
-    return []
-
-  test_names = []
-  for line in result.stdout.splitlines():
-    # Example line: "path/to/my_tests.py::test_function_name"
-    # We want "test_function_name"
-    match = re.search(r'::(test_[a-zA-Z0-9_]+)$', line)
-    if match:
-      test_names.append(TestName(match.group(1)))
-  return test_names
-  # ✨
 
 
 class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
@@ -110,62 +70,57 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
            (per `code_specs.get_markers`).}}
       {{🦔 Validation succeeds if the file can be read and contains HEDGEHOG
            markers (per `code_specs.get_markers`).}}
+      {{🦔 Validation succeeds if the file contains repeated (identical)
+           HEDGEHOG markers (per `code_specs.get_markers`).}}
+      {{🦔 Does not require any variables other than `path_to_test_variable`.}}
       """
       # ✨ initial parameters validator
-      path_to_test_val = inputs.get(path_to_test_variable)
-      if path_to_test_val is None:
+      path_to_test_value = inputs.get(path_to_test_variable)
+      if not path_to_test_value:
         return ValidationResult(
             success=False,
             output="",
-            error="Variable '" + str(path_to_test_variable) + "' is missing.")
+            error=f"'{path_to_test_variable}' is required and cannot be empty.")
 
-      if not isinstance(path_to_test_val, (str, pathlib.Path)):
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Variable '" + str(path_to_test_variable) +
-            "' must be a string or a Path.")
-
-      path_to_test = pathlib.Path(path_to_test_val)
+      # Ensure path_to_test_value is treated as a path. It might come as a string.
+      path = pathlib.Path(str(path_to_test_value))
 
       try:
-        # Attempt to read the file to check if it exists and is readable
-        async with aiofiles.open(path_to_test, mode="r") as f:
-          await f.read()
-      except FileNotFoundError:
-        return ValidationResult(
-            success=False,
-            output="",
-            error="File not found: " + str(path_to_test))
-      except Exception as e:
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Could not read file '" + str(path_to_test) + "': " + str(e))
+        # Attempt to read the file and get markers.
+        # This will also catch FileNotFoundError if the file doesn't exist.
+        markers = await get_markers(HEDGEHOG, path)
 
-      try:
-        markers = await get_markers(char=HEDGEHOG, path=path_to_test)
         if not markers:
           return ValidationResult(
               success=False,
               output="",
-              error="File '" + str(path_to_test) +
-              "' contains no HEDGEHOG markers.")
-      except ValueError as e:
-        # This handles repeated markers, which `get_markers` raises as ValueError
-        return ValidationResult(success=False, output="", error=str(e))
-      except Exception as e:
-        # Catch any other unexpected errors during marker extraction
+              error=f"File '{path}' does not contain any '{HEDGEHOG}' markers.")
+
+        # Per requirement: "Validation succeeds if the file contains repeated (identical) HEDGEHOG markers"
+        # The get_markers function stores all positions for a given marker name.
+        # If get_markers successfully returns, it means there are no overlaps (MarkersOverlapError is caught).
+        # The presence of repeated *identical* HEDGEHOG markers does not lead to a validation failure here,
+        # which aligns with the requirement.
+
+      except FileNotFoundError:
         return ValidationResult(
             success=False,
             output="",
-            error="Error processing markers in file '" + str(path_to_test) +
-            "': " + str(e))
+            error=f"File '{path}' not found or inaccessible.")
+      except MarkersOverlapError as e:
+          # Overlapping markers indicate a structural issue, which should result in failure.
+          return ValidationResult(
+              success=False,
+              output="",
+              error=f"File '{path}' contains overlapping '{HEDGEHOG}' markers: {e}")
+      except Exception as e:
+        return ValidationResult(
+            success=False,
+            output="",
+            error=f"An unexpected error occurred while validating file '{path}': {e}")
 
       return ValidationResult(
-          success=True,
-          output="File '" + str(path_to_test) + "' is valid.",
-          error="")
+          success=True, output="Path to test is valid.", error="")
       # ✨
 
     start_message_content = (
@@ -183,67 +138,77 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         "Once the user has given you appropriate values, "
         "your goal is achieved and you should run `done`.")
     # ✨ initial parameters
+    done_command_arguments = [
+        Argument(
+            name=path_to_test_variable,
+            arg_type=ArgumentContentType.PATH_INPUT,
+            description="Path to the file containing HEDGEHOG markers to be tested.",
+            required=True,
+        )
+    ]
+
     command_registry = await prepare_command_registry(
-        done_command_arguments=[
-            Argument(
-                name=path_to_test_variable,
-                arg_type=ArgumentContentType.PATH_INPUT,
-                description="Path to the file containing HEDGEHOG markers for tests."
-            )
-        ],
+        done_command_arguments=done_command_arguments,
         done_validator_callback=done_validator,
         file_access_policy=self._options.agent_loop_options.file_access_policy,
     )
 
     start_message = await prepare_initial_message(
-        start_message_content=start_message_content,
-        relevant_files=[],
+        start_message_content=start_message_content, relevant_files=set()
     )
 
     output_variables = await run_agent_loop(
         workflow_options=self._options,
-        conversation_name="Get initial parameters",
+        conversation_name="initial_parameters",
         start_message=start_message,
         command_registry=command_registry,
     )
 
-    path_to_test_val = output_variables.get(path_to_test_variable)
-    if not isinstance(path_to_test_val, pathlib.Path):
-      # This case should ideally be caught by the done_validator,
-      # but as a safeguard, convert if it's a string, or raise if it's unexpected.
-      if isinstance(path_to_test_val, str):
-        return pathlib.Path(path_to_test_val)
-      raise ValueError(
-          f"Expected a Path for '{path_to_test_variable}', but got '{type(path_to_test_val)}'"
-      )
-    return path_to_test_val
+    path_to_test = output_variables[path_to_test_variable]
+    return pathlib.Path(str(path_to_test))
     # ✨
 
   async def _prepare_tests_skeleton(self, input: pathlib.Path) -> None:
     """Runs an AgentLoop to create a skeleton for the tests.
 
     {{🦔 The only done command argument given to `prepare_command_registry` is
-         `path_to_test_variable`.}}
+         `tests_skeleton_variable`.}}
     {{🦔 After validating that the skeleton contains all tests, writes them to
-         a `tests_…` file (e.g., for `src/foo.py`, writes `src/test_foo.py`).}}
+         a `tests_…` file (e.g., when `input` is `src/foo.py`, writes
+         `src/test_foo.py`).}}
+    {{🦔 `input` is passed as a relevant file to `prepare_initial_message`.'}}
     """
     start_message_content = (
         f"GOAL: Prepare a skeleton file for unit tests "
         f"based on the contents of file \"{input}\". "
         f"This file contains markers that look like this: "
-        f"\"{{{HEDGEHOG} property to validate}}\" "
+        f"\"{{{{{HEDGEHOG} property to validate}}}}\" "
         f"(where \"property to validate\" is a description "
         f"of what the test should do). "
         f"Your skeleton should contain a unit test "
         f"for each of these markers, something like this:"
         f"\n\n"
         f"    await def test_foo_bar_name_here(self) -> None:\n"
-        f"      pass  # {{{MUSHROOM} property to validate}}\n"
+        f"      pass  # {{{{{MUSHROOM} property to validate}}}}\n"
         f"\n"
         f"(The `await` keyword may not be necessary, "
         f"in which case it should be omitted; "
         f"the tests should be in a subclass either of `unittest.TestCase` "
         f"or `unittest.IsolatedAsyncioTestCase`)."
+        f"\n"
+        f"As you can see, you are not actually going to implement the tests, "
+        f"but you're just laying down the foundation. "
+        f"We are turning the {{{{{HEDGEHOG} …}}}} markers "
+        f"into {{{{{MUSHROOM} …}}}} markers, "
+        f"which will drive the implementation of the tests."
+        f"\n"
+        f"The input file may contain repeated {{{{{HEDGEHOG} …}}}} markers; "
+        f"for example, multiple functions may share an identical property. "
+        f"However, {{{{{MUSHROOM} …}}}} markers "
+        f"must be identical in the output. "
+        f"That means that if you find repeated {HEDGEHOG} markers, "
+        f"you must add more information inside the output markers "
+        f"in order to disambiguate them."
         f"\n"
         f"Please try to pick meaningful names for the tests "
         f"(as in the example `test_foo_bar_name_here`) based on both "
@@ -251,12 +216,6 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         f"and (2) the context around the line where the token occurs "
         f"(for example, if the token is given in a function's docstring, "
         f"it's very likely that it refers to tests for that function)."
-        f"\n"
-        f"As you can see, you are not actually going to implement the tests, "
-        f"but you're just laying down the foundation. "
-        f"We are turning the {{{HEDGEHOG} …}} markers "
-        f"into {{{MUSHROOM} …}} markers, "
-        f"which will drive the implementation of the tests."
         f"\n"
         f"Make sure to include this at the end of the file:"
         f"\n"
@@ -271,150 +230,138 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     async def done_validate(inputs: VariableMap) -> ValidationResult:
       """Validates that tests_skeleton_variable has the right markers.
 
-      Fails if the set of markers given in tests_skeleton_variable (per
-      `code_spec.get_markers(MUSHROOM, output)` doesn't match the set of in
-      `code_spec.get_markers(HEDGEHOG, input)`.
+
+      {{🦔 Fails if the set of markers given in tests_skeleton_variable is
+           rejected by `code_spec.get_markers(MUSHROOM, output)`.}}
+      {{🦔 Fails if an identical marker (in the value of
+           `tests_skeleton_variable`) is repeated (more than one location, per
+           `code_spec.get_markers(MUSHROOM, output)`).}}
+      {{🦔 Fails if the number of HEDGEHOG markers in the input isn't exactly
+           the same as the number of MUSHROOM markers in the output.}}
+      {{🦔 Does not require any variables beyond `tests_skeleton_variable`.}}
       """
       # ✨ tests skeleton validator
-      path_to_test_val = inputs.get(path_to_test_variable)
-      tests_skeleton_val = inputs.get(tests_skeleton_variable)
+      tests_skeleton_value = inputs.get(tests_skeleton_variable)
+      if not tests_skeleton_value:
+        return ValidationResult(
+            success=False,
+            output="",
+            error=f"'{tests_skeleton_variable}' is required and cannot be empty.")
 
-      if path_to_test_val is None:
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Variable '" + str(path_to_test_variable) + "' is missing.")
-      if not isinstance(path_to_test_val, (str, pathlib.Path)):
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Variable '" + str(path_to_test_variable) +
-            "' must be a string or a Path.")
-      input_path = pathlib.Path(path_to_test_val)
-
-      if tests_skeleton_val is None:
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Variable '" + str(tests_skeleton_variable) + "' is missing.")
-      if not isinstance(tests_skeleton_val, str):
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Variable '" + str(tests_skeleton_variable) +
-            "' must be a string.")
-      skeleton_content = tests_skeleton_val
+      skeleton_content = str(tests_skeleton_value)
 
       # Get HEDGEHOG markers from the input file
       try:
-        hedgehog_markers = await get_markers(char=HEDGEHOG, path=input_path)
+        # 'input' is captured from the enclosing scope and is a pathlib.Path
+        hedgehog_markers_map = await get_markers(HEDGEHOG, input)
+        total_hedgehog_markers = sum(len(locations) for locations in hedgehog_markers_map.values())
+      except MarkersOverlapError as e:
+        return ValidationResult(
+            success=False,
+            output="",
+            error=f"Input file '{input}' contains overlapping '{HEDGEHOG}' markers: {e}")
       except FileNotFoundError:
         return ValidationResult(
             success=False,
             output="",
-            error="Input file not found: " + str(input_path))
-      except ValueError as e:
-        return ValidationResult(
-            success=False,
-            output="",
-            error="Error processing HEDGEHOG markers in input file: " + str(e))
+            error=f"Input file '{input}' not found or inaccessible while validating skeleton.")
       except Exception as e:
         return ValidationResult(
             success=False,
             output="",
-            error="Unexpected error reading input file markers: " + str(e))
+            error=f"An unexpected error occurred while processing input file '{input}': {e}")
 
-      # Get MUSHROOM markers from the skeleton content (using a temporary file)
+      # Get MUSHROOM markers from the generated skeleton content
+      # If mypy expects Path, write skeleton_content to a temporary file
+      # and pass the path to get_markers.
       temp_dir = None
+      temp_file_path = None
       try:
-        temp_dir = pathlib.Path(tempfile.mkdtemp())
-        temp_skeleton_path = temp_dir / "temp_skeleton.py"  # Assuming python for now, extension might not matter for get_markers
+        temp_dir = tempfile.mkdtemp()
+        temp_file_path = pathlib.Path(temp_dir) / "temp_skeleton_file.py"
+        async with aiofiles.open(temp_file_path, mode="w") as f:
+            await f.write(skeleton_content)
 
-        async with aiofiles.open(temp_skeleton_path, mode="w") as f:
-          await f.write(skeleton_content)
-
-        mushroom_markers = await get_markers(
-            char=MUSHROOM, path=temp_skeleton_path)
-      except ValueError as e:
+        mushroom_markers_map = await get_markers(MUSHROOM, temp_file_path)
+        total_mushroom_markers = sum(len(locations) for locations in mushroom_markers_map.values())
+      except MarkersOverlapError as e:
         return ValidationResult(
             success=False,
             output="",
-            error="Error processing MUSHROOM markers in skeleton: " + str(e))
+            error=f"Generated skeleton contains overlapping '{MUSHROOM}' markers: {e}")
       except Exception as e:
         return ValidationResult(
             success=False,
             output="",
-            error="Unexpected error processing skeleton markers: " + str(e))
+            error=f"An unexpected error occurred while processing the generated skeleton: {e}")
       finally:
-        if temp_dir and temp_dir.exists():
-          shutil.rmtree(temp_dir)
+        if temp_dir and pathlib.Path(temp_dir).exists():
+            shutil.rmtree(temp_dir) # Clean up temporary directory
 
-      # Compare the marker names
-      expected_marker_names = {marker.name for marker in hedgehog_markers}
-      found_marker_names = {marker.name for marker in mushroom_markers}
+      # Fails if an identical MUSHROOM marker (content) is repeated.
+      for marker_name, implementations in mushroom_markers_map.items():
+        if len(implementations) > 1:
+          return ValidationResult(
+              success=False,
+              output="",
+              error=f"MUSHROOM marker content '{{{MUSHROOM} {marker_name}}}' is repeated {len(implementations)} times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation.")
 
-      if expected_marker_names != found_marker_names:
-        missing_markers = expected_marker_names - found_marker_names
-        extra_markers = found_marker_names - expected_marker_names
-
-        error_messages = []
-        if missing_markers:
-          error_messages.append(
-              f"Missing MUSHROOM markers for: {', '.join(sorted(missing_markers))}."
-          )
-        if extra_markers:
-          error_messages.append(
-              f"Unexpected MUSHROOM markers found: {', '.join(sorted(extra_markers))}."
-          )
-
+      # Fails if the number of HEDGEHOG markers in the input isn't exactly
+      # the same as the number of MUSHROOM markers in the output.
+      if total_hedgehog_markers != total_mushroom_markers:
         return ValidationResult(
             success=False,
             output="",
-            error="Marker mismatch between input and skeleton. " +
-            " ".join(error_messages))
+            error=f"Mismatch in marker counts: Input has {total_hedgehog_markers} '{HEDGEHOG}' markers, but skeleton has {total_mushroom_markers} '{MUSHROOM}' markers. Counts must be equal.")
 
       return ValidationResult(
-          success=True,
-          output="Tests skeleton markers match input markers.",
-          error="")
+          success=True, output="Tests skeleton is valid.", error="")
       # ✨
 
     # ✨ prepare tests skeleton
+    done_command_arguments = [
+        Argument(
+            name=tests_skeleton_variable,
+            arg_type=ArgumentContentType.STRING,  # The skeleton is a string of code
+            description="The complete skeleton code for the unit tests.",
+            required=True,
+        )
+    ]
+
+    relevant_files_for_message = {input}
+
     command_registry = await prepare_command_registry(
-        done_command_arguments=[
-            Argument(
-                name=tests_skeleton_variable,
-                arg_type=ArgumentContentType.STRING,
-                description="The complete test skeleton content.")
-        ],
+        done_command_arguments=done_command_arguments,
         done_validator_callback=done_validate,
         file_access_policy=self._options.agent_loop_options.file_access_policy,
     )
 
     start_message = await prepare_initial_message(
         start_message_content=start_message_content,
-        relevant_files=[input],  # Pass the input file as relevant context
+        relevant_files=relevant_files_for_message,
     )
 
     output_variables = await run_agent_loop(
         workflow_options=self._options,
-        conversation_name="Prepare tests skeleton",
+        conversation_name="prepare_tests_skeleton",
         start_message=start_message,
         command_registry=command_registry,
     )
 
-    tests_skeleton_content = output_variables.get(tests_skeleton_variable)
-    if not isinstance(tests_skeleton_content, str):
-      raise ValueError(
-          f"Expected a string for '{tests_skeleton_variable}', but got '{type(tests_skeleton_content)}'"
-      )
+    tests_skeleton = output_variables[tests_skeleton_variable]
 
-    # Determine the output file path (e.g., src/foo.py -> src/test_foo.py)
-    output_filename = f"test_{input.name}"
-    output_path = input.parent / output_filename
+    # Construct the output file path.
+    # If input is 'src/foo.py', output should be 'src/test_foo.py'.
+    # If input is 'src/foo.dm.py', it should be 'src/test_foo.py'
+    input_stem = input.stem
+    if ".dm" in input_stem:
+      input_stem = input_stem.replace(".dm", "")
+    output_file_name = f"test_{input_stem}{input.suffix}"
+    output_path = input.parent / output_file_name
 
+    # Write the skeleton to the target file.
     async with aiofiles.open(output_path, mode="w") as f:
-      await f.write(tests_skeleton_content)
+      await f.write(str(tests_skeleton))
     # ✨
 
 
