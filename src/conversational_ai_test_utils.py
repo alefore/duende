@@ -1,3 +1,5 @@
+import logging
+
 from conversation import Conversation, Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
 
@@ -9,6 +11,7 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
                scripted_responses: list[Message]):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
+    logging.info(f"Started fake conversation with {len(scripted_responses)=}")
 
   async def SendMessage(self, message: Message) -> Message:
     # Add the incoming message to the conversation history.
@@ -21,6 +24,8 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
       )
 
     response_message = self.scripted_responses.pop(0)
+    logging.info(
+        f"Fake conversation: received {message}, response {response_message}")
 
     # Add the assistant's response to the conversation history.
     await self.conversation.AddMessage(response_message)
