@@ -17,7 +17,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -39,10 +39,6 @@ validator_variable = VariableName('validator')
 # Value is a block of code that implement a DM marker. See MarkerImplementation
 # for constraints on allowed values.
 implementation_variable = VariableName('implementation')
-
-# Value is a comma-separated list of local files that someone implementing a DM
-# marker may want to read.
-relevant_paths_variable = VariableName('relevant_paths')
 
 
 class CodeSpecsWorkflow(AgentWorkflow):

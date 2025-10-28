@@ -33,6 +33,10 @@ FileExtension = NewType("FileExtension", str)
 
 MarkerChar = NewType("MarkerChar", str)
 
+# Value is a comma-separated list of local files that someone implementing a DM
+# marker may want to read.
+relevant_paths_variable = VariableName('relevant_paths')
+
 
 def comment_string(file_extension: FileExtension, input: str) -> str:
   """Turns `input` into a valid code comment based on `path`'s extension.
@@ -470,8 +474,7 @@ class PathAndValidator:
       markers = await get_markers(MarkerChar('🍄'), self.dm_path)
     except MarkersOverlapError as e:
       raise ValueError(
-          f"Overlapping 🍄 markers found in '{self.dm_path}': {e}"
-      ) from e
+          f"Overlapping 🍄 markers found in '{self.dm_path}': {e}") from e
     except FileNotFoundError as e:
       raise ValueError(f"File not found: '{self.dm_path}'") from e
 
@@ -589,6 +592,7 @@ async def prepare_command_registry(
        ReadFileCommand(…), ListFilesCommand(…), SearchFileCommand(…),
        done_command}}
   """
+
   # ✨ prepare command registry
   class CallbackDoneValuesValidator(DoneValuesValidator):
 

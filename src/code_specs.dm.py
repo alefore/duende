@@ -32,6 +32,10 @@ FileExtension = NewType("FileExtension", str)
 
 MarkerChar = NewType("MarkerChar", str)
 
+# Value is a comma-separated list of local files that someone implementing a DM
+# marker may want to read.
+relevant_paths_variable = VariableName('relevant_paths')
+
 
 def comment_string(file_extension: FileExtension, input: str) -> str:
   """Turns `input` into a valid code comment based on `path`'s extension.
