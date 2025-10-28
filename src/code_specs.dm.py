@@ -193,7 +193,7 @@ class Validator:
   """
   command: str
 
-  def __post_init__(self):
+  def __post_init__(self) -> None:
     """Raises ValueError if the command doesn't include the string "DMPATH".
 
     {{🦔 Raises for incorrect string: "MYPYPATH=foo mypy {path}"}}
