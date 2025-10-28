@@ -15,7 +15,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -32,6 +32,9 @@ HEDGEHOG = MarkerChar("🦔")
 
 MUSHROOM = MarkerChar("🍄")
 
+# The full name to a test, including the file in which it is defined (and likely
+# the class, if the test is a method in a class). This is returned by `pytest`
+# and can be given directly to `pytest` (without the need to add any prefixes).
 TestName = NewType("TestName", str)
 
 # Path to a file with unittests.
@@ -96,7 +99,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         "your goal is achieved and you should run `done`.")
     raise NotImplementedError  # {{🍄 initial parameters}}
 
-  async def _run_tests(self, input, tests: list[TestName]) -> str | None:
+  async def _run_tests(self, tests: list[TestName]) -> str | None:
     """Runs the tests given and returns an optional string with failure info.
 
     {{🦔 If all tests listed in `tests` pass, returns None.}}
@@ -107,6 +110,60 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     """
     raise NotImplementedError  # {{🍄 run tests}}
 
+  async def _find_relevant_paths(
+      self, input: pathlib.Path,
+      tests: list[TestName]) -> dict[TestName, set[pathlib.Path]]:
+    """Finds all relevant paths for all tests.
+
+    {{🦔 Calls `find_relevant_paths_for_test` exactly once for value in
+         `tests`.}}
+    {{🦔 Calls to `find_relevant_paths_for_test` happen concurrently.}}
+    {{🦔 The output keys are the same as the `tests` input.}}
+    {{🦔 The output values correspond to the outputs of
+         `_find_relevant_paths_for_test` for each key (test).}}
+    """
+    raise NotImplementedError()  # {{🍄 find relevant paths loop}}
+
+  async def _find_relevant_paths_for_test(self, input: pathlib.Path,
+                                          test: TestName) -> set[pathlib.Path]:
+    """Finds all relevant paths to validate a test's implementation.
+
+    Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
+    `prepare_initial_message`. The agent is focused exclusively on `test`,
+    with the goal of identifying the best value for `relevant_paths_variable`.
+
+    {{🦔 The only done command argument given to `prepare_command_registry` is
+         `relevant_paths_variable`.}}
+    """
+
+    async def done_validate(inputs: VariableMap) -> ValidationResult:
+      """Verifies that all inputs[relevant_paths_variable] values are readable.
+
+      {{🦔 If no files are given, validation fails, with a message that at least
+           one relevant file should be given.}}
+      {{🦔 All files must be readable (both by the OS as well as allowed by the
+           `file_access_policy`). If one isn't, validation fails.}}
+      {{🦔 If all files are readable (both by the OS and `file_access_policy`),
+           validation succeeds.}}
+      """
+      raise NotImplementedError()  # {{🍄 relevant paths validator}}
+
+    start_message_content = (
+        f"GOAL: identify local file paths that are relevant "
+        f"to understand the test \"{test}\", "
+        f"including the implementation of the underlying logic under test. "
+        f"The test is defined in file {input} "
+        f"(likely among many other tests that you should ignore)."
+        f"\n"
+        f"These relevant paths should be given to the "
+        f"`{relevant_paths_variable}` argument of the `done` command."
+        f"\n"
+        f"Example: `done(relevant_paths=\"src/foo.py,src/bar.cc\")"
+        f"\n"
+        f"Feel free to use `read_file`, `list_files` and `search_file` "
+        f"to explore the codebase.")
+    raise NotImplementedError()  # {{🍄 find relevant paths}}
+
   async def _make_tests_pass(self, input, tests: list[TestName]) -> None:
     """Runs an agent to fix any failing  tests (from `tests`).
 
@@ -114,8 +171,9 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
 
     {{🦔 If all tests already pass (when this is called), no agent is created.}}
     {{🦔 If at least one test is failing (when this is called), runs an agent.}}
-    {{🦔 If at least one test is failing, the initial prompt given to the agent
-         includes the failure information (output of `_run_tests`).}}
+    {{🦔 If an agent is run, it is given an initial prompt that includes the
+         failure information (output of `_run_tests`).}}
+    {{🦔 If an agent is run, it receives `input` in `relevant_files`.}}
     {{🦔 No `done` command argument is given to `prepare_command_registry`.}}
     {{🦔 The command registry given to the agent includes `WriteFileCommand`.}}
     {{🦔 The name of the conversation does *not* include the test names, because
