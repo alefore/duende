@@ -40,6 +40,8 @@ TestName = NewType("TestName", str)
 # Path to a file with unittests.
 tests_path_variable = VariableName('tests_path')
 
+PYTEST_BINARY = os.getenv("PYTEST") or "pytest"
+
 
 class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
   """Starts executing tests gradually, fixing them (or code) until all pass."""
