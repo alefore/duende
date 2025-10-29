@@ -70,94 +70,100 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     conversation_factory = ConversationFactory(conversation_factory_options)
 
     # Create a dummy path for the done command output.
-    dummy_path = pathlib.Path("/tmp/fake_test_file.py")
 
-    # There's a bug here: we should actually write a temporary file (and not
-    # assume it is /tmp/fake_test_file.py) so that the validation passes and
-    # the AgentLoop returns.
+    with tempfile.TemporaryDirectory() as tmpdir:
+      temp_file_path = pathlib.Path(tmpdir) / "fake_test_file.py"
+      # Write some content with a HEDGEHOG marker to satisfy validation
+      with open(temp_file_path, "w") as f:
+        f.write("def dummy_func():\n")
+        f.write(f"  pass  # {{{{{HEDGEHOG} A property of dummy_func}}}}\n")
 
-    # Prepare scripted responses for FakeConversationalAI
-    scripted_responses_for_initial_parameters = defaultdict(
-        list,
-        {
-            "initial_parameters": [
-                Message(
-                    role="assistant",
-                    content_sections=[
-                        ContentSection(
-                            content="",  # Must provide content, even if empty
-                            command=CommandInput(
-                                command_name="done",
-                                args=VariableMap({
-                                    path_to_test_variable:
-                                        VariableValueStr(str(dummy_path))
-                                })))
-                    ])
-            ]
-        })
-    conversational_ai = FakeConversationalAI(
-        scripted_responses=scripted_responses_for_initial_parameters)
+      dummy_path = temp_file_path
 
-    # Setup AgentLoopOptions
-    # `conversation` and `commands_registry` here are placeholders.
-    # The `run_agent_loop` function will create a new conversation and registry
-    # within its scope using the factories and `prepare_command_registry`.
-    agent_loop_options = AgentLoopOptions(
-        conversation=conversation_factory.New(
-            name="initial_parameters_dummy",
-            command_registry=CommandRegistry()),
-        start_message=Message(
-            role="user", content_sections=[ContentSection(content="")]),
-        commands_registry=CommandRegistry(
-        ),  # Will be replaced by prepare_command_registry
-        confirmation_state=ConfirmationState(
-            confirmation_manager=confirmation_manager),
-        file_access_policy=file_access_policy,
-        conversational_ai=conversational_ai,
-        skip_implicit_validation=True,
-    )
+      # Prepare scripted responses for FakeConversationalAI
+      scripted_responses_for_initial_parameters = defaultdict(
+          list,
+          {
+              "initial_parameters": [
+                  Message(
+                      role="assistant",
+                      content_sections=[
+                          ContentSection(
+                              content="",  # Must provide content, even if empty
+                              command=CommandInput(
+                                  command_name="done",
+                                  args=VariableMap({
+                                      path_to_test_variable:
+                                          VariableValueStr(str(dummy_path))
+                                  })))
+                      ])
+              ]
+          })
+      conversational_ai = FakeConversationalAI(
+          scripted_responses=scripted_responses_for_initial_parameters)
 
-    # Setup AgentWorkflowOptions using the real AgentLoopFactory
-    workflow_options = AgentWorkflowOptions(
-        agent_loop_options=agent_loop_options,
-        agent_loop_factory=AgentLoopFactory(),  # Use the real factory
-        conversation_factory=conversation_factory,
-        selection_manager=selection_manager,
-    )
+      # Setup AgentLoopOptions
+      # `conversation` and `commands_registry` here are placeholders.
+      # The `run_agent_loop` function will create a new conversation and registry
+      # within its scope using the factories and `prepare_command_registry`.
+      agent_loop_options = AgentLoopOptions(
+          conversation=conversation_factory.New(
+              name="initial_parameters_dummy",
+              command_registry=CommandRegistry()),
+          start_message=Message(
+              role="user", content_sections=[ContentSection(content="")]),
+          commands_registry=CommandRegistry(
+          ),  # Will be replaced by prepare_command_registry
+          confirmation_state=ConfirmationState(
+              confirmation_manager=confirmation_manager),
+          file_access_policy=file_access_policy,
+          conversational_ai=conversational_ai,
+          skip_implicit_validation=True,
+      )
 
-    workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
+      # Setup AgentWorkflowOptions using the real AgentLoopFactory
+      workflow_options = AgentWorkflowOptions(
+          agent_loop_options=agent_loop_options,
+          agent_loop_factory=AgentLoopFactory(),  # Use the real factory
+          conversation_factory=conversation_factory,
+          selection_manager=selection_manager,
+      )
 
-    await workflow._get_initial_parameters()
+      workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
 
-    # After `_get_initial_parameters` runs, a conversation named "initial_parameters"
-    # should have been created and processed by `run_agent_loop`.
-    # The conversation_factory will hold a reference to it.
-    conversations = conversation_factory.GetAll()
-    self.assertEqual(
-        len(conversations), 1,
-        "Expected exactly one conversation to be created.")
-    last_conversation = conversations[0]
-    self.assertEqual(
-        last_conversation.GetName(), "initial_parameters",
-        "The created conversation should be named 'initial_parameters'.")
+      await workflow._get_initial_parameters()
 
-    # Assert that the command_registry contains the DoneCommand with the correct arguments
-    registry = last_conversation.command_registry
-    done_command = registry.Get("done")
-    self.assertIsNotNone(
-        done_command,
-        "DoneCommand should be registered in the command registry.")
-    assert done_command is not None
+      # After `_get_initial_parameters` runs, a conversation named "initial_parameters"
+      # should have been created and processed by `run_agent_loop`.
+      # The conversation_factory will hold a reference to it.
+      conversations = conversation_factory.GetAll()
+      # One conversation created by us directly (to create agent_loop_options`,
+      # the other one by the workflow.
+      self.assertEqual(
+          len(conversations), 2,
+          "Expected exactly one conversation to be created.")
+      last_conversation = conversations[-1]
+      self.assertEqual(
+          last_conversation.GetName(), "initial_parameters",
+          "The created conversation should be named 'initial_parameters'.")
 
-    done_syntax = done_command.Syntax()
-    actual_args = done_syntax.arguments
+      # Assert that the command_registry contains the DoneCommand with the correct arguments
+      registry = last_conversation.command_registry
+      done_command = registry.Get("done")
+      self.assertIsNotNone(
+          done_command,
+          "DoneCommand should be registered in the command registry.")
+      assert done_command is not None
 
-    self.assertEqual(
-        len(actual_args), 1,
-        "Expected exactly one argument for the done command.")
-    self.assertEqual(actual_args[0].name, path_to_test_variable,
-                     "The argument name should be path_to_test_variable.")
-    # ✨
+      done_syntax = done_command.Syntax()
+      actual_args = done_syntax.arguments
+
+      self.assertEqual(
+          len(actual_args), 1,
+          "Expected exactly one argument for the done command.")
+      self.assertEqual(actual_args[0].name, path_to_test_variable,
+                       "The argument name should be path_to_test_variable.")
+      # ✨
 
   async def test_initial_parameters_validator_fails_if_file_cant_be_read(
       self) -> None:
@@ -637,21 +643,21 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
   async def test_prepare_tests_skeleton_writes_to_test_file_after_validation(
       self) -> None:
-        # ✨ After validating that the skeleton contains all tests, writes them to a `tests_…` file (e.g., when `input` is `src/foo.py`, writes `src/test_foo.py`).
-        file_access_policy = TestFileAccessPolicy()
-        confirmation_manager = TestConfirmationManager()
-        selection_manager = TestSelectionManager()
+    # ✨ After validating that the skeleton contains all tests, writes them to a `tests_…` file (e.g., when `input` is `src/foo.py`, writes `src/test_foo.py`).
+    file_access_policy = TestFileAccessPolicy()
+    confirmation_manager = TestConfirmationManager()
+    selection_manager = TestSelectionManager()
 
-        conversation_factory_options = ConversationFactoryOptions()
-        conversation_factory = ConversationFactory(conversation_factory_options)
+    conversation_factory_options = ConversationFactoryOptions()
+    conversation_factory = ConversationFactory(conversation_factory_options)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-          tmp_path = pathlib.Path(tmpdir)
+    with tempfile.TemporaryDirectory() as tmpdir:
+      tmp_path = pathlib.Path(tmpdir)
 
-          # Create an input file with HEDGEHOG markers
-          input_file_name = "foo.dm.py"
-          input_file_path = tmp_path / input_file_name
-          input_content = """
+      # Create an input file with HEDGEHOG markers
+      input_file_name = "foo.dm.py"
+      input_file_path = tmp_path / input_file_name
+      input_content = """
     def my_func():
       # {{🦔 A property of my_func}}
       pass
@@ -661,16 +667,16 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         # {{🦔 A property of another_method}}
         pass
     """
-          async with aiofiles.open(input_file_path, "w") as f:
-            await f.write(input_content)
+      async with aiofiles.open(input_file_path, "w") as f:
+        await f.write(input_content)
 
-          # Expected output file name: test_foo.py
-          expected_output_file_name = "test_foo.py"
-          expected_output_file_path = tmp_path / expected_output_file_name
+      # Expected output file name: test_foo.py
+      expected_output_file_name = "test_foo.py"
+      expected_output_file_path = tmp_path / expected_output_file_name
 
-          # Scripted skeleton content for the AgentLoop to return.
-          # This needs to have MUSHROOM markers and match the count of HEDGEHOG markers.
-          scripted_skeleton_content = f"""
+      # Scripted skeleton content for the AgentLoop to return.
+      # This needs to have MUSHROOM markers and match the count of HEDGEHOG markers.
+      scripted_skeleton_content = f"""
     import unittest
     import asyncio
 
@@ -686,83 +692,88 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
       unittest.main()
     """
 
-          # Prepare scripted responses for FakeConversationalAI
-          scripted_responses_for_prepare_tests_skeleton = defaultdict(
-              list,
-              {
-                  "prepare_tests_skeleton": [
-                      Message(
-                          role="assistant",
-                          content_sections=[
-                              ContentSection(
-                                  content="",
-                                  command=CommandInput(
-                                      command_name="done",
-                                      args=VariableMap({
-                                          tests_skeleton_variable:
-                                              VariableValueStr(scripted_skeleton_content)
-                                      })))
-                          ])
-                  ]
-              })
-          conversational_ai = FakeConversationalAI(
-              scripted_responses=scripted_responses_for_prepare_tests_skeleton)
+      # Prepare scripted responses for FakeConversationalAI
+      scripted_responses_for_prepare_tests_skeleton = defaultdict(
+          list, {
+              "prepare_tests_skeleton": [
+                  Message(
+                      role="assistant",
+                      content_sections=[
+                          ContentSection(
+                              content="",
+                              command=CommandInput(
+                                  command_name="done",
+                                  args=VariableMap({
+                                      tests_skeleton_variable:
+                                          VariableValueStr(
+                                              scripted_skeleton_content)
+                                  })))
+                      ])
+              ]
+          })
+      conversational_ai = FakeConversationalAI(
+          scripted_responses=scripted_responses_for_prepare_tests_skeleton)
 
-          # Setup AgentLoopOptions
-          agent_loop_options = AgentLoopOptions(
-              conversation=conversation_factory.New(
-                  name="prepare_tests_skeleton_dummy",
-                  command_registry=CommandRegistry()),
-              start_message=Message(
-                  role="user", content_sections=[ContentSection(content="")]
-              ),
-              commands_registry=CommandRegistry(),
-              confirmation_state=ConfirmationState(
-                  confirmation_manager=confirmation_manager),
-              file_access_policy=file_access_policy,
-              conversational_ai=conversational_ai,
-              skip_implicit_validation=True,
-          )
+      # Setup AgentLoopOptions
+      agent_loop_options = AgentLoopOptions(
+          conversation=conversation_factory.New(
+              name="prepare_tests_skeleton_dummy",
+              command_registry=CommandRegistry()),
+          start_message=Message(
+              role="user", content_sections=[ContentSection(content="")]),
+          commands_registry=CommandRegistry(),
+          confirmation_state=ConfirmationState(
+              confirmation_manager=confirmation_manager),
+          file_access_policy=file_access_policy,
+          conversational_ai=conversational_ai,
+          skip_implicit_validation=True,
+      )
 
-          # Setup AgentWorkflowOptions
-          workflow_options = AgentWorkflowOptions(
-              agent_loop_options=agent_loop_options,
-              agent_loop_factory=AgentLoopFactory(),
-              conversation_factory=conversation_factory,
-              selection_manager=selection_manager,
-          )
+      # Setup AgentWorkflowOptions
+      workflow_options = AgentWorkflowOptions(
+          agent_loop_options=agent_loop_options,
+          agent_loop_factory=AgentLoopFactory(),
+          conversation_factory=conversation_factory,
+          selection_manager=selection_manager,
+      )
 
-          workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
+      workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
 
-          # Call the method under test
-          await workflow._prepare_tests_skeleton(input_file_path)
+      # Call the method under test
+      await workflow._prepare_tests_skeleton(input_file_path)
 
-          # Assertions
-          self.assertTrue(expected_output_file_path.exists(),
-                          f"Output file {expected_output_file_path} should have been created.")
+      # Assertions
+      self.assertTrue(
+          expected_output_file_path.exists(),
+          f"Output file {expected_output_file_path} should have been created.")
 
-          async with aiofiles.open(expected_output_file_path, "r") as f:
-            output_content = await f.read()
+      async with aiofiles.open(expected_output_file_path, "r") as f:
+        output_content = await f.read()
 
-          # The comparison should be carefully done, ignoring potential differences in
-          # leading/trailing newlines or whitespace that might be introduced during writing.
-          # Let's compare line by line, stripping each line.
-          expected_lines = [line.strip() for line in scripted_skeleton_content.splitlines()]
-          actual_lines = [line.strip() for line in output_content.splitlines()]
+      # The comparison should be carefully done, ignoring potential differences in
+      # leading/trailing newlines or whitespace that might be introduced during writing.
+      # Let's compare line by line, stripping each line.
+      expected_lines = [
+          line.strip() for line in scripted_skeleton_content.splitlines()
+      ]
+      actual_lines = [line.strip() for line in output_content.splitlines()]
 
-          # Filter out empty lines for a more robust comparison, as empty lines might be added/removed during writing
-          expected_non_empty_lines = [line for line in expected_lines if line]
-          actual_non_empty_lines = [line for line in actual_lines if line]
+      # Filter out empty lines for a more robust comparison, as empty lines might be added/removed during writing
+      expected_non_empty_lines = [line for line in expected_lines if line]
+      actual_non_empty_lines = [line for line in actual_lines if line]
 
-          self.assertEqual(expected_non_empty_lines, actual_non_empty_lines, "The content of the output file does not match the expected skeleton.")
+      self.assertEqual(
+          expected_non_empty_lines, actual_non_empty_lines,
+          "The content of the output file does not match the expected skeleton."
+      )
 
-        # ✨
+    # ✨
 
   async def test_prepare_tests_skeleton_input_passed_as_relevant_file(
       self) -> None:
     # ✨ `input` is passed as a relevant file to `prepare_initial_message`.
     # Import code_specs to temporarily replace its function
-    import code_specs 
+    import code_specs
 
     # Instantiate dependencies
     file_access_policy = TestFileAccessPolicy()
@@ -785,8 +796,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # Prepare scripted responses for FakeConversationalAI
       scripted_responses_for_prepare_tests_skeleton = defaultdict(
-          list,
-          {
+          list, {
               "prepare_tests_skeleton": [
                   Message(
                       role="assistant",
@@ -797,7 +807,8 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
                                   command_name="done",
                                   args=VariableMap({
                                       tests_skeleton_variable:
-                                          VariableValueStr(scripted_skeleton_content)
+                                          VariableValueStr(
+                                              scripted_skeleton_content)
                                   })))
                       ])
               ]
@@ -811,8 +822,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
               name="prepare_tests_skeleton_dummy",
               command_registry=CommandRegistry()),
           start_message=Message(
-              role="user", content_sections=[ContentSection(content="")]
-          ),
+              role="user", content_sections=[ContentSection(content="")]),
           commands_registry=CommandRegistry(),
           confirmation_state=ConfirmationState(
               confirmation_manager=confirmation_manager),
@@ -833,12 +843,15 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # --- Intercept prepare_initial_message ---
       _original_prepare_initial_message = code_specs.prepare_initial_message
-      captured_relevant_files_calls = [] # Store each call's relevant_files argument
+      captured_relevant_files_calls = [
+      ]  # Store each call's relevant_files argument
 
-      async def _mock_prepare_initial_message(start_message_content: str,
-                                              relevant_files: set[pathlib.Path]) -> Message:
+      async def _mock_prepare_initial_message(
+          start_message_content: str,
+          relevant_files: set[pathlib.Path]) -> Message:
         captured_relevant_files_calls.append(relevant_files)
-        return await _original_prepare_initial_message(start_message_content, relevant_files)
+        return await _original_prepare_initial_message(start_message_content,
+                                                       relevant_files)
 
       code_specs.prepare_initial_message = _mock_prepare_initial_message
       try:
@@ -846,21 +859,26 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         await workflow._prepare_tests_skeleton(input_file_path)
 
         # Assertions
-        self.assertGreater(len(captured_relevant_files_calls), 0,
-                           "prepare_initial_message should have been called at least once.")
+        self.assertGreater(
+            len(captured_relevant_files_calls), 0,
+            "prepare_initial_message should have been called at least once.")
 
         # Check the relevant_files argument from the last call
         # The prompt for _prepare_tests_skeleton (which calls prepare_initial_message)
         # will have the input_file_path as a relevant file.
         last_call_relevant_files = captured_relevant_files_calls[-1]
 
-        self.assertIn(input_file_path, last_call_relevant_files,
-                      f"Input file '{input_file_path}' was not passed as a relevant file to prepare_initial_message.")
+        self.assertIn(
+            input_file_path, last_call_relevant_files,
+            f"Input file '{input_file_path}' was not passed as a relevant file to prepare_initial_message."
+        )
 
         # Assert that only this input file was passed as relevant.
         # This assumes _prepare_tests_skeleton does not pass other implicit relevant files.
-        self.assertEqual(len(last_call_relevant_files), 1, 
-                         f"Expected only the input file to be passed as relevant, but got: {last_call_relevant_files}")
+        self.assertEqual(
+            len(last_call_relevant_files), 1,
+            f"Expected only the input file to be passed as relevant, but got: {last_call_relevant_files}"
+        )
 
       finally:
         # Restore the original function
@@ -903,8 +921,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # Prepare scripted responses for FakeConversationalAI
       scripted_responses_for_prepare_tests_skeleton = defaultdict(
-          list,
-          {
+          list, {
               "prepare_tests_skeleton": [
                   Message(
                       role="assistant",
@@ -930,8 +947,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
               name="prepare_tests_skeleton_dummy",
               command_registry=CommandRegistry()),
           start_message=Message(
-              role="user", content_sections=[ContentSection(content="")]
-          ),
+              role="user", content_sections=[ContentSection(content="")]),
           commands_registry=CommandRegistry(),
           confirmation_state=TestConfirmationState(
               confirmation_manager=confirmation_manager),
@@ -953,41 +969,42 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
       # Expect a ValueError because the validator will raise MarkersOverlapError
       # which is caught and re-raised as part of a failed ValidationResult
       # by the done_validate function.
-      with self.assertRaisesRegex(ValueError, f"overlapping '{MUSHROOM}' markers"):
+      with self.assertRaisesRegex(ValueError,
+                                  f"overlapping '{MUSHROOM}' markers"):
         await workflow._prepare_tests_skeleton(input_file_path)
     # ✨
 
   async def test_tests_skeleton_validator_fails_if_identical_mushroom_marker_repeated(
       self) -> None:
     # ✨ Fails if an identical marker (in the value of `tests_skeleton_variable`) is repeated (more than one location, per `code_spec.get_markers(MUSHROOM, output)`).
-        file_access_policy = TestFileAccessPolicy()
-        confirmation_manager = TestConfirmationManager()
-        selection_manager = TestSelectionManager()
+    file_access_policy = TestFileAccessPolicy()
+    confirmation_manager = TestConfirmationManager()
+    selection_manager = TestSelectionManager()
 
-        conversation_factory_options = ConversationFactoryOptions()
-        conversation_factory = ConversationFactory(conversation_factory_options)
+    conversation_factory_options = ConversationFactoryOptions()
+    conversation_factory = ConversationFactory(conversation_factory_options)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-          tmp_path = pathlib.Path(tmpdir)
+    with tempfile.TemporaryDirectory() as tmpdir:
+      tmp_path = pathlib.Path(tmpdir)
 
-          # Create an input file with two HEDGEHOG markers.
-          # This count will match the total count of MUSHROOM markers in the skeleton,
-          # but the MUSHROOM markers themselves will have identical content.
-          input_file_name = "input_with_two_hedgehog.py"
-          input_file_path = tmp_path / input_file_name
-          input_content = f'''
+      # Create an input file with two HEDGEHOG markers.
+      # This count will match the total count of MUSHROOM markers in the skeleton,
+      # but the MUSHROOM markers themselves will have identical content.
+      input_file_name = "input_with_two_hedgehog.py"
+      input_file_path = tmp_path / input_file_name
+      input_content = f'''
         def func_a():
           pass # {{🦔 Property A}}
 
         def func_b():
           pass # {{🦔 Property B}}
         '''
-          async with aiofiles.open(input_file_path, "w") as f:
-            await f.write(input_content)
+      async with aiofiles.open(input_file_path, "w") as f:
+        await f.write(input_content)
 
-          # Scripted skeleton content with identical MUSHROOM markers
-          # This will cause the validation to fail specifically on the repeated marker content check.
-          scripted_skeleton_content = f'''
+      # Scripted skeleton content with identical MUSHROOM markers
+      # This will cause the validation to fail specifically on the repeated marker content check.
+      scripted_skeleton_content = f'''
         import unittest
 
         class MyTests(unittest.IsolatedAsyncioTestCase):
@@ -998,62 +1015,60 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
             pass # {{{MUSHROOM} Shared Property}}
         '''
 
-          # Prepare scripted responses for FakeConversationalAI
-          scripted_responses_for_prepare_tests_skeleton = defaultdict(
-              list,
-              {
-                  "prepare_tests_skeleton": [
-                      Message(
-                          role="assistant",
-                          content_sections=[
-                              ContentSection(
-                                  content="",
-                                  command=CommandInput(
-                                      command_name="done",
-                                      args=VariableMap({
-                                          tests_skeleton_variable:
-                                              VariableValueStr(
-                                                  scripted_skeleton_content)
-                                      })))
-                          ])
-                  ]
-              })
-          conversational_ai = FakeConversationalAI(
-              scripted_responses=scripted_responses_for_prepare_tests_skeleton)
+      # Prepare scripted responses for FakeConversationalAI
+      scripted_responses_for_prepare_tests_skeleton = defaultdict(
+          list, {
+              "prepare_tests_skeleton": [
+                  Message(
+                      role="assistant",
+                      content_sections=[
+                          ContentSection(
+                              content="",
+                              command=CommandInput(
+                                  command_name="done",
+                                  args=VariableMap({
+                                      tests_skeleton_variable:
+                                          VariableValueStr(
+                                              scripted_skeleton_content)
+                                  })))
+                      ])
+              ]
+          })
+      conversational_ai = FakeConversationalAI(
+          scripted_responses=scripted_responses_for_prepare_tests_skeleton)
 
-          # Setup AgentLoopOptions
-          agent_loop_options = AgentLoopOptions(
-              conversation=conversation_factory.New(
-                  name="prepare_tests_skeleton_dummy",
-                  command_registry=CommandRegistry()),
-              start_message=Message(
-                  role="user", content_sections=[ContentSection(content="")]
-              ),
-              commands_registry=CommandRegistry(),
-              confirmation_state=TestConfirmationState(
-                  confirmation_manager=confirmation_manager),
-              file_access_policy=file_access_policy,
-              conversational_ai=conversational_ai,
-              skip_implicit_validation=True,
-          )
+      # Setup AgentLoopOptions
+      agent_loop_options = AgentLoopOptions(
+          conversation=conversation_factory.New(
+              name="prepare_tests_skeleton_dummy",
+              command_registry=CommandRegistry()),
+          start_message=Message(
+              role="user", content_sections=[ContentSection(content="")]),
+          commands_registry=CommandRegistry(),
+          confirmation_state=TestConfirmationState(
+              confirmation_manager=confirmation_manager),
+          file_access_policy=file_access_policy,
+          conversational_ai=conversational_ai,
+          skip_implicit_validation=True,
+      )
 
-          # Setup AgentWorkflowOptions
-          workflow_options = AgentWorkflowOptions(
-              agent_loop_options=agent_loop_options,
-              agent_loop_factory=AgentLoopFactory(),
-              conversation_factory=conversation_factory,
-              selection_manager=selection_manager,
-          )
+      # Setup AgentWorkflowOptions
+      workflow_options = AgentWorkflowOptions(
+          agent_loop_options=agent_loop_options,
+          agent_loop_factory=AgentLoopFactory(),
+          conversation_factory=conversation_factory,
+          selection_manager=selection_manager,
+      )
 
-          workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
+      workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
 
-          # Expect a ValueError because the validator will find repeated identical MUSHROOM markers.
-          with self.assertRaisesRegex(
-              ValueError,
-              f"MUSHROOM marker content '{{{MUSHROOM} Shared Property}}' is repeated 2 times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation."
-          ):
-            await workflow._prepare_tests_skeleton(input_file_path)
-        # ✨
+      # Expect a ValueError because the validator will find repeated identical MUSHROOM markers.
+      with self.assertRaisesRegex(
+          ValueError,
+          f"MUSHROOM marker content '{{{MUSHROOM} Shared Property}}' is repeated 2 times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation."
+      ):
+        await workflow._prepare_tests_skeleton(input_file_path)
+    # ✨
 
   async def test_tests_skeleton_validator_fails_if_marker_count_mismatch(
       self) -> None:
@@ -1092,8 +1107,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # Prepare scripted responses for FakeConversationalAI
       scripted_responses_for_prepare_tests_skeleton = defaultdict(
-          list,
-          {
+          list, {
               "prepare_tests_skeleton": [
                   Message(
                       role="assistant",
@@ -1119,8 +1133,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
               name="prepare_tests_skeleton_dummy",
               command_registry=CommandRegistry()),
           start_message=Message(
-              role="user", content_sections=[ContentSection(content="")]
-          ),
+              role="user", content_sections=[ContentSection(content="")]),
           commands_registry=CommandRegistry(),
           confirmation_state=TestConfirmationState(
               confirmation_manager=confirmation_manager),
@@ -1186,8 +1199,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # Prepare scripted responses for FakeConversationalAI, including the extra variable
       scripted_responses_for_prepare_tests_skeleton = defaultdict(
-          list,
-          {
+          list, {
               "prepare_tests_skeleton": [
                   Message(
                       role="assistant",
@@ -1198,7 +1210,8 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
                                   command_name="done",
                                   args=VariableMap({
                                       tests_skeleton_variable:
-                                          VariableValueStr(scripted_skeleton_content),
+                                          VariableValueStr(
+                                              scripted_skeleton_content),
                                       extra_variable_name:
                                           extra_variable_value,
                                   })))
@@ -1214,8 +1227,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
               name="prepare_tests_skeleton_dummy",
               command_registry=CommandRegistry()),
           start_message=Message(
-              role="user", content_sections=[ContentSection(content="")]
-          ),
+              role="user", content_sections=[ContentSection(content="")]),
           commands_registry=CommandRegistry(),
           confirmation_state=TestConfirmationState(
               confirmation_manager=confirmation_manager),
@@ -1242,19 +1254,26 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         expected_output_file_name = "test_input_for_extra_vars_test.py"
         expected_output_file_path = tmp_path / expected_output_file_name
 
-        self.assertTrue(expected_output_file_path.exists(),
-                        f"Output file {expected_output_file_path} should have been created.")
+        self.assertTrue(
+            expected_output_file_path.exists(),
+            f"Output file {expected_output_file_path} should have been created."
+        )
 
         async with aiofiles.open(expected_output_file_path, "r") as f:
           output_content = await f.read()
 
-        expected_lines = [line.strip() for line in scripted_skeleton_content.splitlines()]
+        expected_lines = [
+            line.strip() for line in scripted_skeleton_content.splitlines()
+        ]
         actual_lines = [line.strip() for line in output_content.splitlines()]
 
         expected_non_empty_lines = [line for line in expected_lines if line]
         actual_non_empty_lines = [line for line in actual_lines if line]
 
-        self.assertEqual(expected_non_empty_lines, actual_non_empty_lines, "The content of the output file does not match the expected skeleton.")
+        self.assertEqual(
+            expected_non_empty_lines, actual_non_empty_lines,
+            "The content of the output file does not match the expected skeleton."
+        )
 
       except ValueError as e:
         self.fail(f"Validation failed unexpectedly with extra variables: {e}")
