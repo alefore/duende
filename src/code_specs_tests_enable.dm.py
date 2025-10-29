@@ -15,6 +15,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
+from ask_command import AskCommand
 from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
 from code_specs_commands import ListDuendeMarkerImplementationCommand, UpdateDuendeMarkerImplementationCommand, ReadDuendeImplementationMarkerCommand
 from conversation import Conversation, ConversationId, ConversationFactory
@@ -113,60 +114,6 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     """
     raise NotImplementedError  # {{🍄 run tests}}
 
-  async def _find_relevant_paths(
-      self, input: pathlib.Path,
-      tests: list[TestName]) -> dict[TestName, set[pathlib.Path]]:
-    """Finds all relevant paths for all tests.
-
-    {{🦔 Calls `find_relevant_paths_for_test` exactly once for value in
-         `tests`.}}
-    {{🦔 Calls to `find_relevant_paths_for_test` happen concurrently.}}
-    {{🦔 The output keys are the same as the `tests` input.}}
-    {{🦔 The output values correspond to the outputs of
-         `_find_relevant_paths_for_test` for each key (test).}}
-    """
-    raise NotImplementedError()  # {{🍄 find relevant paths loop}}
-
-  async def _find_relevant_paths_for_test(self, input: pathlib.Path,
-                                          test: TestName) -> set[pathlib.Path]:
-    """Finds all relevant paths to validate a test's implementation.
-
-    Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
-    `prepare_initial_message`. The agent is focused exclusively on `test`,
-    with the goal of identifying the best value for `relevant_paths_variable`.
-
-    {{🦔 The only done command argument given to `prepare_command_registry` is
-         `relevant_paths_variable`.}}
-    """
-
-    async def done_validate(inputs: VariableMap) -> ValidationResult:
-      """Verifies that all inputs[relevant_paths_variable] values are readable.
-
-      {{🦔 If no files are given, validation fails, with a message that at least
-           one relevant file should be given.}}
-      {{🦔 All files must be readable (both by the OS as well as allowed by the
-           `file_access_policy`). If one isn't, validation fails.}}
-      {{🦔 If all files are readable (both by the OS and `file_access_policy`),
-           validation succeeds.}}
-      """
-      raise NotImplementedError()  # {{🍄 relevant paths validator}}
-
-    start_message_content = (
-        f"GOAL: identify local file paths that are relevant "
-        f"to understand the test \"{test}\", "
-        f"including the implementation of the underlying logic under test. "
-        f"The test is defined in file {input} "
-        f"(likely among many other tests that you should ignore)."
-        f"\n"
-        f"These relevant paths should be given to the "
-        f"`{relevant_paths_variable}` argument of the `done` command."
-        f"\n"
-        f"Example: `done(relevant_paths=\"src/foo.py,src/bar.cc\")"
-        f"\n"
-        f"Feel free to use `read_file`, `list_files` and `search_file` "
-        f"to explore the codebase.")
-    raise NotImplementedError()  # {{🍄 find relevant paths}}
-
   async def _make_tests_pass(self, input: pathlib.Path,
                              tests: list[TestName]) -> None:
     """Runs an agent to fix any failing  tests (from `tests`).
@@ -182,13 +129,13 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 The command registry given to the agent includes `WriteFileCommand`.}}
     {{🦔 The command registry given to the agent includes
          `ListDuendeMarkerImplementationCommand`.}}
-    {{🦔 The command registry given to the agent includes
-         `ListDuendeMarkerImplementationCommand`,
-         `UpdateDuendeMarkerImplementationCommand`, and
-         `ReadDuendeImplementationMarkerCommand`.}}
-    {{🦔 The name of the conversation does *not* include the test names, because
-         that's too verbose. Instead, it includes the number of tests in
-         scope (i.e., `len(tests)`).}}
+    {{🦔 The command registry given to the agent includes:
+         * `ListDuendeMarkerImplementationCommand`
+         * `UpdateDuendeMarkerImplementationCommand`
+         * `ReadDuendeImplementationMarkerCommand`
+         * `AskCommand`}}
+    {{🦔 The name of the conversation includes `len(tests)` followed by the last
+         value in `tests`.}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -216,7 +163,10 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         "Calling `done` will cause the tests in scope to be executed "
         "and will confirm that you've successfully fixed the problem.\n"
         "We may not be executing all tests but only a subset. That's OK. "
-        "You should focus only on fixing the explicit failures.\n")
+        "You should focus only on fixing the explicit failures.\n"
+        "Avoid loading too much information: "
+        "prefer using `ask` to fork other conversations "
+        "that figure out the answer to specific questions.")
     raise NotImplementedError()  # {{🍄 make tests pass}}
 
 
