@@ -2,7 +2,7 @@ import logging
 import os
 import aiofiles
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
@@ -38,6 +38,7 @@ class ListFilesCommand(AgentCommand):
         name="list_files",
         description="Lists all files in the given directories (or the top-level if none is specified).",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=VariableName("directory"),
                 arg_type=ArgumentContentType.PATH_UNVALIDATED,
