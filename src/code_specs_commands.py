@@ -100,11 +100,14 @@ class ListDuendeMarkerImplementationCommand(AgentCommand):
           errors="",
           summary=f"No markers found in '{path}'.")
     else:
-      output_lines = [f"Found {len(blocks)} Duende implementation markers in '{path}':"]
+      output_lines = [
+          f"Found {len(blocks)} Duende implementation markers in '{path}':"
+      ]
       for block in blocks:
         # Line numbers are 1-indexed for display
         output_lines.append(
-            f"  - Marker '{block.name}': lines {block.start_index + 1}-{block.end_index + 1}")
+            f"  - Marker '{block.name}': lines {block.start_index + 1}-{block.end_index + 1}"
+        )
       return CommandOutput(
           command_name=self.Name(),
           output="\n".join(output_lines),
@@ -159,7 +162,8 @@ class ReadDuendeImplementationMarkerCommand(AgentCommand):
           command_name=self.Name(),
           output="",
           errors=f"File not found: {path}",
-          summary=f"Failed to read marker '{marker_name}' in {path}: file not found.")
+          summary=f"Failed to read marker '{marker_name}' in {path}: file not found."
+      )
       # ✨
     except RepeatedExpandedMarkersError as e:
       # ✨ read: return error output exception repeated markers
@@ -167,7 +171,8 @@ class ReadDuendeImplementationMarkerCommand(AgentCommand):
           command_name=self.Name(),
           output="",
           errors=f"Multiple markers found in {path}: {str(e)}",
-          summary=f"Failed to read marker '{marker_name}' in {path}: multiple markers found.")
+          summary=f"Failed to read marker '{marker_name}' in {path}: multiple markers found."
+      )
       # ✨
     block = [b for b in blocks if b.name == marker_name]
     if not block:
@@ -178,14 +183,16 @@ class ReadDuendeImplementationMarkerCommand(AgentCommand):
               command_name=self.Name(),
               output="",
               errors=f"No Duende implementation markers found in '{path}'.",
-              summary=f"Failed to read marker '{marker_name}' in '{path}': no markers found.")
+              summary=f"Failed to read marker '{marker_name}' in '{path}': no markers found."
+          )
         else:
           available_markers = [b.name for b in blocks]
           return CommandOutput(
               command_name=self.Name(),
               output="",
               errors=f"Marker '{marker_name}' not found in '{path}'. Available markers: {', '.join(available_markers)}",
-              summary=f"Failed to read marker '{marker_name}' in '{path}': marker not found.")
+              summary=f"Failed to read marker '{marker_name}' in '{path}': marker not found."
+          )
       # ✨
     assert len(block) == 1
     # ✨ read: return contents from block[0]
@@ -261,7 +268,9 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
     # ✨
     # ✨ raise MarkerUpdateError if len(blocks) > 1
     if len(blocks) > 1:
-      raise MarkerUpdateError(f"Multiple start markers named '{marker_name}' found in '{path.name}'. Marker names must be unique for updates.")
+      raise MarkerUpdateError(
+          f"Multiple start markers named '{marker_name}' found in '{path.name}'. Marker names must be unique for updates."
+      )
     # ✨
 
     block: ExpandedMarker = blocks[0]
@@ -275,13 +284,15 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
     # ✨ conditionally remove marker start from content
     file_extension = _get_file_extension(path)
     expected_start_marker = comment_string(file_extension, f"✨ {marker_name}")
-    if content_lines and content_lines[0].strip() == expected_start_marker.strip():
+    if content_lines and content_lines[0].strip(
+    ) == expected_start_marker.strip():
       content_lines = content_lines[1:]
     # ✨
     # ✨ conditionally remove marker end from content
     file_extension = _get_file_extension(path)
     expected_end_marker = comment_string(file_extension, "✨")
-    if content_lines and content_lines[-1].strip() == expected_end_marker.strip():
+    if content_lines and content_lines[-1].strip() == expected_end_marker.strip(
+    ):
       content_lines = content_lines[:-1]
     # ✨
 
@@ -313,8 +324,7 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
 
   async def derive_args(self, inputs: VariableMap) -> VariableMap:
     output = VariableMap({})
-    path = inputs[_PATH_VARIABLE]
-    assert isinstance(path, pathlib.Path)
+    path = pathlib.Path(str(inputs[_PATH_VARIABLE]))
     marker_name = inputs[_MARKER_NAME_VARIABLE]
     assert isinstance(marker_name, str)
     content = inputs[_CONTENT_VARIABLE]
