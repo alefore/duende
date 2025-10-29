@@ -247,6 +247,8 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
     {{🦔 Only reads `path`, does not modify it.}}
     {{🦔 Raises MarkerUpdateError on any invalid condition: marker is not found,
          file can't be read, marker is duplicated in the file.}}
+    {{🦔 If the marker is not found, the `MarkerUpdateError` exception includes
+         a list of all available markers.}}
     {{🦔 `content` may start with the marker-start comment but it doesn't
          need to. Correctly handles both cases (without repeating the
          marker-start comment in the output). Same for the marker-end comment.}}
