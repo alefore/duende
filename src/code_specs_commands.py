@@ -13,7 +13,7 @@ from typing import Any
 
 import aiofiles
 
-from agent_command import AgentCommand, Argument, ArgumentContentType, CommandOutput, CommandSyntax, VariableMap, VariableName, VariableValue, VariableValueStr
+from agent_command import AgentCommand, Argument, ArgumentContentType, CommandOutput, CommandSyntax, REASON_VARIABLE, VariableMap, VariableName, VariableValue, VariableValueStr
 from file_access_policy import FileAccessPolicy
 from code_specs import comment_string, ExpandedMarker, FileExtension, get_expanded_markers, get_markers, MarkerChar, MarkerName, MarkersOverlapError, MarkerImplementation, reindent_code, RepeatedExpandedMarkersError
 from validation import ValidationManager
@@ -65,6 +65,7 @@ class ListDuendeMarkerImplementationCommand(AgentCommand):
         name=VariableName("list_duende_implementation_marker"),
         description="Lists all Duende implementation markers in a file.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=_PATH_VARIABLE,
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
@@ -132,6 +133,7 @@ class ReadDuendeImplementationMarkerCommand(AgentCommand):
         name=VariableName("read_duende_implementation_marker"),
         description="Reads a Duende implementation marker from a file.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=_PATH_VARIABLE,
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
@@ -221,6 +223,7 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
         name=VariableName("update_duende_marker_implementation"),
         description="Updates a Duende marker implementation block in a file.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=_PATH_VARIABLE,
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
@@ -261,12 +264,20 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
       raise MarkerUpdateError(f"Error reading file {path.name}: {str(e)}")
       # ✨
 
-    blocks = [m for m in get_expanded_markers(path) if m.name == marker_name]
+    all_blocks = get_expanded_markers(path)
+    blocks = [m for m in all_blocks if m.name == marker_name]
 
     # ✨ raise MarkerUpdateError if blocks is empty
     if not blocks:
+      # The docstring for _get_updated_content requires that if the marker
+      # is not found, the MarkerUpdateError exception includes a list of all
+      # available markers.
+      # To fulfill that, we need to use the `all_blocks` variable that was
+      # already retrieved.
+      available_markers = [b.name for b in all_blocks]
       raise MarkerUpdateError(
-          f"Start marker '{marker_name}' not found in '{path.name}'.")
+          f"Marker '{marker_name}' not found in '{path.name}'. Available markers: {', '.join(available_markers)}"
+      )
     # ✨
     # ✨ raise MarkerUpdateError if len(blocks) > 1
     if len(blocks) > 1:
