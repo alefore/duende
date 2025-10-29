@@ -168,68 +168,87 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
   async def test_initial_parameters_validator_fails_if_file_cant_be_read(
       self) -> None:
     # ✨ Validation fails if the file can't be read.
-    # Instantiate dependencies
-    file_access_policy = TestFileAccessPolicy()
-    confirmation_manager = TestConfirmationManager()
-    selection_manager = TestSelectionManager()
-
-    conversation_factory_options = ConversationFactoryOptions()
-    conversation_factory = ConversationFactory(conversation_factory_options)
-
     # Create a dummy path to a non-existent file for the done command output.
     non_existent_path = pathlib.Path("/tmp/non_existent_file_for_test.py")
 
-    # Prepare scripted responses for FakeConversationalAI
-    scripted_responses_for_initial_parameters = defaultdict(
-        list,
-        {
-            "initial_parameters": [
-                Message(
-                    role="assistant",
-                    content_sections=[
-                        ContentSection(
-                            content="",  # Must provide content, even if empty
-                            command=CommandInput(
-                                command_name="done",
-                                args=VariableMap({
-                                    path_to_test_variable:
-                                        VariableValueStr(
-                                            str(non_existent_path))
-                                })))
-                    ])
-            ]
-        })
-    conversational_ai = FakeConversationalAI(
-        scripted_responses=scripted_responses_for_initial_parameters)
+    # Create a temporary valid file for the second scripted response.
+    with tempfile.TemporaryDirectory() as tmpdir:
+      # Instantiate dependencies
+      file_access_policy = TestFileAccessPolicy()
+      confirmation_manager = TestConfirmationManager()
+      selection_manager = TestSelectionManager()
 
-    # Setup AgentLoopOptions
-    agent_loop_options = AgentLoopOptions(
-        conversation=conversation_factory.New(
-            name="initial_parameters_dummy",
-            command_registry=CommandRegistry()),
-        start_message=Message(
-            role="user", content_sections=[ContentSection(content="")]),
-        commands_registry=CommandRegistry(),
-        confirmation_state=ConfirmationState(
-            confirmation_manager=confirmation_manager),
-        file_access_policy=file_access_policy,
-        conversational_ai=conversational_ai,
-        skip_implicit_validation=True,
-    )
+      conversation_factory_options = ConversationFactoryOptions()
+      conversation_factory = ConversationFactory(conversation_factory_options)
 
-    # Setup AgentWorkflowOptions
-    workflow_options = AgentWorkflowOptions(
-        agent_loop_options=agent_loop_options,
-        agent_loop_factory=AgentLoopFactory(),
-        conversation_factory=conversation_factory,
-        selection_manager=selection_manager,
-    )
+      valid_temp_file_path = pathlib.Path(tmpdir) / "valid_test_file.py"
+      with open(valid_temp_file_path, "w") as f:
+        f.write("def dummy_func():\n")
+        f.write(f"  pass  # {{{{{HEDGEHOG} A property of dummy_func}}}}\n")
 
-    workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
+      # Prepare scripted responses for FakeConversationalAI
+      scripted_responses_for_initial_parameters = defaultdict(
+          list,
+          {
+              "initial_parameters": [
+                  Message(
+                      role="assistant",
+                      content_sections=[
+                          ContentSection(
+                              content="",  # Must provide content, even if empty
+                              command=CommandInput(
+                                  command_name="done",
+                                  args=VariableMap({
+                                      path_to_test_variable:
+                                          VariableValueStr(
+                                              str(non_existent_path))
+                                  })))
+                      ]),
+                  Message(
+                      role="assistant",
+                      content_sections=[
+                          ContentSection(
+                              content="",  # Must provide content, even if empty
+                              command=CommandInput(
+                                  command_name="done",
+                                  args=VariableMap({
+                                      path_to_test_variable:
+                                          VariableValueStr(
+                                              str(valid_temp_file_path))
+                                  })))
+                      ])
+              ]
+          })
+      conversational_ai = FakeConversationalAI(
+          scripted_responses=scripted_responses_for_initial_parameters)
 
-    # We expect the validation to fail, so _get_initial_parameters should raise an exception
-    with self.assertRaisesRegex(ValueError, "Cannot read file"):
-      await workflow._get_initial_parameters()
+      # Setup AgentLoopOptions
+      agent_loop_options = AgentLoopOptions(
+          conversation=conversation_factory.New(
+              name="initial_parameters_dummy",
+              command_registry=CommandRegistry()),
+          start_message=Message(
+              role="user", content_sections=[ContentSection(content="")]),
+          commands_registry=CommandRegistry(),
+          confirmation_state=ConfirmationState(
+              confirmation_manager=confirmation_manager),
+          file_access_policy=file_access_policy,
+          conversational_ai=conversational_ai,
+          skip_implicit_validation=True,
+      )
+
+      # Setup AgentWorkflowOptions
+      workflow_options = AgentWorkflowOptions(
+          agent_loop_options=agent_loop_options,
+          agent_loop_factory=AgentLoopFactory(),
+          conversation_factory=conversation_factory,
+          selection_manager=selection_manager,
+      )
+
+      workflow = CodeSpecsTestsSkeletonWorkflow(workflow_options)
+
+      returned_path = await workflow._get_initial_parameters()
+      self.assertEqual(returned_path, valid_temp_file_path)
     # ✨
 
   async def test_initial_parameters_validator_fails_if_no_hedgehog_markers(
