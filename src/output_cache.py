@@ -2,7 +2,7 @@
 import asyncio
 import hashlib
 import os
-import pickle
+import json
 import pathlib
 from typing import NamedTuple
 
@@ -24,27 +24,22 @@ class OutputCache:
   def __init__(self, base_dir: pathlib.Path) -> None:
     self._base_dir = base_dir
 
-  async def _ensure_cache_dir(self) -> None:
-    """Creates the cache directory if it doesn't exist.
-
-    {{🦔 Uses async io.}}
-    """
-    # ✨ ensure cache dir
-    await asyncio.to_thread(os.makedirs, self._base_dir, exist_ok=True)
-    # ✨
-
   def _get_path_for_key(self, key: CacheKey) -> pathlib.Path:
     """Generates a stable, unique filepath for a given cache key.
 
     We create a hash from the key to get a safe and unique filename.
-    Example: ('workflow_x', 'conversation_x') -> '<cache_dir>/<sha256_hash>.pkl'
+    Example: ('workflow_x', 'conversation_x', 'extra_x')
+      -> '<cache_dir>/<sha256_hash>.pkl'
 
-    The hash is a function of key.workflow and key.conversation.
+    The hash is a function of all parameters in `key`.
+
+    {{🦔 Output is a file directly in `self._base_dir`.}}
+    {{🦔 Changing any of the parameters in `key` results in a different hash.}}
     """
     # ✨ get path for key
     hash_input = f"{key.workflow}-{key.conversation}"
     hash_output = hashlib.sha256(hash_input.encode()).hexdigest()
-    return self._base_dir / f"{hash_output}.pkl"
+    return self._base_dir / f"{hash_output}.json"
     # ✨
 
   async def save(self, key: CacheKey, value: VariableMap) -> None:
@@ -59,13 +54,22 @@ class OutputCache:
     """
     output = self._get_path_for_key(key)
     tmp_output = output.with_suffix(f"{output.suffix}.tmp")
+    # ✨ create cache dir if it doesn't exist
+    await asyncio.to_thread(os.makedirs, self._base_dir, exist_ok=True)
+    # ✨
+    # ✨ use json to write both `key` and `value` to tmp_output
+    class PathEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, pathlib.Path):
+                return str(obj)
+            return json.JSONEncoder.default(self, obj)
 
-    # ✨ use pickle to write both `key` and `value` to tmp_output
-    def _do_pickle_dump() -> None:
-      with open(tmp_output, "wb") as f:
-        pickle.dump((key, value), f)
+    def _do_json_dump() -> None:
+      with open(tmp_output, "w") as f:
+        json_data = {"key": key._asdict(), "value": value}
+        json.dump(json_data, f, cls=PathEncoder, indent=2)
 
-    await asyncio.to_thread(_do_pickle_dump)
+    await asyncio.to_thread(_do_json_dump)
     # ✨
     # ✨ rename tmp_output to output
     await asyncio.to_thread(os.rename, tmp_output, output)
@@ -83,13 +87,13 @@ class OutputCache:
     filepath = self._get_path_for_key(key)
     if not filepath.exists():
       return None
-    # ✨ use pickle to load `key` and `value`
-    def _do_pickle_load() -> VariableMap:
-      with open(filepath, "rb") as f:
-        _, value = pickle.load(f)
-      return VariableMap(value)
+    # ✨ use json to load data and return value
+    def _do_json_load() -> VariableMap:
+      with open(filepath, "r") as f:
+        json_data = json.load(f)
+      return VariableMap(json_data["value"])
 
-    return await asyncio.to_thread(_do_pickle_load)
+    return await asyncio.to_thread(_do_json_load)
     # ✨
 
 
