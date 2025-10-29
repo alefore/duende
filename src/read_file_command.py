@@ -2,7 +2,7 @@ import aiofiles
 import logging
 import pathlib
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValueInt
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
 from file_access_policy import FileAccessPolicy
 
 
@@ -20,6 +20,7 @@ class ReadFileCommand(AgentCommand):
         name="read_file",
         description="Outputs the contents of a file. It can optionally read specific lines.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=VariableName("path"),
                 arg_type=ArgumentContentType.PATH_INPUT,
