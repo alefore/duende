@@ -1,5 +1,7 @@
 """Supporting logic for DM-related workflows.md."""
 
+# Suggested validator: MYPYPATH=~/coding-agent/src mypy $DMPATH
+
 import aiofiles
 import asyncio
 import collections
@@ -75,6 +77,44 @@ class MarkerName:
     {{🦔 Name "  foo \n\n   \n   bar  " is turned into "foo bar".}}
     """
     raise NotImplementedError()  # {{🍄 MarkerName fix name}}
+
+
+class ExpandedMarker(NamedTuple):
+  """Contains the position in a file of an expanded DM marker.
+
+  The marker is a block of consecutive lines starting with a line containing
+  only whitespace and the comment "✨ {name}" and ending in the first line
+  (after the start) containing only whitespace and the comment "✨". The format
+  of the command depends on the programming language of the file, determined by
+  its file extension. (e.g., "  # ✨ foo  " is a valid start for a marker with
+  name "foo" in a file that ends in `.py`). """
+
+  name: str
+  """Name of the marker (does not include the "✨" character)."""
+
+  start_index: int
+  """Index in the file of the line with the start comment ("# ✨ foo")."""
+
+  end_index: int
+  """Index in the file of the line with the end comment ("# ✨")."""
+
+
+class RepeatedExpandedMarkersError(ValueError):
+  """Two expanded markers with identical names were found."""
+
+
+def get_expanded_markers(path: pathlib.Path) -> list[ExpandedMarker]:
+  """Returns the expanded markers found in `path` in appearance order.
+
+  {{🦔 Given an empty file, returns an empty list.}}
+  {{🦔 Given an file with four different markers, returns a list with four
+       elements. The outputs match the inputs (indices and names are correct,
+       and the output matches the order in the input).}}
+  {{🦔 Given a file with two different markers each ocurring twice, raises
+       `RepeatedExpandedMarkersError`. The exception string mentions all
+       repeated markers.}}
+  """
+  raise NotImplementedError()  # {{🍄 get expanded markers}}
 
 
 class MarkersOverlapError(ValueError):
