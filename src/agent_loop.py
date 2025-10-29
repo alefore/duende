@@ -6,7 +6,7 @@ from conversation_state import ConversationState
 from typing import cast, Generator, Tuple, Union
 
 from validation import ValidationManager
-from agent_command import CommandInput, CommandOutput
+from agent_command import CommandInput, CommandOutput, VariableMap
 from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
 from confirmation import ConfirmationState
 from conversational_ai import ConversationalAI
@@ -119,7 +119,7 @@ class AgentLoop(BaseAgentLoop):
   def set_next_message(self, message: Message) -> None:
     self.next_message = message
 
-  async def run(self) -> None:
+  async def run(self) -> VariableMap:
     logging.info("Starting AgentLoop run method...")
     next_message: Message | None = self.next_message
     self.next_message = None
@@ -131,6 +131,12 @@ class AgentLoop(BaseAgentLoop):
       next_message = await self._process_ai_response(
           await self.ai_conversation.SendMessage(next_message))
     await self.conversation.SetState(ConversationState.DONE)
+
+    for message in reversed(self.conversation.GetMessagesList()):
+      for section in reversed(message.GetContentSections()):
+        if section.command_output and section.command_output.task_done:
+          return section.command_output.output_variables
+    return VariableMap({})
 
   async def _get_human_guidance(self, prompt: str, summary: str,
                                 content_prefix: str,

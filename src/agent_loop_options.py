@@ -1,12 +1,13 @@
 import abc
 from typing import Pattern, NamedTuple
 
+from agent_command import VariableMap
 from command_registry import CommandRegistry
 from confirmation import ConfirmationState
 from conversation import Conversation, ConversationFactory
-from message import Message
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
+from message import Message
 from validation import ValidationManager
 
 
@@ -26,7 +27,7 @@ class AgentLoopOptions(NamedTuple):
 class BaseAgentLoop(abc.ABC):
 
   @abc.abstractmethod
-  async def run(self) -> None:
+  async def run(self) -> VariableMap:
     pass
 
 
