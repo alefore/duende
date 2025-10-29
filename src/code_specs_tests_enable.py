@@ -16,6 +16,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
+from ask_command import AskCommand
 from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
 from code_specs_commands import ListDuendeMarkerImplementationCommand, UpdateDuendeMarkerImplementationCommand, ReadDuendeImplementationMarkerCommand
 from conversation import Conversation, ConversationId, ConversationFactory
@@ -64,6 +65,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 Returns an empty list on a non-empty file that contains valid python
          code but no tests.}}
     """
+
     # ✨ list tests
     cmd = [PYTEST_BINARY, "--collect-only", "--quiet", str(input)]
     proc = await asyncio.create_subprocess_exec(
@@ -191,146 +193,6 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
       return f"Tests failed with exit code {proc.returncode}:\n{output}"
     # ✨
 
-  async def _find_relevant_paths(
-      self, input: pathlib.Path,
-      tests: list[TestName]) -> dict[TestName, set[pathlib.Path]]:
-    """Finds all relevant paths for all tests.
-
-    {{🦔 Calls `find_relevant_paths_for_test` exactly once for value in
-         `tests`.}}
-    {{🦔 Calls to `find_relevant_paths_for_test` happen concurrently.}}
-    {{🦔 The output keys are the same as the `tests` input.}}
-    {{🦔 The output values correspond to the outputs of
-         `_find_relevant_paths_for_test` for each key (test).}}
-    """
-    # ✨ find relevant paths loop
-    tasks = []
-    for test in tests:
-      tasks.append(self._find_relevant_paths_for_test(input, test))
-
-    results = await asyncio.gather(*tasks)
-
-    # Combine tests and their corresponding relevant paths into a dictionary
-    relevant_paths_map = {}
-    for test, paths in zip(tests, results):
-      relevant_paths_map[test] = paths
-
-    return relevant_paths_map
-    # ✨
-
-  async def _find_relevant_paths_for_test(self, input: pathlib.Path,
-                                          test: TestName) -> set[pathlib.Path]:
-    """Finds all relevant paths to validate a test's implementation.
-
-    Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
-    `prepare_initial_message`. The agent is focused exclusively on `test`,
-    with the goal of identifying the best value for `relevant_paths_variable`.
-
-    {{🦔 The only done command argument given to `prepare_command_registry` is
-         `relevant_paths_variable`.}}
-    """
-
-    async def done_validate(inputs: VariableMap) -> ValidationResult:
-      """Verifies that all inputs[relevant_paths_variable] values are readable.
-
-      {{🦔 If no files are given, validation fails, with a message that at least
-           one relevant file should be given.}}
-      {{🦔 All files must be readable (both by the OS as well as allowed by the
-           `file_access_policy`). If one isn't, validation fails.}}
-      {{🦔 If all files are readable (both by the OS and `file_access_policy`),
-           validation succeeds.}}
-      """
-      # ✨ relevant paths validator
-      relevant_paths_raw = inputs.get(relevant_paths_variable)
-      if not relevant_paths_raw:
-        return ValidationResult(
-            success=False,
-            output="",
-            error=f"At least one relevant file path must be provided for "
-            f"'{relevant_paths_variable}'.")
-
-      # Ensure relevant_paths_raw is treated as a string, as per expected input format
-      relevant_paths_str = str(relevant_paths_raw)
-      paths = [
-          pathlib.Path(p.strip())
-          for p in relevant_paths_str.split(',')
-          if p.strip()
-      ]
-
-      if not paths:
-        return ValidationResult(
-            success=False,
-            output="",
-            error=f"At least one relevant file path must be provided for "
-            f"'{relevant_paths_variable}'.")
-
-      file_access_policy = self._options.agent_loop_options.file_access_policy
-      for path in paths:
-        if not path.is_file():
-          return ValidationResult(
-              success=False,
-              output="",
-              error=f"File '{path}' does not exist or is not a file.")
-        if not os.access(path, os.R_OK):
-          return ValidationResult(
-              success=False,
-              output="",
-              error=f"File '{path}' is not readable by the operating system.")
-        if not file_access_policy.allow_access(str(path)):
-          return ValidationResult(
-              success=False,
-              output="",
-              error=f"File '{path}' is not allowed by the file access policy.")
-
-      return ValidationResult(
-          success=True, output="Validation successful.", error="")
-      # ✨
-
-    start_message_content = (
-        f"GOAL: identify local file paths that are relevant "
-        f"to understand the test \"{test}\", "
-        f"including the implementation of the underlying logic under test. "
-        f"The test is defined in file {input} "
-        f"(likely among many other tests that you should ignore)."
-        f"\n"
-        f"These relevant paths should be given to the "
-        f"`{relevant_paths_variable}` argument of the `done` command."
-        f"\n"
-        f"Example: `done(relevant_paths=\"src/foo.py,src/bar.cc\")"
-        f"\n"
-        f"Feel free to use `read_file`, `list_files` and `search_file` "
-        f"to explore the codebase.")
-    # ✨ find relevant paths
-    done_command_arguments = [
-        Argument(
-            name=relevant_paths_variable,
-            arg_type=ArgumentContentType.STRING,
-            description="Comma-separated list of relevant file paths.")
-    ]
-    command_registry = await prepare_command_registry(
-        done_command_arguments=done_command_arguments,
-        done_validator_callback=done_validate,
-        file_access_policy=self._options.agent_loop_options.file_access_policy)
-
-    initial_message = await prepare_initial_message(
-        start_message_content=start_message_content, relevant_files=set())
-
-    output_variables = await run_agent_loop(
-        workflow_options=self._options,
-        conversation_name=f"find_relevant_paths_for_test_{test}",
-        start_message=initial_message,
-        command_registry=command_registry)
-
-    relevant_paths_raw = output_variables[relevant_paths_variable]
-    relevant_paths_str = str(relevant_paths_raw)
-    paths = {
-        pathlib.Path(p.strip())
-        for p in relevant_paths_str.split(',')
-        if p.strip()
-    }
-    return paths
-    # ✨
-
   async def _make_tests_pass(self, input: pathlib.Path,
                              tests: list[TestName]) -> None:
     """Runs an agent to fix any failing  tests (from `tests`).
@@ -346,13 +208,13 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 The command registry given to the agent includes `WriteFileCommand`.}}
     {{🦔 The command registry given to the agent includes
          `ListDuendeMarkerImplementationCommand`.}}
-    {{🦔 The command registry given to the agent includes
-         `ListDuendeMarkerImplementationCommand`,
-         `UpdateDuendeMarkerImplementationCommand`, and
-         `ReadDuendeImplementationMarkerCommand`.}}
-    {{🦔 The name of the conversation does *not* include the test names, because
-         that's too verbose. Instead, it includes the number of tests in
-         scope (i.e., `len(tests)`).}}
+    {{🦔 The command registry given to the agent includes:
+         * `ListDuendeMarkerImplementationCommand`
+         * `UpdateDuendeMarkerImplementationCommand`
+         * `ReadDuendeImplementationMarkerCommand`
+         * `AskCommand`}}
+    {{🦔 The name of the conversation includes `len(tests)` followed by the last
+         value in `tests`.}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -387,8 +249,10 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         "Calling `done` will cause the tests in scope to be executed "
         "and will confirm that you've successfully fixed the problem.\n"
         "We may not be executing all tests but only a subset. That's OK. "
-        "You should focus only on fixing the explicit failures.\n")
-
+        "You should focus only on fixing the explicit failures.\n"
+        "Avoid loading too much information: "
+        "prefer using `ask` to fork other conversations "
+        "that figure out the answer to specific questions.")
     # ✨ make tests pass
     failure_info = await self._run_tests(tests)
     if not failure_info:
@@ -430,13 +294,24 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         validation_manager=self._options.agent_loop_options.validation_manager)
     command_registry.Register(update_duende_marker_implementation_command)
 
+    # Register AskCommand to allow the agent to fork conversations.
+    ask_command = AskCommand(
+        conversation_factory=self._options.conversation_factory,
+        conversational_ai=self._options.agent_loop_options.conversational_ai,
+        confirmation_state=self._options.agent_loop_options.confirmation_state,
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+        command_registry=command_registry,
+        validation_manager=self._options.agent_loop_options.validation_manager,
+        confirm_regex=self._options.agent_loop_options.confirm_regex)
+    command_registry.Register(ask_command)
+
     # Prepare the initial message for the agent loop, including relevant files.
     # The 'input' here is the path to the test file.
     initial_message = await prepare_initial_message(
-        start_message_content=start_message_content, relevant_files=set())
+        start_message_content=start_message_content, relevant_files={input})
 
     # Construct the conversation name based on the number of tests.
-    conversation_name = f"make_tests_pass_{len(tests)}"
+    conversation_name = f"make_tests_pass_{len(tests)}_{tests[-1]}"
 
     # Run the agent loop.
     await run_agent_loop(
