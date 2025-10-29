@@ -16,7 +16,7 @@ from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
-from code_specs_commands import ListDuendeMarkerImplementationCommand, UpdateDuendeMarkerImplementationCommand
+from code_specs_commands import ListDuendeMarkerImplementationCommand, UpdateDuendeMarkerImplementationCommand, ReadDuendeImplementationMarkerCommand
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -182,7 +182,9 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 The command registry given to the agent includes
          `ListDuendeMarkerImplementationCommand`.}}
     {{🦔 The command registry given to the agent includes
-         `UpdateDuendeMarkerImplementationCommand`.}}
+         `ListDuendeMarkerImplementationCommand`,
+         `UpdateDuendeMarkerImplementationCommand`, and
+         `ReadDuendeImplementationMarkerCommand`.}}
     {{🦔 The name of the conversation does *not* include the test names, because
          that's too verbose. Instead, it includes the number of tests in
          scope (i.e., `len(tests)`).}}
