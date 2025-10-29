@@ -180,7 +180,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
     # Enable caching in the options given to `run_agent_loop`:
     options = self._options._replace(
         agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
-            'code_specs_workflow', self._output_cache,
+            f"code_specs_workflow:{path}", self._output_cache,
             self._options.agent_loop_factory))
     raise NotImplementedError()  # {{🍄 find relevant paths}}
 
