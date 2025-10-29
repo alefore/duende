@@ -167,7 +167,8 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         f"to explore the codebase.")
     raise NotImplementedError()  # {{🍄 find relevant paths}}
 
-  async def _make_tests_pass(self, input, tests: list[TestName]) -> None:
+  async def _make_tests_pass(self, input: pathlib.Path,
+                             tests: list[TestName]) -> None:
     """Runs an agent to fix any failing  tests (from `tests`).
 
     Calls `run_agent_loop`.
