@@ -22,6 +22,23 @@ class Message:
         ContentSection] = content_sections if content_sections is not None else []
     self.creation_time = creation_time or datetime.now(timezone.utc)
 
+  def __str__(self) -> str:
+    content_summary = []
+    for section in self._content_sections:
+      if section.summary:
+        content_summary.append(section.summary)
+      elif section.content:
+        content_summary.append(section.content[:50] +
+                               "..." if len(section.content) >
+                               50 else section.content)
+
+    return f"Message(role='{self.role}', content='{' '.join(content_summary)}')"
+
+  def __repr__(self) -> str:
+    return (f"Message(role='{self.role}', "
+            f"content_sections={self._content_sections!r}, "
+            f"creation_time={self.creation_time.isoformat()!r})")
+
   def Serialize(self) -> dict[str, Any]:
     serialized_sections = []
     for section in self._content_sections:
