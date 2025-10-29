@@ -27,8 +27,7 @@ class OutputCache:
     """Generates a stable, unique filepath for a given cache key.
 
     We create a hash from the key to get a safe and unique filename.
-    Example: ('workflow_x', 'conversation_x', 'extra_x')
-      -> '<cache_dir>/<sha256_hash>.pkl'
+    Example: ('workflow_x', 'conversation_x') -> '<cache_dir>/<sha256_hash>.pkl'
 
     The hash is a function of all parameters in `key`.
 
