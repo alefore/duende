@@ -18,12 +18,13 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
 from list_files_command import ListFilesCommand
 from message import Message, ContentSection
+import output_cache
 from read_file_command import ReadFileCommand
 from search_file_command import SearchFileCommand
 from validation import ValidationResult
@@ -41,15 +42,12 @@ validator_variable = VariableName('validator')
 # for constraints on allowed values.
 implementation_variable = VariableName('implementation')
 
-# Value is a comma-separated list of local files that someone implementing a DM
-# marker may want to read.
-relevant_paths_variable = VariableName('relevant_paths')
-
 
 class CodeSpecsWorkflow(AgentWorkflow):
 
   def __init__(self, options: AgentWorkflowOptions) -> None:
     self._options = options
+    self._output_cache = output_cache.OutputCache(output_cache.DEFAULT_PATH)
 
   async def run(self) -> None:
     input = await self._get_initial_parameters()
@@ -65,6 +63,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 The done command arguments given to `prepare_command_registry` are
          `dm_path_variable` and `validator_variable`.}}
+    {{🦔 Does *not* enable caching of conversations (through output_cache).}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -136,14 +135,25 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "If the user mentions a file that doesn't exist, "
         "try to look for likely typos in their input. "
         "Try also to list files in the directory "
-        "to see if you can guess what the user may have meant."
+        "to see if you can guess what the user may have meant. "
+        "Your goal is to figure out which file the user means "
+        "even if the user is sloppy or lazy "
+        "(maybe he is too busy; "
+        "or is typing on a phone with broken autocomplete). "
+        "Try to save the user time."
+        "\n"
+        "Once the user has mentioned a file, "
+        "read it and try to see if the file suggests "
+        "what to use as the validator for its own expansion, "
+        "typically near the top of the file."
         "\n"
         "If the dm_path is a Python file, "
         "suggest that the validator could be `mypy` "
         "(with an appropriate MYPATH=\"…\" value) "
         "or `python3` (with an appropriate PYTHONPATH=\"…\" value)."
         "\n"
-        "Once the user has given you appropriate values, "
+        "Once the user has given you appropriate values "
+        "(or you have inferred them), "
         "your goal is achieved and you should run `done`.")
     # ✨ initial parameters
     registry = await prepare_command_registry(
@@ -255,6 +265,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `relevant_paths_variable`.}}
+    {{🦔 Enables caching of conversations: if two separate instances of
+         CodeSpecsWorkflow have this method called with the same inputs,
+         the 2nd call reuses the outputs from the first.}}
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
@@ -333,6 +346,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"Feel free to use `read_file`, `list_files` and `search_file` "
         f"to explore the codebase.")
 
+    # Enable caching in the options given to `run_agent_loop`:
+    options = self._options._replace(
+        agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
+            'code_specs_workflow', self._output_cache,
+            self._options.agent_loop_factory))
     # ✨ find relevant paths
     registry = await prepare_command_registry(
         done_command_arguments=[
@@ -354,7 +372,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
     )
 
     output_variables = await run_agent_loop(
-        workflow_options=self._options,
+        workflow_options=options,
         conversation_name=f"find_relevant_paths_for_{marker.name}",
         start_message=start_message,
         command_registry=registry,
@@ -427,6 +445,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
          message (as if it had been included in `relevant_paths`.}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
+    {{🦔 Does *not* enables caching of conversations (through _output_cache).}}
 
     Arguments:
       marker: The marker to implement.
@@ -501,7 +520,6 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"(in ways that allow code simplifications).")
 
     # ✨ implement single marker
-    # Prepare the command registry for the agent loop to get the implementation.
     registry = await prepare_command_registry(
         done_command_arguments=[
             Argument(
@@ -515,23 +533,20 @@ class CodeSpecsWorkflow(AgentWorkflow):
         file_access_policy=self._options.agent_loop_options.file_access_policy,
     )
 
-    # Add output_path.old to relevant_files if it exists.
     all_relevant_files = set(relevant_paths)
     all_relevant_files.add(output_path)
     old_output_path = output_path.with_suffix('.old')
     if old_output_path.exists():
       all_relevant_files.add(old_output_path)
       start_message_content += (
-          "\n" +
+          '\n' +
           additional_start_message_content_if_old_implementation_available)
 
-    # Prepare the initial message for the agent loop.
     start_message = await prepare_initial_message(
         start_message_content=start_message_content,
         relevant_files=all_relevant_files,
     )
 
-    # Run the agent loop to obtain the implementation from the AI.
     output_variables = await run_agent_loop(
         workflow_options=self._options,
         conversation_name=f"implement_marker_{marker.name}",
@@ -545,7 +560,6 @@ class CodeSpecsWorkflow(AgentWorkflow):
       raise ValueError(
           f"Missing {implementation_variable} in agent loop output.")
 
-    # Create and return a MarkerImplementation object.
     return MarkerImplementation(
         name=marker,
         value=str(implementation_str_val),
