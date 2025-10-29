@@ -5,7 +5,7 @@ import difflib
 import aiofiles
 import asyncio
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableMap, VariableName, VariableValue, VariableValueStr
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValue, VariableValueStr
 from validation import ValidationManager
 from selection_manager import SelectionManager
 
@@ -32,11 +32,7 @@ class WriteFileCommand(AgentCommand):
             name=VariableName("path"),
             arg_type=ArgumentContentType.PATH_OUTPUT,
             description="The file path to write the content to."),
-        Argument(
-            name=VariableName("reason"),
-            arg_type=ArgumentContentType.STRING,
-            description="Brief (one or two sentences) explanation of why you are issuing this command (what you want to accomplish).",
-            required=False)
+        REASON_VARIABLE
     ]
 
   def Syntax(self) -> CommandSyntax:
