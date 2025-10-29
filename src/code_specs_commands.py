@@ -76,8 +76,16 @@ class ListDuendeMarkerImplementationCommand(AgentCommand):
     assert isinstance(path, pathlib.Path)
     try:
       blocks = get_expanded_markers(path)
+    except FileNotFoundError as e:
+      # ✨ list: return error output exception file not found
+      return CommandOutput(
+          command_name=self.Name(),
+          output="",
+          errors=f"File not found: {path}",
+          summary=f"Failed to list markers in {path}: file not found.")
+      # ✨
     except RepeatedExpandedMarkersError as e:
-      # ✨ return error output exception repeated markers
+      # ✨ list: return error output exception repeated markers
       return CommandOutput(
           command_name=self.Name(),
           output="",
@@ -102,6 +110,91 @@ class ListDuendeMarkerImplementationCommand(AgentCommand):
           output="\n".join(output_lines),
           errors="",
           summary=f"Listed {len(blocks)} markers in '{path}'.")
+    # ✨
+
+
+class ReadDuendeImplementationMarkerCommand(AgentCommand):
+
+  def __init__(self,
+               file_access_policy: FileAccessPolicy,
+               validation_manager: ValidationManager | None = None):
+    self._file_access_policy = file_access_policy
+    self._validation_manager = validation_manager
+
+  def Name(self) -> str:
+    return "read_duende_implementation_marker"
+
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name=VariableName("read_duende_implementation_marker"),
+        description="Reads a Duende implementation marker from a file.",
+        arguments=[
+            Argument(
+                name=_PATH_VARIABLE,
+                arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
+                description="The path of the file to read from."),
+            Argument(
+                name=_MARKER_NAME_VARIABLE,
+                arg_type=ArgumentContentType.STRING,
+                description="The name of the marker to read."),
+        ],
+        output_description="The entire contents of the marker.")
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    """Returns the contents of a given marker.
+
+    {{🦔 If the marker is not found in the file, returns an error. The error
+         includes the explicit list of all markers found in the file (or an
+         explicit explanation if the file contains no markers.}}
+    """
+    path = inputs[_PATH_VARIABLE]
+    assert isinstance(path, pathlib.Path)
+    marker_name = inputs[_MARKER_NAME_VARIABLE]
+    assert isinstance(marker_name, str)
+    try:
+      blocks = get_expanded_markers(path)
+    except FileNotFoundError as e:
+      # ✨ read: return error output exception file not found
+      return CommandOutput(
+          command_name=self.Name(),
+          output="",
+          errors=f"File not found: {path}",
+          summary=f"Failed to read marker '{marker_name}' in {path}: file not found.")
+      # ✨
+    except RepeatedExpandedMarkersError as e:
+      # ✨ read: return error output exception repeated markers
+      return CommandOutput(
+          command_name=self.Name(),
+          output="",
+          errors=f"Multiple markers found in {path}: {str(e)}",
+          summary=f"Failed to read marker '{marker_name}' in {path}: multiple markers found.")
+      # ✨
+    block = [b for b in blocks if b.name == marker_name]
+    if not block:
+      # ✨ read: raise if block is empty
+      if not block:
+        if not blocks:
+          return CommandOutput(
+              command_name=self.Name(),
+              output="",
+              errors=f"No Duende implementation markers found in '{path}'.",
+              summary=f"Failed to read marker '{marker_name}' in '{path}': no markers found.")
+        else:
+          available_markers = [b.name for b in blocks]
+          return CommandOutput(
+              command_name=self.Name(),
+              output="",
+              errors=f"Marker '{marker_name}' not found in '{path}'. Available markers: {', '.join(available_markers)}",
+              summary=f"Failed to read marker '{marker_name}' in '{path}': marker not found.")
+      # ✨
+    assert len(block) == 1
+    # ✨ read: return contents from block[0]
+    # The block object already contains the content string.
+    return CommandOutput(
+        command_name=self.Name(),
+        output=block[0].contents,
+        errors="",
+        summary=f"Successfully read marker '{marker_name}' from '{path}'.")
     # ✨
 
 
