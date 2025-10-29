@@ -130,6 +130,7 @@ def get_expanded_markers(path: pathlib.Path) -> list[ExpandedMarker]:
   """Returns the expanded markers found in `path` in appearance order.
 
   {{🦔 Given an empty file, returns an empty list.}}
+  {{🦔 Raises FileNotFoundError for a non-existent file}}
   {{🦔 Given an file with four different markers, returns a list with four
        elements. The outputs match the inputs: fields in the ExpandedMarker
        entries are correct, and the output order matches the input.}}
@@ -153,7 +154,7 @@ async def get_markers(char: MarkerChar,
 
   {{🦔 Reads `path` asynchronously}}
   {{🦔 Returns {} for an empty file}}
-  {{🦔 Raises FileNotFound for a non-existent file}}
+  {{🦔 Raises FileNotFoundError for a non-existent file}}
   {{🦔 Returns {} for a file with 5 lines but no markers}}
   {{🦔 Correctly returns a marker in a file with just 1 marker}}
   {{🦔 If a marker starts in the first line in the file, its value in the output
@@ -209,7 +210,7 @@ class MarkerImplementation:
     {{🦔 The value is stored literally, without adding any leading spaces.}}
     {{🦔 Raises ValueError if the marker doesn't occur in `path`}}
     {{🦔 Raises ValueError if the marker occurs twice in `path`}}
-    {{🦔 Raises FileNotFound if the file does not exist}}
+    {{🦔 Raises FileNotFoundError for a non-existent file.}}
     {{🦔 Raises ValueError if `path` contains a ".dm." part}}
     {{🦔 The value written (the implementation) is reindented according to the
          rules of `_value_indent`; the number of desired spaces is equal to the
