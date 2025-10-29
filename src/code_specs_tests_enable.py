@@ -17,6 +17,7 @@ from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
+from code_specs_commands import UpdateDuendeMarkerImplementationCommand
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -400,6 +401,10 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         selection_manager=self._options.selection_manager,
         hard_coded_path=None)
     command_registry.Register(write_file_command)
+    update_duende_marker_implementation_command = UpdateDuendeMarkerImplementationCommand(
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+        validation_manager=self._options.agent_loop_options.validation_manager)
+    command_registry.Register(update_duende_marker_implementation_command)
 
     # Prepare the initial message for the agent loop, including relevant files.
     # The 'input' here is the path to the test file.
