@@ -787,16 +787,5 @@ async def run_agent_loop(workflow_options: AgentWorkflowOptions,
 
   agent_loop = workflow_options.agent_loop_factory.new(agent_loop_options)
 
-  await agent_loop.run()
-
-  # Extract the VariableMap from the final done command in the conversation.
-  final_output_variables: VariableMap = VariableMap({})
-  for message in reversed(conversation.GetMessagesList()):
-    for section in reversed(message.GetContentSections()):
-      if section.command_output and section.command_output.task_done:
-        final_output_variables = section.command_output.output_variables
-        break
-    if final_output_variables:
-      break
-  return final_output_variables
+  return await agent_loop.run()
   # ✨
