@@ -13,7 +13,7 @@ from code_specs import comment_string, FileExtension, get_markers, MarkerChar, M
 from validation import ValidationManager
 
 
-class UpdateDuendeMarkerImplementation(AgentCommand):
+class UpdateDuendeMarkerImplementationCommand(AgentCommand):
 
   def __init__(self,
                file_access_policy: FileAccessPolicy,
@@ -40,8 +40,11 @@ class UpdateDuendeMarkerImplementation(AgentCommand):
             Argument(
                 name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
-                description="The new content for the marker implementation block."
-            )
+                description=(
+                    "The new content for the marker implementation block. "
+                    "This will replace all lines between the "
+                    "\"✨ {marker_name}\" comment "
+                    "and the following \"✨\" comment (in `path`)."))
         ],
         output_description="A string describing the result of the operation.")
 
