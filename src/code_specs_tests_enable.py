@@ -17,7 +17,7 @@ from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
-from code_specs_commands import UpdateDuendeMarkerImplementationCommand
+from code_specs_commands import ListDuendeMarkerImplementationCommand, UpdateDuendeMarkerImplementationCommand, ReadDuendeImplementationMarkerCommand
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -343,6 +343,12 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 If an agent is run, it receives `input` in `relevant_files`.}}
     {{🦔 No `done` command argument is given to `prepare_command_registry`.}}
     {{🦔 The command registry given to the agent includes `WriteFileCommand`.}}
+    {{🦔 The command registry given to the agent includes
+         `ListDuendeMarkerImplementationCommand`.}}
+    {{🦔 The command registry given to the agent includes
+         `ListDuendeMarkerImplementationCommand`,
+         `UpdateDuendeMarkerImplementationCommand`, and
+         `ReadDuendeImplementationMarkerCommand`.}}
     {{🦔 The name of the conversation does *not* include the test names, because
          that's too verbose. Instead, it includes the number of tests in
          scope (i.e., `len(tests)`).}}
@@ -373,10 +379,15 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         "or in the implementation. "
         "Give an explanation in English to support your conclusion. "
         "Then adjust the root cause of the problem and call `done`.\n"
+        "As much as possible, "
+        "prefer using `update_duende_marker_implementation` "
+        "in order to update blocks "
+        "(rather than writing entire files).\n"
         "Calling `done` will cause the tests in scope to be executed "
         "and will confirm that you've successfully fixed the problem.\n"
         "We may not be executing all tests but only a subset. That's OK. "
         "You should focus only on fixing the explicit failures.\n")
+
     # ✨ make tests pass
     failure_info = await self._run_tests(tests)
     if not failure_info:
@@ -401,6 +412,18 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         selection_manager=self._options.selection_manager,
         hard_coded_path=None)
     command_registry.Register(write_file_command)
+
+    # Register Duende marker commands.
+    list_duende_marker_implementation_command = ListDuendeMarkerImplementationCommand(
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+        validation_manager=self._options.agent_loop_options.validation_manager)
+    command_registry.Register(list_duende_marker_implementation_command)
+
+    read_duende_implementation_marker_command = ReadDuendeImplementationMarkerCommand(
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
+        validation_manager=self._options.agent_loop_options.validation_manager)
+    command_registry.Register(read_duende_implementation_marker_command)
+
     update_duende_marker_implementation_command = UpdateDuendeMarkerImplementationCommand(
         file_access_policy=self._options.agent_loop_options.file_access_policy,
         validation_manager=self._options.agent_loop_options.validation_manager)
