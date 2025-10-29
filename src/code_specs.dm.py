@@ -79,6 +79,26 @@ class MarkerName:
     raise NotImplementedError()  # {{🍄 MarkerName fix name}}
 
 
+def reindent_code(code: str, desired_spaces: int) -> str:
+  """Returns a copy of `code` with the desired leading spaces.
+
+    First finds the longest whitespace prefix that all non-empty `code` lines
+    contain and removes it (from all lines). Then prepends to all lines a prefix
+    of the desired length.
+
+    {{🦔 If an input line (from `code`) is empty or only contains whitespace
+         characters, the corresponding line in the output is empty.}}
+    {{🦔 If the whitespace prefixes are removed (from all input and output
+         lines), the output is identical to `code`.}}
+    {{🦔 All lines in the output must begin with `desired_spaces` spaces or
+         be empty.}}
+    {{🦔 The output must contain at least one line where, if `desired_spaces`
+         spaces are removed (from the start), the line starts
+         with a non-space character.}}
+    """
+  raise NotImplementedError()  # {{🍄 reindent code}}
+
+
 class ExpandedMarker(NamedTuple):
   """Contains the position in a file of an expanded DM marker.
 
@@ -98,6 +118,9 @@ class ExpandedMarker(NamedTuple):
   end_index: int
   """Index in the file of the line with the end comment ("# ✨")."""
 
+  contents: str
+  """All the lines in the expanded marker (including start/end comment)."""
+
 
 class RepeatedExpandedMarkersError(ValueError):
   """Two expanded markers with identical names were found."""
@@ -108,8 +131,8 @@ def get_expanded_markers(path: pathlib.Path) -> list[ExpandedMarker]:
 
   {{🦔 Given an empty file, returns an empty list.}}
   {{🦔 Given an file with four different markers, returns a list with four
-       elements. The outputs match the inputs (indices and names are correct,
-       and the output matches the order in the input).}}
+       elements. The outputs match the inputs: fields in the ExpandedMarker
+       entries are correct, and the output order matches the input.}}
   {{🦔 Given a file with two different markers each ocurring twice, raises
        `RepeatedExpandedMarkersError`. The exception string mentions all
        repeated markers.}}
@@ -199,25 +222,6 @@ class MarkerImplementation:
       be updated.
     """
     raise NotImplementedError()  # {{🍄 marker implementation save}}
-
-  def _value_indent(self, desired_spaces: int) -> str:
-    """Returns a copy of `_value` with the desired leading spaces.
-
-    First finds the longest whitespace prefix that all non-empty `_value` lines
-    contain and removes it (from all lines). Then prepends to all lines a prefix
-    of the desired length.
-
-    {{🦔 If an input line (from `_value`) is empty or only contains whitespace
-         characters, the corresponding line in the output is empty.}}
-    {{🦔 If the whitespace prefixes are removed (from all input and output
-         lines), the output is identical to `_value`.}}
-    {{🦔 All lines in the output must begin with `desired_spaces` spaces or
-         be empty.}}
-    {{🦔 The output must contain at least one line where, if `desired_spaces`
-         spaces are removed (from the start), the line starts
-         with a non-space character.}}
-    """
-    raise NotImplementedError()  # {{🍄 marker implementation value indent}}
 
 
 @dataclasses.dataclass(frozen=True)
