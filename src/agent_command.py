@@ -66,6 +66,13 @@ class CommandSyntax(NamedTuple):
   output_description: str | None = None
 
 
+REASON_VARIABLE = Argument(
+    name=VariableName('reason'),
+    arg_type=ArgumentContentType.STRING,
+    description="Explanation of why you are running this function: "
+    "What are you hoping to accomplish through this call?")
+
+
 class AgentCommand(ABC):
 
   @abstractmethod
