@@ -14,7 +14,7 @@ import aiofiles
 
 from agent_command import AgentCommand, Argument, ArgumentContentType, CommandOutput, CommandSyntax, VariableMap, VariableName, VariableValue, VariableValueStr
 from file_access_policy import FileAccessPolicy
-from code_specs import comment_string, ExpandedMarker, FileExtension, get_expanded_markers, get_markers, MarkerChar, MarkerName, MarkersOverlapError, MarkerImplementation, reindent_code
+from code_specs import comment_string, ExpandedMarker, FileExtension, get_expanded_markers, get_markers, MarkerChar, MarkerName, MarkersOverlapError, MarkerImplementation, reindent_code, RepeatedExpandedMarkersError
 from validation import ValidationManager
 
 _PATH_VARIABLE = VariableName("path")
@@ -33,6 +33,38 @@ def _get_file_extension(path: pathlib.Path) -> FileExtension:
 
 class MarkerUpdateError(ValueError):
   pass
+
+
+class ListDuendeMarkerImplementationCommand(AgentCommand):
+
+  def __init__(self,
+               file_access_policy: FileAccessPolicy,
+               validation_manager: ValidationManager | None = None):
+    self._file_access_policy = file_access_policy
+    self._validation_manager = validation_manager
+
+  def Name(self) -> str:
+    return "list_duende_implementation_markers"
+
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name=VariableName("list_duende_implementation_marker"),
+        description="Lists all Duende implementation markers in a file.",
+        arguments=[
+            Argument(
+                name=_PATH_VARIABLE,
+                arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
+                description="The path of the file to list markers from."),
+        ])
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    path = inputs[_PATH_VARIABLE]
+    assert isinstance(path, pathlib.Path)
+    try:
+      blocks = get_expanded_markers(path)
+    except RepeatedExpandedMarkersError as e:
+      raise  # {{🍄 return error output exception repeated markers}}
+    raise NotImplementedError()  # {{🍄 return output listing all blocks}}
 
 
 class UpdateDuendeMarkerImplementationCommand(AgentCommand):
