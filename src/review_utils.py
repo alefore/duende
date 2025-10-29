@@ -16,7 +16,6 @@ from confirmation import ConfirmationState
 from conversation import Conversation, ConversationFactory
 from message import ContentSection, Message
 from file_access_policy import FileAccessPolicy
-import output_cache
 from review_commands import AcceptChange, RejectChange
 from task_command import TaskInformation
 
@@ -108,7 +107,6 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
       commands_registry=review_registry,
       confirmation_state=review_confirmation_state,
       file_access_policy=parent_options.file_access_policy,
-      cache_key=output_cache.CacheKey("review", review_conversation.name(), ''),
       conversational_ai=parent_options.conversational_ai,
       confirm_regex=None,
       skip_implicit_validation=True,

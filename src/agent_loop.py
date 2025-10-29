@@ -140,11 +140,7 @@ class AgentLoop(BaseAgentLoop):
       next_message = await self._process_ai_response(
           await self.ai_conversation.SendMessage(next_message))
     await self.conversation.SetState(ConversationState.DONE)
-
-    output = _extract_output_from_conversation(self.conversation)
-    if self.options.output_cache and self.options.cache_key:
-      await self.options.output_cache.save(self.options.cache_key, output)
-    return output
+    return _extract_output_from_conversation(self.conversation)
 
   async def _get_human_guidance(self, prompt: str, summary: str,
                                 content_prefix: str,

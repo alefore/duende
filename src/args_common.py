@@ -13,7 +13,6 @@ from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentD
 from list_files import list_all_files
 from command_registry import CommandRegistry
 from command_registry_factory import create_command_registry, create_ask_command_registry
-import output_cache
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from workflow_registry import StandardWorkflowFactoryContainer
@@ -275,7 +274,6 @@ async def CreateAgentWorkflowOptions(
         confirmation_state=confirmation_state,
         file_access_policy=file_access_policy,
         conversational_ai=GetConversationalAI(args, registry),
-        cache_key=output_cache.CacheKey('common', conversation.name(), ''),
         confirm_regex=confirm_regex,
         skip_implicit_validation=args.skip_implicit_validation,
         validation_manager=validation_manager,
@@ -307,8 +305,6 @@ async def CreateAgentWorkflowOptions(
             confirmation_state=confirmation_state,
             file_access_policy=file_access_policy,
             conversational_ai=GetConversationalAI(args, registry),
-            cache_key=output_cache.CacheKey('principle_review',
-                                            conversation.name(), ''),
             confirm_regex=confirm_regex,
             skip_implicit_validation=args.skip_implicit_validation,
             validation_manager=validation_manager,
@@ -359,7 +355,6 @@ async def CreateAgentWorkflowOptions(
       confirmation_state=confirmation_state,
       file_access_policy=file_access_policy,
       conversational_ai=GetConversationalAI(args, registry),
-      cache_key=output_cache.CacheKey('common', conversation.name(), args.task),
       confirm_regex=confirm_regex,
       skip_implicit_validation=args.skip_implicit_validation,
       validation_manager=validation_manager,

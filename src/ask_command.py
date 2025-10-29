@@ -10,7 +10,6 @@ from agent_loop import AgentLoop
 from agent_loop_options import AgentLoopOptions
 from message import Message, ContentSection
 from command_registry import CommandRegistry
-import output_cache
 from validation import ValidationManager
 
 
@@ -73,8 +72,6 @@ class AskCommand(AgentCommand):
         confirmation_state=self._confirmation_state,
         file_access_policy=self._file_access_policy,
         conversational_ai=self._conversational_ai,
-        cache_key=output_cache.CacheKey("ask_command", sub_conversation.name(),
-                                        question),
         validation_manager=self._validation_manager,
         confirm_regex=self._confirm_regex,
     )

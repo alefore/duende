@@ -6,13 +6,13 @@ import pickle
 import pathlib
 from typing import NamedTuple
 
+from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
 from agent_command import VariableName, VariableValueInt, VariableValueStr, VariableValue, VariableMap
 
 
 class CacheKey(NamedTuple):
   workflow: str
   conversation: str
-  extra_key: str
 
 
 DEFAULT_PATH = pathlib.Path.home() / ".duende" / "cache"
@@ -91,3 +91,39 @@ class OutputCache:
 
     return await asyncio.to_thread(_do_pickle_load)
     # ✨
+
+
+class CachingDelegatingAgentLoop(BaseAgentLoop):
+
+  def __init__(self, workflow: str, cache: OutputCache, delegate: BaseAgentLoop,
+               options: AgentLoopOptions):
+    self._workflow = workflow
+    self._cache = cache
+    self._delegate = delegate
+    self._options = options
+
+  async def run(self) -> VariableMap:
+    key = CacheKey(self._workflow, self._options.conversation.name())
+    cache_output = await self._cache.load(key)
+    match cache_output:
+      case dict(data):
+        return data
+      case None:
+        output = await self._delegate.run()
+        await self._cache.save(key, output)
+        return output
+    assert f"Invalid data: {cache_output}"
+    return VariableMap({})
+
+
+class CachingDelegatingAgentLoopFactory(BaseAgentLoopFactory):
+
+  def __init__(self, workflow: str, cache: OutputCache,
+               delegate: BaseAgentLoopFactory) -> None:
+    self._workflow = workflow
+    self._cache = cache
+    self._delegate = delegate
+
+  def new(self, options: AgentLoopOptions) -> BaseAgentLoop:
+    return CachingDelegatingAgentLoop(self._workflow, self._cache,
+                                      self._delegate.new(options), options)

@@ -23,6 +23,7 @@ from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
 from list_files_command import ListFilesCommand
 from message import Message, ContentSection
+import output_cache
 from read_file_command import ReadFileCommand
 from search_file_command import SearchFileCommand
 from validation import ValidationResult
@@ -45,6 +46,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   def __init__(self, options: AgentWorkflowOptions) -> None:
     self._options = options
+    self._output_cache = output_cache.OutputCache(output_cache.DEFAULT_PATH)
 
   async def run(self) -> None:
     input = await self._get_initial_parameters()
@@ -60,6 +62,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 The done command arguments given to `prepare_command_registry` are
          `dm_path_variable` and `validator_variable`.}}
+    {{🦔 Does *not* enable caching of conversations (through output_cache).}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -144,6 +147,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `relevant_paths_variable`.}}
+    {{🦔 Enables caching of conversations: if two separate instances of
+         CodeSpecsWorkflow have this method called with the same inputs,
+         the 2nd call reuses the outputs from the first.}}
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
@@ -171,6 +177,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"Feel free to use `read_file`, `list_files` and `search_file` "
         f"to explore the codebase.")
 
+    # Enable caching in the options given to `run_agent_loop`:
+    options = self._options._replace(
+        agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
+            'code_specs_workflow', self._output_cache,
+            self._options.agent_loop_factory))
     raise NotImplementedError()  # {{🍄 find relevant paths}}
 
   async def _implement_file(
@@ -206,6 +217,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
          message (as if it had been included in `relevant_paths`.}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
+    {{🦔 Does *not* enables caching of conversations (through _output_cache).}}
 
     Arguments:
       marker: The marker to implement.
