@@ -331,7 +331,8 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     return paths
     # ✨
 
-  async def _make_tests_pass(self, input, tests: list[TestName]) -> None:
+  async def _make_tests_pass(self, input: pathlib.Path,
+                             tests: list[TestName]) -> None:
     """Runs an agent to fix any failing  tests (from `tests`).
 
     Calls `run_agent_loop`.
@@ -432,7 +433,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     # Prepare the initial message for the agent loop, including relevant files.
     # The 'input' here is the path to the test file.
     initial_message = await prepare_initial_message(
-        start_message_content=start_message_content, relevant_files={input})
+        start_message_content=start_message_content, relevant_files=set())
 
     # Construct the conversation name based on the number of tests.
     conversation_name = f"make_tests_pass_{len(tests)}"
