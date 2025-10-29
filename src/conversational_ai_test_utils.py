@@ -20,8 +20,13 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
     if not self.scripted_responses:
       raise StopIteration(
           "No more scripted responses. "
-          "This probably means the test expected the AgentLoop to stop conversing but the AgentLoop did not."
-      )
+          "This probably means the test expected the AgentLoop "
+          "to stop conversing but the AgentLoop did not. "
+          "That might mean that the last command you added to the conversation "
+          "did not succeed, so the AgentLoop continues to run (as expected). "
+          "Your test may need to add an additional command "
+          "that passes validation in order to cause the AgentLoop "
+          "to terminate successfully.")
 
     response_message = self.scripted_responses.pop(0)
     logging.info(
