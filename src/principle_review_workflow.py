@@ -10,6 +10,7 @@ from conversation import ConversationFactory
 from agent_workflow_options import AgentWorkflowOptions
 from agent_loop import AgentLoop
 from command_registry import CommandRegistry
+import output_cache
 from write_file_command import WriteFileCommand
 from agent_command import AgentCommand, CommandOutput
 
@@ -109,11 +110,12 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
         WriteFileCommand(self._options.agent_loop_options.validation_manager,
                          self._options.selection_manager, input_path))
 
+    conversation = self._options.conversation_factory.New(
+        name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
+        command_registry=command_registry)
     await AgentLoop(
         AgentLoopOptions(
-            conversation=self._options.conversation_factory.New(
-                name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
-                command_registry=command_registry),
+            conversation=conversation,
             start_message=Message(
                 'system',
                 content_sections=([
@@ -132,6 +134,8 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
             .file_access_policy,
             conversational_ai=self._options.agent_loop_options
             .conversational_ai,
+            cache_key=output_cache.CacheKey("principle_review",
+                                            conversation.name(), ''),
             confirm_regex=None,
             skip_implicit_validation=True,
             validation_manager=self._options.agent_loop_options

@@ -16,6 +16,15 @@ from validate_command_input import CommandValidationError, validate_command_inpu
 logging.basicConfig(level=logging.INFO)
 
 
+def _extract_output_from_conversation(
+    conversation: Conversation) -> VariableMap:
+  for message in reversed(conversation.GetMessagesList()):
+    for section in reversed(message.GetContentSections()):
+      if section.command_output and section.command_output.task_done:
+        return section.command_output.output_variables
+  return VariableMap({})
+
+
 class AgentLoop(BaseAgentLoop):
 
   def __init__(self, options: AgentLoopOptions):
@@ -132,11 +141,10 @@ class AgentLoop(BaseAgentLoop):
           await self.ai_conversation.SendMessage(next_message))
     await self.conversation.SetState(ConversationState.DONE)
 
-    for message in reversed(self.conversation.GetMessagesList()):
-      for section in reversed(message.GetContentSections()):
-        if section.command_output and section.command_output.task_done:
-          return section.command_output.output_variables
-    return VariableMap({})
+    output = _extract_output_from_conversation(self.conversation)
+    if self.options.output_cache and self.options.cache_key:
+      await self.options.output_cache.save(self.options.cache_key, output)
+    return output
 
   async def _get_human_guidance(self, prompt: str, summary: str,
                                 content_prefix: str,

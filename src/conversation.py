@@ -92,8 +92,12 @@ class Conversation:
   def GetId(self) -> ConversationId:
     return self._unique_id
 
-  def GetName(self) -> str:
+  def name(self) -> str:
     return self._name
+
+  def GetName(self) -> str:
+    # TODO: Remove this.
+    return self.name()
 
   def GetState(self) -> ConversationState:
     return self._state

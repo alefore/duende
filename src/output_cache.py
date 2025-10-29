@@ -12,6 +12,7 @@ from agent_command import VariableName, VariableValueInt, VariableValueStr, Vari
 class CacheKey(NamedTuple):
   workflow: str
   conversation: str
+  extra_key: str
 
 
 DEFAULT_PATH = pathlib.Path.home() / ".duende" / "cache"
@@ -83,10 +84,10 @@ class OutputCache:
     if not filepath.exists():
       return None
     # ✨ use pickle to load `key` and `value`
-    def _do_pickle_load():
+    def _do_pickle_load() -> VariableMap:
       with open(filepath, "rb") as f:
         _, value = pickle.load(f)
-      return value
+      return VariableMap(value)
 
     return await asyncio.to_thread(_do_pickle_load)
     # ✨

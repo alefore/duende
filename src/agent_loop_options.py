@@ -8,7 +8,7 @@ from conversation import Conversation, ConversationFactory
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
 from message import Message
-from output_cache import OutputCache
+import output_cache as output_cache_module
 from validation import ValidationManager
 
 
@@ -20,7 +20,8 @@ class AgentLoopOptions(NamedTuple):
   confirmation_state: ConfirmationState
   file_access_policy: FileAccessPolicy
   conversational_ai: ConversationalAI
-  output_cache: OutputCache | None = None
+  cache_key: output_cache_module.CacheKey
+  output_cache: output_cache_module.OutputCache | None = None
   confirm_regex: Pattern[str] | None = None
   skip_implicit_validation: bool = False
   validation_manager: ValidationManager | None = None

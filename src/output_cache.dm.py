@@ -11,6 +11,7 @@ from agent_command import VariableName, VariableValueInt, VariableValueStr, Vari
 class CacheKey(NamedTuple):
   workflow: str
   conversation: str
+  extra_key: str
 
 
 DEFAULT_PATH = pathlib.Path.home() / ".duende" / "cache"
@@ -26,11 +27,13 @@ class OutputCache:
     """Generates a stable, unique filepath for a given cache key.
 
     We create a hash from the key to get a safe and unique filename.
-    Example: ('workflow_x', 'conversation_x') -> '<cache_dir>/<sha256_hash>.pkl'
+    Example: ('workflow_x', 'conversation_x', 'extra_x')
+      -> '<cache_dir>/<sha256_hash>.pkl'
 
-    The hash is a function of key.workflow and key.conversation.
+    The hash is a function of all parameters in `key`.
 
     {{🦔 Output is a file directly in `self._base_dir`.}}
+    {{🦔 Changing any of the parameters in `key` results in a different hash.}}
     """
     raise NotImplementedError()  # {{🍄 get path for key}}
 
