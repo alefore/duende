@@ -263,9 +263,10 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
       raise NotImplementedError()  # {{🍄 return error CommandOutput policy}}
 
     try:
+      updated_content = await self._get_updated_content(path, marker_name,
+                                                        content)
       async with aiofiles.open(path, mode='w') as f:
-        await f.write(await self._get_updated_content(path, marker_name,
-                                                      content))
+        await f.write(updated_content)
       if self._validation_manager:
         self._validation_manager.RegisterChange()
       raise NotImplementedError()  # {{🍄 return success CommandOutput}}
