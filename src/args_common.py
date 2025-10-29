@@ -5,8 +5,8 @@ import re
 import sys
 from typing import Any, Callable, NamedTuple, Pattern, Tuple
 
-from agent_loop_options import AgentLoopOptions
 from agent_loop import AgentLoopFactory
+from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
 from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
