@@ -12,7 +12,7 @@ from typing import Any
 
 import aiofiles
 
-from agent_command import AgentCommand, Argument, ArgumentContentType, CommandOutput, CommandSyntax, VariableMap, VariableName, VariableValue, VariableValueStr
+from agent_command import AgentCommand, Argument, ArgumentContentType, CommandOutput, CommandSyntax, REASON_VARIABLE, VariableMap, VariableName, VariableValue, VariableValueStr
 from file_access_policy import FileAccessPolicy
 from code_specs import comment_string, ExpandedMarker, FileExtension, get_expanded_markers, get_markers, MarkerChar, MarkerName, MarkersOverlapError, MarkerImplementation, reindent_code, RepeatedExpandedMarkersError
 from validation import ValidationManager
@@ -51,6 +51,7 @@ class ListDuendeMarkerImplementationCommand(AgentCommand):
         name=VariableName("list_duende_implementation_marker"),
         description="Lists all Duende implementation markers in a file.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=_PATH_VARIABLE,
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
@@ -85,6 +86,7 @@ class ReadDuendeImplementationMarkerCommand(AgentCommand):
         name=VariableName("read_duende_implementation_marker"),
         description="Reads a Duende implementation marker from a file.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=_PATH_VARIABLE,
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
@@ -136,6 +138,7 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
         name=VariableName("update_duende_marker_implementation"),
         description="Updates a Duende marker implementation block in a file.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=_PATH_VARIABLE,
                 arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
@@ -162,6 +165,8 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
     {{🦔 Only reads `path`, does not modify it.}}
     {{🦔 Raises MarkerUpdateError on any invalid condition: marker is not found,
          file can't be read, marker is duplicated in the file.}}
+    {{🦔 If the marker is not found, the `MarkerUpdateError` exception includes
+         a list of all available markers.}}
     {{🦔 `content` may start with the marker-start comment but it doesn't
          need to. Correctly handles both cases (without repeating the
          marker-start comment in the output). Same for the marker-end comment.}}
@@ -172,7 +177,8 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
     except Exception as e:
       raise NotImplementedError()  # {{🍄 raise MarkerUpdateError: read}}
 
-    blocks = [m for m in get_expanded_markers(path) if m.name == marker_name]
+    all_blocks = get_expanded_markers(path)
+    blocks = [m for m in all_blocks if m.name == marker_name]
 
     # {{🍄 raise MarkerUpdateError if blocks is empty}}
     # {{🍄 raise MarkerUpdateError if len(blocks) > 1}}
@@ -216,8 +222,7 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
 
   async def derive_args(self, inputs: VariableMap) -> VariableMap:
     output = VariableMap({})
-    path = inputs[_PATH_VARIABLE]
-    assert isinstance(path, pathlib.Path)
+    path = pathlib.Path(str(inputs[_PATH_VARIABLE]))
     marker_name = inputs[_MARKER_NAME_VARIABLE]
     assert isinstance(marker_name, str)
     content = inputs[_CONTENT_VARIABLE]
