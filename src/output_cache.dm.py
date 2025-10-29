@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import os
-import pickle
+import json
 import pathlib
 from typing import NamedTuple
 
@@ -50,7 +50,7 @@ class OutputCache:
     output = self._get_path_for_key(key)
     tmp_output = output.with_suffix(f"{output.suffix}.tmp")
     # {{🍄 create cache dir if it doesn't exist}}
-    # {{🍄 use pickle to write both `key` and `value` to tmp_output}}
+    # {{🍄 use json to write both `key` and `value` to tmp_output}}
     # {{🍄 rename tmp_output to output}}
 
   async def load(self, key: CacheKey) -> VariableMap | None:
@@ -65,7 +65,7 @@ class OutputCache:
     filepath = self._get_path_for_key(key)
     if not filepath.exists():
       return None
-    raise NotImplementedError()  # {{🍄 use pickle to load `key` and `value`}}
+    raise NotImplementedError()  # {{🍄 use json to load data and return value}}
 
 
 class CachingDelegatingAgentLoop(BaseAgentLoop):
