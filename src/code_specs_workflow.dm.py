@@ -217,7 +217,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
          message (as if it had been included in `relevant_paths`.}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
-    {{🦔 Does *not* enables caching of conversations (through _output_cache).}}
+    {{🦔 Enables caching of conversations: if two separate instances of
+         CodeSpecsWorkflow have this method called for the same output_path and
+         marker, the 2nd call reuses the outputs from the first.}}
 
     Arguments:
       marker: The marker to implement.
@@ -268,6 +270,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"new requirements have been added, "
         f"or requirements have been removed/relaxed "
         f"(in ways that allow code simplifications).")
+
+    # Enable caching in the options given to `run_agent_loop`:
+    options = self._options._replace(
+        agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
+            f"code_specs_workflow:{output_path}", self._output_cache,
+            self._options.agent_loop_factory))
 
     raise NotImplementedError()  # {{🍄 implement single marker}}
 
