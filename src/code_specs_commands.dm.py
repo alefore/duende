@@ -62,9 +62,62 @@ class ListDuendeMarkerImplementationCommand(AgentCommand):
     assert isinstance(path, pathlib.Path)
     try:
       blocks = get_expanded_markers(path)
+    except FileNotFoundError as e:
+      raise  # {{🍄 list: return error output exception file not found}}
     except RepeatedExpandedMarkersError as e:
-      raise  # {{🍄 return error output exception repeated markers}}
+      raise  # {{🍄 list: return error output exception repeated markers}}
     raise NotImplementedError()  # {{🍄 return output listing all blocks}}
+
+
+class ReadDuendeImplementationMarkerCommand(AgentCommand):
+
+  def __init__(self,
+               file_access_policy: FileAccessPolicy,
+               validation_manager: ValidationManager | None = None):
+    self._file_access_policy = file_access_policy
+    self._validation_manager = validation_manager
+
+  def Name(self) -> str:
+    return "read_duende_implementation_marker"
+
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name=VariableName("read_duende_implementation_marker"),
+        description="Reads a Duende implementation marker from a file.",
+        arguments=[
+            Argument(
+                name=_PATH_VARIABLE,
+                arg_type=ArgumentContentType.PATH_INPUT_OUTPUT,
+                description="The path of the file to read from."),
+            Argument(
+                name=_MARKER_NAME_VARIABLE,
+                arg_type=ArgumentContentType.STRING,
+                description="The name of the marker to read."),
+        ],
+        output_description="The entire contents of the marker.")
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    """Returns the contents of a given marker.
+
+    {{🦔 If the marker is not found in the file, returns an error. The error
+         includes the explicit list of all markers found in the file (or an
+         explicit explanation if the file contains no markers.}}
+    """
+    path = inputs[_PATH_VARIABLE]
+    assert isinstance(path, pathlib.Path)
+    marker_name = inputs[_MARKER_NAME_VARIABLE]
+    assert isinstance(marker_name, str)
+    try:
+      blocks = get_expanded_markers(path)
+    except FileNotFoundError as e:
+      raise  # {{🍄 read: return error output exception file not found}}
+    except RepeatedExpandedMarkersError as e:
+      raise  # {{🍄 read: return error output exception repeated markers}}
+    block = [b for b in blocks if b.name == marker_name]
+    if not block:
+      raise NotImplementedError()  # {{🍄 read: raise if block is empty}}
+    assert len(block) == 1
+    raise NotImplementedError()  # {{🍄 read: return contents from block[0]}}
 
 
 class UpdateDuendeMarkerImplementationCommand(AgentCommand):
