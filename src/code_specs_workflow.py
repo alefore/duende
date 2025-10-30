@@ -335,7 +335,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     start_message_content = (
         f"GOAL: identify local file paths that are relevant "
-        f"to replace the line that contains '{{{{{MUSHROOM} {marker}}}}}' "
+        f"to replace the line that contains '{{{{{MUSHROOM} {marker.name}}}}}' "
         f"from \"{path}\" (included below) with valid code."
         f"\n"
         f"These relevant paths should be given to the "
