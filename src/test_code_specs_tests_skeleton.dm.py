@@ -1,5 +1,5 @@
 # DM validator:
-# MYPYPATH=~/coding-agent/src mypy $DMPATH && grep -v mo""ck $DMPATH
+# MYPYPATH=~/coding-agent/src mypy $DMPATH && grep -v mo""ck $DMPATH && ~/local/bin/python3 $DMPATH
 #
 # Mock is NOT allowed in this code. These tests should let all the dependencies
 # of CodeSpecsTestsSkeleton be used directly.
@@ -13,7 +13,7 @@ import tempfile
 from typing import Callable, Awaitable, Any
 import unittest
 
-from agent_command import Argument, AgentCommand, CommandOutput, CommandInput, AgentCommand, VariableMap, VariableName, VariableValue, VariableValueStr
+from agent_command import Argument, AgentCommand, CommandOutput, CommandInput, AgentCommand, ArgumentContentType, VariableMap, VariableName, VariableValue, VariableValueStr
 from agent_loop import AgentLoop, AgentLoopFactory
 from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
 from agent_workflow_options import AgentWorkflowOptions
@@ -65,26 +65,24 @@ def done_message_for_file(path: pathlib.Path) -> Message:
 
   These messages can be given directly to a FakeConversationalAI.
   """
-  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+  raise NotImplementedError()  # {{🍄 done message for file}}
 
 
 async def build_workflow(
     conversation_factory: ConversationFactory,
-    scripted_messages: list[Message]) -> CodeSpecsTestsSkeletonWorkflow:
+    scripted_messages: dict[str,
+                            list[Message]]) -> CodeSpecsTestsSkeletonWorkflow:
   """Sets up a CodeSpecTestsSkeletonWorkflow with fake objects.
 
-  The conversational_ai will be a FakeConversationalAI using a default.dict so
-  that all conversations started on it will have the scripted messages given.
-
-  The workflow will use the factory given.
+  The workflow will use the conversation_factory given.
   """
-  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+  raise NotImplementedError()  # {{🍄 build workflow}}
 
 
 def get_all_messages(
     conversation_factory: ConversationFactory) -> list[Message]:
   """Returns all messages in all conversations started in the factory given."""
-  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+  raise NotImplementedError()  # {{🍄 get all messages}}
 
 
 class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
