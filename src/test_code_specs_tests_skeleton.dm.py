@@ -55,7 +55,43 @@ class TestSelectionManager(SelectionManager):
   pass  # Default implementation is fine for now
 
 
+def write_tmp_file_with_hedgehog_markers() -> pathlib.Path:
+  """Writes a temporary file with valid {{HEDGEHOG property}} markers."""
+  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+
+
+def done_message_for_file(path: pathlib.Path) -> Message:
+  """Returns Message calling `done` with given `path_to_test_variable` value.
+
+  These messages can be given directly to a FakeConversationalAI.
+  """
+  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+
+
+async def build_workflow(
+    conversation_factory: ConversationFactory,
+    scripted_messages: list[Message]) -> CodeSpecsTestsSkeletonWorkflow:
+  """Sets up a CodeSpecTestsSkeletonWorkflow with fake objects.
+
+  The conversational_ai will be a FakeConversationalAI using a default.dict so
+  that all conversations started on it will have the scripted messages given.
+
+  The workflow will use the factory given.
+  """
+  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+
+
+def get_all_messages(
+    conversation_factory: ConversationFactory) -> list[Message]:
+  """Returns all messages in all conversations started in the factory given."""
+  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+
+
 class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
+
+  def setUp(self) -> None:
+    """Sets up convenience private fields for fakes that the tests use."""
+    pass  # {{🍄 setUp}}
 
   async def test_get_initial_parameters_only_path_to_test_variable_argument(
       self) -> None:
