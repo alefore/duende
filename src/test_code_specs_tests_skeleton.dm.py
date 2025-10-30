@@ -1,8 +1,16 @@
 # DM validator:
-# MYPYPATH=~/coding-agent/src mypy $DMPATH && grep -v mo""ck $DMPATH && ~/local/bin/python3 $DMPATH
+# MYPYPATH=~/coding-agent/src mypy $DMPATH && ~/local/bin/python3 $DMPATH
 #
-# Mock is NOT allowed in this code. These tests should let all the dependencies
-# of CodeSpecsTestsSkeleton be used directly.
+# These tests have a few constraints:
+#
+# * Mock is NOT allowed in this code. These tests should let all the
+#   dependencies  of CodeSpecsTestsSkeleton be used directly.
+#
+# * These tests are not allowed to implement BaseAgentLoop directly; instead,
+#   they must always use AgentLoop and AgentLoopFactory.
+#
+# * These tests must NOT subclass AgentLoop nor AgentLoopFactory, nor mock any
+#   of their methods.
 
 import aiofiles
 from collections import defaultdict
@@ -15,7 +23,7 @@ import unittest
 
 from agent_command import Argument, AgentCommand, CommandOutput, CommandInput, AgentCommand, ArgumentContentType, VariableMap, VariableName, VariableValue, VariableValueStr
 from agent_loop import AgentLoop, AgentLoopFactory
-from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
+from agent_loop_options import AgentLoopOptions
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import PathAndValidator, Validator, prepare_command_registry, prepare_initial_message, run_agent_loop, ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
 from code_specs_tests_skeleton import CodeSpecsTestsSkeletonWorkflow, tests_skeleton_variable, MUSHROOM, HEDGEHOG, path_to_test_variable
@@ -41,31 +49,26 @@ class TestConfirmationState(ConfirmationState):
 
   async def RequireConfirmation(self, conversation_id: int,
                                 prompt: str) -> str | None:
-    return "yes"  # Always confirm
+    return None  # Always confirm
 
 
 class TestConfirmationManager(ConfirmationManager):
 
   async def RequireConfirmation(self, conversation_id: ConversationId,
                                 message: str) -> str | None:
-    return "yes"  # Always confirm for tests
+    return None  # Always confirm for tests
 
 
 class TestSelectionManager(SelectionManager):
   pass  # Default implementation is fine for now
 
 
-def write_tmp_file_with_hedgehog_markers() -> pathlib.Path:
-  """Writes a temporary file with valid {{HEDGEHOG property}} markers."""
-  raise NotImplementedError()  # {{🍄 tmp file with markers}}
+def write_valid_tmp_file_with_hedgehog_markers() -> pathlib.Path:
+  """Writes tmp file with valid `"{{" + HEDGEHOG + property + "}}"` markers.
 
-
-def done_message_for_file(path: pathlib.Path) -> Message:
-  """Returns Message calling `done` with given `path_to_test_variable` value.
-
-  These messages can be given directly to a FakeConversationalAI.
+  The file contains two different non-overlapping markers.
   """
-  raise NotImplementedError()  # {{🍄 done message for file}}
+  raise NotImplementedError()  # {{🍄 tmp file with markers}}
 
 
 async def build_workflow(
@@ -79,17 +82,29 @@ async def build_workflow(
   raise NotImplementedError()  # {{🍄 build workflow}}
 
 
-def get_all_messages(
-    conversation_factory: ConversationFactory) -> list[Message]:
-  """Returns all messages in all conversations started in the factory given."""
-  raise NotImplementedError()  # {{🍄 get all messages}}
-
-
 class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
-  def setUp(self) -> None:
-    """Sets up convenience private fields for fakes that the tests use."""
-    pass  # {{🍄 setUp}}
+  def setUp(self):
+    self.conversation_factory = ConversationFactory()
+
+  async def done_message_for_file(self, contents: str) -> Message:
+    """Returns a Message calling `done` with `path_to_test_variable`.
+
+    The contents are written to a temporary file; its path is given to
+    `path_to_test_variable`. Clean-up of the temporary file is scheduled.
+
+    The returned messages can be given directly to a FakeConversationalAI's list
+    of messages.
+    """
+    raise NotImplementedError()  # {{🍄 done message for contents}}
+
+  def filter_content_sections(
+      self, predicate: Callable[[ContentSection],
+                                bool]) -> list[ContentSection]:
+    """Returns any content sections in any messages that match a predicate.
+
+    Extracts the messages from self.conversation_factory."""
+    raise NotImplementedError()  # {{🍄 filter content sections}}
 
   async def test_get_initial_parameters_only_path_to_test_variable_argument(
       self) -> None:
