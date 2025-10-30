@@ -154,7 +154,14 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
                     "The new content for the marker implementation block. "
                     "This will replace all lines between the "
                     "\"✨ {marker_name}\" comment "
-                    "and the following \"✨\" comment (in `path`)."))
+                    "and the following \"✨\" comment (in `path`). "
+                    "The code will be re-indented: "
+                    "(1) we compute the longest whitespace prefix "
+                    "found at the start of all non-empty lines; "
+                    "(2) remove that prefix from all non-empty lines; "
+                    "and (3) reindent all non-empty lines "
+                    "based on the indentation of the marker comment "
+                    "in the source file."))
         ],
         output_description="A string describing the result of the operation.")
 
