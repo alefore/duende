@@ -11,6 +11,13 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
                scripted_responses: list[Message]):
     self.conversation = conversation
     self.scripted_responses = scripted_responses
+    for message in scripted_responses:
+      if message.role != "assistant":
+        raise ValueError(
+            "A test has incorrectly included a message with an unexpected role "
+            "in the scripted responses of a FakeconversationalAIConversation. "
+            "Only responses *from the AI to Duende* should be included, "
+            "not messages *from Duende to the AI*.")
     logging.info(f"Started fake conversation with {len(scripted_responses)=}")
 
   async def SendMessage(self, message: Message) -> Message:
