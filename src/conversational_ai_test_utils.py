@@ -15,8 +15,10 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
       if message.role != "assistant":
         raise ValueError(
             "A test has incorrectly included a message with an unexpected role "
+            f"(role={message.role}) "
             "in the scripted responses of a FakeconversationalAIConversation. "
-            "Only responses *from the AI to Duende* should be included, "
+            "Only responses *from the AI to Duende* "
+            "(role=assistant) should be included, "
             "not messages *from Duende to the AI*.")
     logging.info(f"Started fake conversation with {len(scripted_responses)=}")
 
