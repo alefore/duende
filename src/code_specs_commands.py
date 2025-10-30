@@ -370,7 +370,7 @@ class UpdateDuendeMarkerImplementationCommand(AgentCommand):
   async def run(self, inputs: VariableMap) -> CommandOutput:
     path_str = str(inputs[_PATH_VARIABLE])
     marker_name = str(inputs[_MARKER_NAME_VARIABLE])
-    content = str(_CONTENT_VARIABLE)
+    content = str(inputs[_CONTENT_VARIABLE])
 
     path = pathlib.Path(path_str)
 
