@@ -84,7 +84,7 @@ class Conversation:
     for section in content_sections:
       content += section.content
     return (f"Add message: {message.role}: {len(content_sections)} sections: "
-            f"{content[:50]}...")
+            f"{content[:500]}...")
 
   def GetMessagesList(self) -> list[Message]:
     return self.messages
