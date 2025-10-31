@@ -27,6 +27,7 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
     await self.conversation.AddMessage(message)
 
     if not self.scripted_responses:
+      logging.info(f"Fake conversation: received unexpected message: {message}")
       raise StopIteration(
           "No more scripted responses. "
           "This probably means the test expected the AgentLoop "
