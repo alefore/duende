@@ -28,9 +28,9 @@ class Message:
       if section.summary:
         content_summary.append(section.summary)
       elif section.content:
-        content_summary.append(section.content[:50] +
+        content_summary.append(section.content[:500] +
                                "..." if len(section.content) >
-                               50 else section.content)
+                               500 else section.content)
 
     return f"Message(role='{self.role}', content='{' '.join(content_summary)}')"
 
