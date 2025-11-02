@@ -1,6 +1,6 @@
 # DM validator:
 #
-# MYPYPATH=~/coding-agent/src mypy $DMPATH && ~/local/bin/python3 $DMPATH
+# MYPYPATH=~/coding-agent/src mypy $DMPATH && $PYTHON -m pytest $DMPATH
 #
 # These tests have a few constraints:
 #
