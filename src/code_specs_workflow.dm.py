@@ -224,7 +224,6 @@ class CodeSpecsWorkflow(AgentWorkflow):
     Arguments:
       marker: The marker to implement.
       relevant_paths: A list of relevant paths for the initial prompt.
-
       validator: The validator used to verify a plausible implementation.
       output_path: The input file with the context for implementing `marker`. We
         do not actually update it (our customer does).
@@ -251,7 +250,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "(preceded by whitespace characters to match "
         "the indentation of the block that contains the implementation)."
         "\n"
-        "It must end with a line containing "
+        "* It must end with a line containing "
         f"nothing but \"{comment_string(file_extension, '✨')}\" "
         "(also preceded by whitespace)."
         "\n"
