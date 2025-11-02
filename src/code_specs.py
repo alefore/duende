@@ -257,7 +257,7 @@ def get_expanded_markers(path: pathlib.Path) -> list[ExpandedMarker]:
         for name, lines_found in found_marker_names_with_lines.items():
           if len(lines_found) > 1:
             repeated_markers_info_list.append(
-                f"\'{name}\' at lines {', '.join(map(str, lines_found))}")
+                f"'{name}' at lines {', '.join(map(str, lines_found))}")
         raise RepeatedExpandedMarkersError(
             f"Repeated expanded markers found: {'; '.join(repeated_markers_info_list)}"
         )
@@ -295,40 +295,36 @@ class MarkersOverlapError(ValueError):
   """
 
 
-async def get_markers(char: MarkerChar,
-                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+async def get_markers_str(char: MarkerChar,
+                          input: str) -> dict[MarkerName, list[int]]:
   """Returns the positions (line index) of all markers in `path`.
 
-  {{🦔 Reads `path` asynchronously}}
-  {{🦔 Returns {} for an empty file}}
-  {{🦔 Raises FileNotFoundError for a non-existent file}}
-  {{🦔 Returns {} for a file with 5 lines but no markers}}
-  {{🦔 Correctly returns a marker in a file with just 1 marker}}
-  {{🦔 If a marker starts in the first line in the file, its value in the output
-       is [0].}}
+  {{🦔 Returns {} for an empty input}}
+  {{🦔 Returns {} for an input with 5 lines but no markers}}
+  {{🦔 Correctly returns a marker in an input with just 1 marker}}
+  {{🦔 If a marker starts in the first line in the input, its value in the
+       output is [0].}}
   {{🦔 If a marker starts in the last line, its value in the output is
        `len(lines) - 1`.}}
-  {{🦔 Correctly handles a file where a marker starts in the first line and
+  {{🦔 Correctly handles an input where a marker starts in the first line and
        finishes in the last line.}}
   {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
-  {{🦔 Returns all markers in a file with ten markers.}}
-  {{🦔 The index of markers returned in a file with ten markers is correct.}}
-  {{🦔 A file can have repeated markers; the output just lists their
+  {{🦔 Returns all markers in an input with ten markers.}}
+  {{🦔 The index of markers returned in an input with ten markers is correct.}}
+  {{🦔 An input can have repeated markers; the output just lists their
        positions.}}
-  {{🦔 A file where two markers overlap (one ends in the same line where the
+  {{🦔 An input where two markers overlap (one ends in the same line where the
        other begins) raises `MarkersOverlapError`.}}
   {{🦔 The returned object is sorted by appearance order (i.e., iterating across
        the keys of the returned dictionary matches the order in which the first
-       appearance of each marker was found in the file).}}
+       appearance of each marker was found in the input).}}
 
   Raises:
       MarkersOverlapError: if two markers share a common line.
   """
-  # ✨ get markers
-  # 1. Read the entire file content.
-  async with aiofiles.open(
-      path, mode='r') as f:
-    content = await f.read()
+  # ✨ get markers str
+  # 1. Get the content directly from the input string.
+  content = input
 
   # 2. Define the regex and find all matches.
   #    finditer() returns matches in order, so no sorting is needed.
@@ -348,14 +344,14 @@ async def get_markers(char: MarkerChar,
     if curr_start < prev_end:
       raise MarkersOverlapError(
           f"Markers overlap (nesting detected) near character {curr_start} "
-          f"in '{path}'")
+          f"in the input string")
 
     # Check 2: Same-Line Overlap
     gap_text = content[prev_end:curr_start]
     if '\n' not in gap_text:
       raise MarkersOverlapError(
           f"Marker at char {curr_start} starts on the same line "
-          f"as the previous marker ended (char {prev_end}) in '{path}'")
+          f"as the previous marker ended (char {prev_end}) in the input string")
 
   # 4. If validation passed, build the result dictionary.
   markers = collections.defaultdict(list)
@@ -376,6 +372,24 @@ async def get_markers(char: MarkerChar,
     last_char_index = start_char_index
 
   return dict(markers)
+  # ✨
+
+
+async def get_markers(char: MarkerChar,
+                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+  """Reads the file contents and calls `get_markers_str`.
+
+  {{🦔 Reads `path` asynchronously}}
+  {{🦔 Raises FileNotFoundError for a non-existent file}}
+  """
+  # ✨ get markers
+  try:
+    async with aiofiles.open(path, mode='r') as f:
+      content = await f.read()
+  except FileNotFoundError:
+    raise
+
+  return await get_markers_str(char, content)
   # ✨
 
 
@@ -482,10 +496,13 @@ class MarkerImplementation:
     # 1. Get marker positions.
     all_markers = await get_markers(self._name.char, path)
     if self._name not in all_markers:
-      raise ValueError(f"Marker '{self._name}' not found in '{path}'.")
+      raise ValueError(
+          f"Marker '{{{{{str(self._name.char)} {self._name.name}}}}}' found 0 times in '{path}'. Expected exactly one."
+      )
     if len(all_markers[self._name]) > 1:
       raise ValueError(
-          f"Marker '{self._name}' occurs multiple times in '{path}'.")
+          f"Marker '{{{{{str(self._name.char)} {self._name.name}}}}}' found {len(all_markers[self._name])} times in '{path}'. Expected exactly one."
+      )
 
     marker_line_idx = all_markers[self._name][0]
 
@@ -553,8 +570,6 @@ class Validator:
     env = os.environ.copy()
     env['DMPATH'] = str(dm_path)
     # ✨ validator validate
-    env = os.environ.copy()
-    env['DMPATH'] = str(dm_path)
     try:
       process = await asyncio.create_subprocess_exec(
           "/bin/bash",
@@ -579,6 +594,10 @@ class Validator:
       implementation: MarkerImplementation) -> ValidationResult:
     """Validates the implementation of a marker on a copy of `source`.
 
+    {{🦔 Validation fails if the implementation contains markers (per
+         `get_markers(MUSHROOM, …)`). In this case, a helpful string is
+         returned, proposing an alternative along the lines of
+         `"{{" + "🍄 …}}"` (which is enough to avoid this).}}
     {{🦔 The read operation is async}}
     {{🦔 The write operation is async}}
     {{🦔 Does not modify `source`}}
@@ -588,6 +607,25 @@ class Validator:
          to update the implementation of the marker in the file).}}
     """
     # ✨ implement validator
+    # New validation: check for mushroom markers in the implementation content.
+    try:
+      mushroom_markers = await get_markers_str(
+          MarkerChar('🍄'), implementation.value)
+      if mushroom_markers:
+        marker_names = ", ".join(
+            f"'{{🍄 {name.name}}}'" for name in mushroom_markers.keys())
+        return ValidationResult(
+            success=False,
+            output="",
+            error=(
+                f"Implementation contains mushroom markers: {marker_names}. "
+                "Please remove them or escape them like `'…{{' + '🍄 …}}…'`."))
+    except MarkersOverlapError as e:
+      return ValidationResult(
+          success=False,
+          output="",
+          error=(f"Implementation contains overlapping markers: {e}. "))
+
     with tempfile.TemporaryDirectory() as tmpdir:
       temp_source_path = pathlib.Path(tmpdir) / source.name
       shutil.copy(source, temp_source_path)
