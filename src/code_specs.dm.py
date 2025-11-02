@@ -148,8 +148,8 @@ class MarkersOverlapError(ValueError):
   """
 
 
-async def get_markers_str(char: MarkerChar,
-                          input: str) -> dict[MarkerName, list[int]]:
+def get_markers_str(char: MarkerChar,
+                    input: str) -> dict[MarkerName, list[int]]:
   """Returns the positions (line index) of all markers in `path`.
 
   {{🦔 Returns {} for an empty input}}
