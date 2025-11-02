@@ -88,6 +88,15 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     """
     raise NotImplementedError()  # {{🍄 done message for contents}}
 
+  async def done_message_for_tests_skeleton(self,
+                                            skeleton_content: str) -> Message:
+    """Returns a Message calling `done` with `tests_skeleton_variable`.
+
+    The returned messages can be given directly to a FakeConversationalAI's list
+    of messages. That implies that role should be "assistant".
+    """
+    raise NotImplementedError()  # {{🍄 done message for skeleton}}
+
   def get_valid_contents_with_hedgehog_markers(self) -> str:
     """Returns a file (contents) with valid `"{{"+HEDGEHOG+prop+"}}"` markers.
 
