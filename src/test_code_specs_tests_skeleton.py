@@ -78,38 +78,45 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     self.conversation_factory = ConversationFactory(
         ConversationFactoryOptions())
 
-  async def done_message_for_file(self, contents: str) -> Message:
+  def done_message_with_path_to_test(self, path: pathlib.Path) -> Message:
+    """Returns a Message calling `done` with `path_to_test_variable`."""
+    # ✨ done message with path to test
+    return Message(
+        role="assistant",
+        content_sections=[
+            ContentSection(
+                content=f"Calling done command with {path_to_test_variable} = {path}",
+                command=CommandInput(
+                    command_name="done",
+                    args=VariableMap(
+                        {path_to_test_variable: VariableValueStr(str(path))})),
+                summary=f"Done command for path: {path}")
+        ])
+    # ✨
+
+  def write_path_to_test_and_return_done_message(
+      self, contents: str) -> tuple[Message, pathlib.Path]:
     """Returns a Message calling `done` with `path_to_test_variable`.
 
     The contents are written to a temporary file; its path is given to
-    `path_to_test_variable`. Clean-up of the temporary file is scheduled.
+    `path_to_test_variable` and returned. Clean-up of the temporary file is
+    scheduled.
 
     The returned messages can be given directly to a FakeConversationalAI's list
     of messages. That implies that role should be "assistant".
     """
-    # ✨ done message for contents
+    # ✨ write path to test
     f = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py')
     f.write(contents)
     f.close()
     tmp_path = pathlib.Path(f.name)
     self.addCleanup(os.remove, tmp_path)
 
-    return Message(
-        role="assistant",
-        content_sections=[
-            ContentSection(
-                content=f"Calling done command with {path_to_test_variable} = {tmp_path}",
-                command=CommandInput(
-                    command_name="done",
-                    args=VariableMap({
-                        path_to_test_variable: VariableValueStr(str(tmp_path))
-                    })),
-                summary=f"Done command for path: {tmp_path}")
-        ])
+    message = self.done_message_with_path_to_test(tmp_path)
+    return message, tmp_path
     # ✨
 
-  async def done_message_for_tests_skeleton(self,
-                                            skeleton_content: str) -> Message:
+  def done_message_for_tests_skeleton(self, skeleton_content: str) -> Message:
     """Returns a Message calling `done` with `tests_skeleton_variable`.
 
     The returned messages can be given directly to a FakeConversationalAI's list
@@ -137,6 +144,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     The file contains two different non-overlapping markers. Does not actually
     write the file, just returns text contents.
     """
+
     # ✨ tmp file with markers
     return '''
     # Some code
@@ -225,10 +233,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # 1. Prepare a valid file content with a HEDGEHOG marker using the helper.
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
 
-    # 2. Create a message that simulates the user providing a valid path.
-    #    The done_message_for_file helper writes the content to a temporary file
-    #    and returns a Message with the path in path_to_test_variable.
-    done_message = await self.done_message_for_file(valid_file_content)
+    # 2. Use the helper to create a temporary file and the done message for it.
+    done_message, tmp_path = self.write_path_to_test_and_return_done_message(
+        valid_file_content)
 
     # 3. Script the FakeConversationalAI to use this done_message for the
     #    "initial_parameters" conversation.
@@ -260,8 +267,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # 8. Find the DoneCommand in the command registry.
       done_command = None
-      for command in command_registry.GetCommands(
-      ):  # Corrected from GetAllCommands() to GetCommands()
+      for command in command_registry.GetCommands():
         if isinstance(command, DoneCommand):
           done_command = command
           break
@@ -278,60 +284,35 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
   async def test_initial_parameters_validator_fails_if_file_cant_be_read(
       self) -> None:
     # ✨ Validation fails if the file can't be read.
-    # Helper to create an assistant message that issues a done command for a given path.
-    # This helper is kept within the test method to align with the original structure
-    # and to provide a message for a path without necessarily creating the file.
-    def _create_done_command_assistant_message(path: pathlib.Path) -> Message:
-      return Message(
-          role="assistant",
-          content_sections=[
-              ContentSection(
-                  content=f"Providing path: {path}",
-                  command=CommandInput(
-                      command_name="done",
-                      args=VariableMap({
-                          path_to_test_variable: VariableValueStr(str(path))
-                      })),
-                  summary=f"Done command for path: {path}")
-          ])
-
     # 1. Create a path to a non-existent file.
     non_existent_path = pathlib.Path("/non/existent/path/to/test_file.py")
 
-    # 2. Create a valid temporary file with HEDGEHOG markers using the existing helper method.
+    # 2. Create a message for the non-existent file.
+    non_existent_done_message = self.done_message_with_path_to_test(
+        non_existent_path)
+
+    # 3. Create a valid temporary file with HEDGEHOG markers and its done message.
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
-    valid_done_message = await self.done_message_for_file(valid_file_content)
+    valid_done_message, valid_tmp_file_path = self.write_path_to_test_and_return_done_message(
+        valid_file_content)
 
-    # Extract the actual path from the valid_done_message, as done_message_for_file creates its own temp file.
-    command_input = valid_done_message.GetContentSections()[0].command
-    if command_input and command_input.args:
-      valid_tmp_file_path = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      # This case indicates a problem with the test setup itself if the command input is missing.
-      raise ValueError(
-          "CommandInput or its arguments not found in valid_done_message.")
-
-    # 3. Script the FakeConversationalAI to first issue a done command with the non-existent path,
+    # 4. Script the FakeConversationalAI to first issue a done command with the non-existent path,
     #    then, after validation failure, issue a done command with the valid path.
     scripted_messages = {
-        "initial_parameters": [
-            _create_done_command_assistant_message(non_existent_path),
-            valid_done_message  # Use the message created by self.done_message_for_file
-        ]
+        "initial_parameters": [non_existent_done_message, valid_done_message]
     }
 
-    # 4. Build the workflow with the scripted messages.
+    # 5. Build the workflow with the scripted messages.
     workflow = await self.build_workflow(scripted_messages)
 
-    # 5. Run _get_initial_parameters. It should now complete successfully
+    # 6. Run _get_initial_parameters. It should now complete successfully
     #    because the second 'done' message in scripted_messages provides a valid path.
     returned_path = await workflow._get_initial_parameters()
 
-    # 6. Assert that the returned path is the valid one.
+    # 7. Assert that the returned path is the valid one.
     self.assertEqual(returned_path, valid_tmp_file_path)
 
-    # 7. Verify that the conversation history contains an error message
+    # 8. Verify that the conversation history contains an error message
     #    indicating the validation failure for the first (non-existent) path.
     #    The error message will be from the ArgumentType.PATH_INPUT's internal validation.
     expected_error_substring = f"Warning done: Argument {path_to_test_variable}: File not found: Value: {non_existent_path}"
@@ -361,55 +342,20 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     class SomeClass:
         pass
     """
-    f_no_hedgehog = tempfile.NamedTemporaryFile(
-        mode='w', delete=False, suffix='.py')
-    f_no_hedgehog.write(no_hedgehog_content)
-    f_no_hedgehog.close()
-    no_hedgehog_path = pathlib.Path(f_no_hedgehog.name)
-    self.addCleanup(os.remove, no_hedgehog_path)
-
-    # Helper to create an assistant message that issues a done command for a given path.
-    # This is similar to done_message_for_file but constructs the message directly
-    # for a pre-existing path, rather than creating a new temp file.
-    # THIS IS VERY STUPID. This function should be removed. This test should
-    # just call the method self.done_message_for_file rather than duplicate
-    # its logic (this test very stupidly writes the file directly, duh!). The
-    # test can extract the path from the returned message.
-    def _create_done_command_assistant_message(path: pathlib.Path) -> Message:
-      return Message(
-          role="assistant",
-          content_sections=[
-              ContentSection(
-                  content=f"Providing path: {path}",
-                  command=CommandInput(
-                      command_name="done",
-                      args=VariableMap({
-                          path_to_test_variable: VariableValueStr(str(path))
-                      })),
-                  summary=f"Done command for path: {path}")
-          ])
+    # Use the new helper to create the file and the done message for it.
+    no_hedgehog_done_message, no_hedgehog_path = self.write_path_to_test_and_return_done_message(
+        no_hedgehog_content)
 
     # 2. Create a valid temporary file with HEDGEHOG markers to allow the workflow to eventually succeed.
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
-    valid_done_message = await self.done_message_for_file(valid_file_content)
-    # Extract the actual path from the valid_done_message, as done_message_for_file creates its own temp file.
-    # Add a check for valid_done_message.GetContentSections()[0].command being not None
-    command_input = valid_done_message.GetContentSections()[0].command
-    if command_input and command_input.args:
-      valid_path_from_message = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      # Handle the case where command_input or command_input.args is None if it can happen,
-      # or raise an error if it should never happen in a valid test setup.
-      # For now, let's assume it should always be present in a valid_done_message for this test.
-      raise ValueError(
-          "CommandInput or its arguments not found in valid_done_message.")
+    valid_done_message, valid_path_from_message = self.write_path_to_test_and_return_done_message(
+        valid_file_content)
 
     # 3. Script the FakeConversationalAI: first, try to validate the file without HEDGEHOG markers (expected to fail),
     #    then provide the valid file (expected to succeed).
     scripted_messages = {
         "initial_parameters": [
-            _create_done_command_assistant_message(no_hedgehog_path),
+            no_hedgehog_done_message,
             valid_done_message,
         ]
     }
@@ -448,17 +394,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # 1. Create a temporary file that is readable and contains HEDGEHOG markers.
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
 
-    # 2. Use done_message_for_file to create a message with this content in a temporary file.
-    done_message = await self.done_message_for_file(valid_file_content)
-
-    # Extract the actual path from the done_message.
-    command_input = done_message.GetContentSections()[0].command
-    if command_input and command_input.args:
-      valid_tmp_file_path = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      raise ValueError(
-          "CommandInput or its arguments not found in done_message.")
+    # 2. Use write_path_to_test_and_return_done_message to create a message with this content in a temporary file.
+    done_message, valid_tmp_file_path = self.write_path_to_test_and_return_done_message(
+        valid_file_content)
 
     # 3. Script the FakeConversationalAI to issue a done command with this valid path.
     scripted_messages = {"initial_parameters": [done_message]}
@@ -484,34 +422,25 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         len(matching_error_sections), 0,
         f"No validation error messages were expected, but found: {matching_error_sections}"
     )
-
-  # ✨
+    # ✨
 
   async def test_initial_parameters_validator_succeeds_with_repeated_hedgehog_markers(
       self) -> None:
     # ✨ Validation succeeds if the file contains repeated (identical) HEDGEHOG markers (per `code_specs.get_markers`).
     # 1. Create file content that contains repeated (identical) HEDGEHOG markers.
     repeated_hedgehog_content = """
-        # Some code
-        def func_a():
-            pass # {{🦔 property1}}
+            # Some code
+            def func_a():
+                pass # {{🦔 property1}}
 
-        # More code
-        def func_b():
-            return 2 # {{🦔 property1}}
-        """
+            # More code
+            def func_b():
+                return 2 # {{🦔 property1}}
+            """
 
-    # 2. Use done_message_for_file to create a message with this content in a temporary file.
-    done_message = await self.done_message_for_file(repeated_hedgehog_content)
-
-    # Extract the actual path from the done_message.
-    command_input = done_message.GetContentSections()[0].command
-    if command_input and command_input.args:
-      repeated_markers_path = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      raise ValueError(
-          "CommandInput or its arguments not found in done_message.")
+    # 2. Use write_path_to_test_and_return_done_message to create a message with this content in a temporary file.
+    done_message, repeated_markers_path = self.write_path_to_test_and_return_done_message(
+        repeated_hedgehog_content)
 
     # 3. Script the FakeConversationalAI to issue a done command with this path.
     scripted_messages = {"initial_parameters": [done_message]}
@@ -543,19 +472,10 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # 1. Prepare valid file content with HEDGEHOG markers using the helper.
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
 
-    # 2. Create a message that simulates the user providing a valid path.
-    #    The done_message_for_file helper writes the content to a temporary file
-    #    and returns a Message with the path in path_to_test_variable.
-    done_message = await self.done_message_for_file(valid_file_content)
-
-    # Extract the actual path from the done_message, as done_message_for_file creates its own temp file.
-    command_input = done_message.GetContentSections()[0].command
-    if command_input and command_input.args:
-      valid_tmp_file_path = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      raise ValueError(
-          "CommandInput or its arguments not found in done_message.")
+    # 2. Use write_path_to_test_and_return_done_message to create a message with this content in a temporary file.
+    #    This helper returns both the message and the path.
+    done_message, valid_tmp_file_path = self.write_path_to_test_and_return_done_message(
+        valid_file_content)
 
     # 3. Script the FakeConversationalAI to issue a done command with only the valid path.
     scripted_messages = {"initial_parameters": [done_message]}
@@ -585,53 +505,43 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
       self) -> None:
     # ✨ The only done command argument given to `prepare_command_registry` in `_prepare_tests_skeleton` is `tests_skeleton_variable`.
     # 1. Prepare a valid file content with HEDGEHOG markers. This file will be the input to _prepare_tests_skeleton.
-    valid_file_content = """
-        # {{🦔 A test property}}
-        def some_function():
-            pass
-        """
+    valid_file_content = ("# {{🦔 A test property}}"
+                          "\ndef some_function():"
+                          "\n    pass\n")
 
-    # 2. Create a dummy path_to_test as _prepare_tests_skeleton expects it as input.
-    #    The actual content of this file is relevant for the validation logic (needs a HEDGEHOG marker).
-    f = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py')
-    f.write(valid_file_content)
-    f.close()
-    tmp_input_path = pathlib.Path(f.name)
-    self.addCleanup(os.remove, tmp_input_path)
-
-    # 3. Create a message for the "initial_parameters" conversation to provide the tmp_input_path.
-    initial_parameters_done_message = await self.done_message_for_file(
+    # 2. Use the helper to create a temporary file and the initial done message.
+    done_message_for_initial_params, tmp_input_path = self.write_path_to_test_and_return_done_message(
         valid_file_content)
 
-    # 4. Define a valid skeleton content for the "prepare_tests_skeleton" conversation.
+    # 3. Define a valid skeleton content for the "prepare_tests_skeleton" conversation.
     #    This skeleton needs to have the correct number of MUSHROOM markers to pass validation.
     valid_skeleton_content = (
         "import unittest\n"
         "\n"
         "class MyTests(unittest.IsolatedAsyncioTestCase):\n"
         "  async def test_a_test_property(self) -> None:\n"
-        "    pass  # {{\U0001f344 A test property}}\n"
+        "    pass  # {{" + str(MUSHROOM) + " A test property}}\n"
         "\n"
         "if __name__ == '__main__':\n"
         "  unittest.main()\n")
 
-    # 5. Create the done message for the "prepare_tests_skeleton" conversation.
-    prepare_tests_skeleton_done_message = await self.done_message_for_tests_skeleton(
+    # 4. Create the done message for the "prepare_tests_skeleton" conversation.
+    prepare_tests_skeleton_done_message = self.done_message_for_tests_skeleton(
         valid_skeleton_content)
 
-    # 6. Script the FakeConversationalAI for both conversations.
+    # 5. Script the FakeConversationalAI for both conversations.
     scripted_messages = {
-        "initial_parameters": [initial_parameters_done_message],
+        "initial_parameters": [done_message_for_initial_params],
         "prepare_tests_skeleton": [prepare_tests_skeleton_done_message]
     }
 
-    # 7. Build the workflow with the scripted messages.
+    # 6. Build the workflow with the scripted messages.
     workflow = await self.build_workflow(scripted_messages)
 
-    # 8. Run the entire workflow. This will execute both _get_initial_parameters and _prepare_tests_skeleton.
+    # 7. Run the entire workflow. This will execute both _get_initial_parameters and _prepare_tests_skeleton.
     await workflow.run()
 
-    # 9. Iterate through all conversations in the factory to find the one with the name "prepare_tests_skeleton".
+    # 8. Iterate through all conversations in the factory to find the one with the name "prepare_tests_skeleton".
     prepare_tests_skeleton_conversation = None
     for conv in self.conversation_factory.GetAll():
       if conv.GetName() == "prepare_tests_skeleton":
@@ -642,12 +552,12 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         prepare_tests_skeleton_conversation,
         "Conversation 'prepare_tests_skeleton' not found in factory.")
 
-    # 10. Get the command registry from this conversation.
+    # 9. Get the command registry from this conversation.
     if prepare_tests_skeleton_conversation is not None:
       command_registry = prepare_tests_skeleton_conversation.command_registry
       self.assertIsInstance(command_registry, CommandRegistry)
 
-      # 11. Find the DoneCommand in the command registry.
+      # 10. Find the DoneCommand in the command registry.
       done_command = None
       for command in command_registry.GetCommands():
         if isinstance(command, DoneCommand):
@@ -656,7 +566,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
       self.assertIsNotNone(done_command, "DoneCommand not found in registry.")
       if done_command is not None:
-        # 12. Assert that the DoneCommand has only `tests_skeleton_variable` as its argument.
+        # 11. Assert that the DoneCommand has only `tests_skeleton_variable` as its argument.
         done_syntax_arguments = done_command.Syntax().arguments
         self.assertEqual(len(done_syntax_arguments), 1)
         self.assertEqual(done_syntax_arguments[0].name, tests_skeleton_variable)
@@ -667,14 +577,12 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # ✨ After validating that the skeleton contains all tests, writes them to a `tests_…` file (e.g., when `input` is `src/foo.py`, writes `src/test_foo.py`).
     # 1. Test case: input file is 'src/foo.py' -> output file 'src/test_foo.py'
     input_file_content_py = '''
-        # Some code
-        def func_to_test_py():
-            pass # {{🦔 property for py file}}
-        '''
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as f:
-      f.write(input_file_content_py)
-      tmp_input_py_path = pathlib.Path(f.name)
-    self.addCleanup(os.remove, tmp_input_py_path)
+                # Some code
+                def func_to_test_py():
+                    pass # {{🦔 property for py file}}
+                '''
+    done_message_for_py_input, tmp_input_py_path = self.write_path_to_test_and_return_done_message(
+        input_file_content_py)
 
     expected_skeleton_content_py = (
         "import unittest\n"
@@ -687,15 +595,13 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         "  unittest.main()\n")
     # 2. Test case: input file is 'src/foo.dm.py' -> output file 'src/test_foo.py'
     input_file_content_dm_py = '''
-        # Some code in a .dm.py file
-        def func_to_test_dm_py():
-            pass # {{🦔 property for dm py file}}
-        '''
-    with tempfile.NamedTemporaryFile(
-        mode='w', delete=False, suffix='.dm.py') as f:
-      f.write(input_file_content_dm_py)
-      tmp_input_dm_py_path = pathlib.Path(f.name)
-    self.addCleanup(os.remove, tmp_input_dm_py_path)
+                # Some code in a .dm.py file
+                def func_to_test_dm_py():
+                    pass # {{🦔 property for dm py file}}
+                '''
+
+    done_message_for_dm_py_input, tmp_input_dm_py_path = self.write_path_to_test_and_return_done_message(
+        input_file_content_dm_py)
 
     expected_skeleton_content_dm_py = (
         "import unittest\n"
@@ -709,23 +615,8 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # Scripted messages for the first workflow run (.py input)
     scripted_messages_py = {
-        "initial_parameters": [
-            Message(
-                role="assistant",
-                content_sections=[
-                    ContentSection(
-                        content=f"Providing path: {tmp_input_py_path}",
-                        command=CommandInput(
-                            command_name="done",
-                            args=VariableMap({
-                                path_to_test_variable:
-                                    VariableValueStr(str(tmp_input_py_path))
-                            })),
-                        summary=f"Done command for path: {tmp_input_py_path}")
-                ])
-        ],
+        "initial_parameters": [done_message_for_py_input],
         "prepare_tests_skeleton": [
-            await
             self.done_message_for_tests_skeleton(expected_skeleton_content_py)
         ]
     }
@@ -752,24 +643,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # Scripted messages for the second workflow run (.dm.py input)
     scripted_messages_dm_py = {
-        "initial_parameters": [
-            Message(
-                role="assistant",
-                content_sections=[
-                    ContentSection(
-                        content=f"Providing path: {tmp_input_dm_py_path}",
-                        command=CommandInput(
-                            command_name="done",
-                            args=VariableMap({
-                                path_to_test_variable:
-                                    VariableValueStr(str(tmp_input_dm_py_path))
-                            })),
-                        summary=f"Done command for path: {tmp_input_dm_py_path}"
-                    )
-                ])
-        ],
+        "initial_parameters": [done_message_for_dm_py_input],
         "prepare_tests_skeleton": [
-            await self.done_message_for_tests_skeleton(
+            self.done_message_for_tests_skeleton(
                 expected_skeleton_content_dm_py)
         ]
     }
@@ -799,6 +675,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
   async def test_prepare_tests_skeleton_input_passed_as_relevant_file(
       self) -> None:
+
     # ✨ `input` is passed as a relevant file to `prepare_initial_message`.
     # 1. Create a temporary input file.
     input_file_content = """
@@ -806,32 +683,16 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     def foo():
         pass # {{🦔 property for testing relevant files}}
     """
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.py') as f:
-      f.write(input_file_content)
-      tmp_input_path = pathlib.Path(f.name)
-    self.addCleanup(os.remove, tmp_input_path)
+    # Use the helper to create a temporary file and the initial done message.
+    done_message_for_initial_params, tmp_input_path = self.write_path_to_test_and_return_done_message(
+        input_file_content)
 
     # 2. Script FakeConversationalAI.
     #    First, for _get_initial_parameters to provide the input file.
     #    Second, for _prepare_tests_skeleton to provide a dummy skeleton (to allow it to complete).
     scripted_messages = {
-        "initial_parameters": [
-            Message(
-                role="assistant",
-                content_sections=[
-                    ContentSection(
-                        content=f"Providing path: {tmp_input_path}",
-                        command=CommandInput(
-                            command_name="done",
-                            args=VariableMap({
-                                path_to_test_variable:
-                                    VariableValueStr(str(tmp_input_path))
-                            })),
-                        summary=f"Done command for path: {tmp_input_path}")
-                ])
-        ],
+        "initial_parameters": [done_message_for_initial_params],
         "prepare_tests_skeleton": [
-            await
             self.done_message_for_tests_skeleton("def test_dummy(): pass # {{" +
                                                  str(MUSHROOM) + " dummy}}")
         ]
@@ -877,6 +738,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         for section in initial_message_from_agent.GetContentSections():
           if section.content.startswith(expected_content_start):
             relevant_file_found = True
+            self.assertIn(input_file_content.strip(), section.content)
             break
 
         self.assertTrue(
@@ -898,12 +760,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # ✨ Fails if the set of markers given in tests_skeleton_variable is rejected by `code_spec.get_markers(MUSHROOM, output)`.
     # 1. Create a temporary input file with HEDGEHOG markers asynchronously.
     valid_hedgehog_content = self.get_valid_contents_with_hedgehog_markers()
-    tmp_dir = tempfile.mkdtemp()
-    tmp_input_file_path = pathlib.Path(tmp_dir) / "input_with_hedgehog.py"
-    self.addCleanup(lambda: shutil.rmtree(tmp_dir))
-
-    async with aiofiles.open(tmp_input_file_path, mode='w') as f:
-      await f.write(valid_hedgehog_content)
+    # Use the helper to create the temporary file and the initial done message.
+    initial_parameters_done_message, tmp_input_file_path = self.write_path_to_test_and_return_done_message(
+        valid_hedgehog_content)
     # This file has 2 HEDGEHOG markers.
 
     # 2. Define an invalid skeleton content that causes MarkersOverlapError.
@@ -937,27 +796,12 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 4. Script FakeConversationalAI.
     scripted_messages = {
-        "initial_parameters": [
-            Message(
-                role="assistant",
-                content_sections=[
-                    ContentSection(
-                        content=f"Providing path: {tmp_input_file_path}",
-                        command=CommandInput(
-                            command_name="done",
-                            args=VariableMap({
-                                path_to_test_variable:
-                                    VariableValueStr(str(tmp_input_file_path))
-                            })),
-                        summary=f"Done command for path: {tmp_input_file_path}")
-                ])
-        ],
+        "initial_parameters": [initial_parameters_done_message],
         "prepare_tests_skeleton": [
             # First attempt: invalid skeleton
-            await
             self.done_message_for_tests_skeleton(invalid_skeleton_content),
             # Second attempt: valid skeleton to allow the workflow to complete
-            await self.done_message_for_tests_skeleton(valid_skeleton_content)
+            self.done_message_for_tests_skeleton(valid_skeleton_content)
         ]
     }
 
@@ -1007,21 +851,11 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
 
     # Create a message that simulates the user providing a valid path.
-    # The done_message_for_file helper writes the content to a temporary file
-    # and returns a Message with the path in path_to_test_variable.
-    done_message_for_initial_params = await self.done_message_for_file(
+    # The write_path_to_test_and_return_done_message helper writes the content to a temporary file
+    # and returns a Message with the path in path_to_test_variable, along with the temporary path.
+    done_message_for_initial_params, tmp_input_file_path = self.write_path_to_test_and_return_done_message(
         valid_file_content)
 
-    # Extract the actual path from the done_message, as done_message_for_file creates its own temp file.
-    command_input = done_message_for_initial_params.GetContentSections(
-    )[0].command
-    if command_input and command_input.args:
-      tmp_input_file_path = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      raise ValueError(
-          "CommandInput or its arguments not found in done_message_for_initial_params."
-      )
     # This file has 2 HEDGEHOG markers.
 
     # 2. Define an invalid skeleton content that causes a repeated MUSHROOM marker.
@@ -1058,10 +892,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         "initial_parameters": [done_message_for_initial_params],
         "prepare_tests_skeleton": [
             # First attempt: invalid skeleton with repeated MUSHROOM marker
-            await
             self.done_message_for_tests_skeleton(invalid_skeleton_content),
             # Second attempt: valid skeleton to allow the workflow to complete
-            await self.done_message_for_tests_skeleton(valid_skeleton_content)
+            self.done_message_for_tests_skeleton(valid_skeleton_content)
         ]
     }
 
@@ -1071,7 +904,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 6. Verify that an error message related to repeated MUSHROOM markers is present.
     expected_error_prefix = "Error: "
-    expected_error_substring_part1 = f"MUSHROOM marker content '{{{str(MUSHROOM)} MarkerName(char='{str(MUSHROOM)}', name='repeated_marker_name')}}' is repeated 2 times in the skeleton."
+    expected_error_substring_part1 = f"MUSHROOM marker content \'{{{str(MUSHROOM)} MarkerName(char=\'{str(MUSHROOM)}\', name=\'repeated_marker_name\')}}\' is repeated 2 times in the skeleton."
 
     def predicate_for_errors(section: ContentSection) -> bool:
       return (section.content.startswith(expected_error_prefix) and
@@ -1109,18 +942,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # 1. Prepare a valid file content with 2 HEDGEHOG markers.
     valid_file_content = self.get_valid_contents_with_hedgehog_markers()
     # Create a message that simulates the user providing a valid path.
-    done_message_for_initial_params = await self.done_message_for_file(
+    done_message_for_initial_params, tmp_input_file_path = self.write_path_to_test_and_return_done_message(
         valid_file_content)
 
-    command_input = done_message_for_initial_params.GetContentSections(
-    )[0].command
-    if command_input and command_input.args:
-      tmp_input_file_path = pathlib.Path(
-          str(command_input.args[path_to_test_variable]))
-    else:
-      raise ValueError(
-          "CommandInput or its arguments not found in done_message_for_initial_params."
-      )
     # This file has 2 HEDGEHOG markers.
 
     # 2. Define an invalid skeleton content with 1 MUSHROOM marker (mismatch).
@@ -1152,11 +976,14 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         "initial_parameters": [done_message_for_initial_params],
         "prepare_tests_skeleton": [
             # First attempt: invalid skeleton with one MUSHROOM marker
-            await self.done_message_for_tests_skeleton(
+            self.done_message_for_tests_skeleton(
                 invalid_skeleton_content_one_mushroom),
             # Second attempt: valid skeleton to allow the workflow to complete
-            await self.done_message_for_tests_skeleton(
-                valid_skeleton_content_two_mushrooms)
+            self.done_message_for_tests_skeleton(
+                valid_skeleton_content_two_mushrooms),
+            # Add an empty message to allow the conversation to terminate gracefully
+            Message(
+                role="assistant", content_sections=[ContentSection(content="")])
         ]
     }
     # 5. Build and run the workflow.
@@ -1203,16 +1030,14 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # ✨ Does not require any variables beyond `tests_skeleton_variable`.
     # 1. Create a temporary input file with HEDGEHOG markers asynchronously.
     valid_hedgehog_content = self.get_valid_contents_with_hedgehog_markers()
-    tmp_dir = tempfile.mkdtemp()
-    tmp_input_file_path = pathlib.Path(tmp_dir) / "input_with_hedgehog.py"
-    self.addCleanup(lambda: shutil.rmtree(tmp_dir))
-
-    async with aiofiles.open(tmp_input_file_path, mode='w') as f:
-      await f.write(valid_hedgehog_content)
-    # This file has 2 HEDGEHOG markers.
+    # Use the helper to create the temporary file and the initial done message.
+    initial_parameters_done_message, tmp_input_file_path = self.write_path_to_test_and_return_done_message(
+        valid_hedgehog_content)
+    # This file has 2 HEDGEHOG markers as per `get_valid_contents_with_hedgehog_markers`.
 
     # 2. Define a valid skeleton content. It should have 2 MUSHROOM markers
-    #    to match the number of HEDGEHOG markers in the input.
+    #    to match the number of HEDGEHOG markers in the input,
+    #    and no repeated or overlapping MUSHROOM markers.
     valid_skeleton_content = (
         "import unittest\n"
         "\n"
@@ -1227,24 +1052,14 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 3. Script FakeConversationalAI.
     scripted_messages = {
-        "initial_parameters": [
-            Message(
-                role="assistant",
-                content_sections=[
-                    ContentSection(
-                        content=f"Providing path: {tmp_input_file_path}",
-                        command=CommandInput(
-                            command_name="done",
-                            args=VariableMap({
-                                path_to_test_variable:
-                                    VariableValueStr(str(tmp_input_file_path))
-                            })),
-                        summary=f"Done command for path: {tmp_input_file_path}")
-                ])
-        ],
+        "initial_parameters": [initial_parameters_done_message],
         "prepare_tests_skeleton": [
             # Provide the valid skeleton. This should pass as no other variables are required.
-            await self.done_message_for_tests_skeleton(valid_skeleton_content)
+            self.done_message_for_tests_skeleton(valid_skeleton_content),
+            # Add an empty message to allow the conversation to terminate gracefully
+            Message(
+                role="assistant",
+                content_sections=[ContentSection(content="")]),
         ]
     }
 
@@ -1278,7 +1093,8 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         actual_output_content.strip(), valid_skeleton_content.strip(),
         "The content of the generated test file does not match the expected valid skeleton."
     )
-    # ✨
+
+  # ✨
 
 
 if __name__ == '__main__':
