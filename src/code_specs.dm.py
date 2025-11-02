@@ -274,7 +274,9 @@ class Validator:
     """Validates the implementation of a marker on a copy of `source`.
 
     {{🦔 Validation fails if the implementation contains markers (per
-         `get_markers(MUSHROOM, …)`).}}
+         `get_markers(MUSHROOM, …)`). In this case, a helpful string is
+         returned, proposing an alternative along the lines of
+         `"{{" + "🍄 …}}"` (which is enough to avoid this).}}
     {{🦔 The read operation is async}}
     {{🦔 The write operation is async}}
     {{🦔 Does not modify `source`}}
