@@ -148,34 +148,42 @@ class MarkersOverlapError(ValueError):
   """
 
 
-async def get_markers(char: MarkerChar,
-                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+async def get_markers_str(char: MarkerChar,
+                          input: str) -> dict[MarkerName, list[int]]:
   """Returns the positions (line index) of all markers in `path`.
 
-  {{🦔 Reads `path` asynchronously}}
-  {{🦔 Returns {} for an empty file}}
-  {{🦔 Raises FileNotFoundError for a non-existent file}}
-  {{🦔 Returns {} for a file with 5 lines but no markers}}
-  {{🦔 Correctly returns a marker in a file with just 1 marker}}
-  {{🦔 If a marker starts in the first line in the file, its value in the output
-       is [0].}}
+  {{🦔 Returns {} for an empty input}}
+  {{🦔 Returns {} for an input with 5 lines but no markers}}
+  {{🦔 Correctly returns a marker in an input with just 1 marker}}
+  {{🦔 If a marker starts in the first line in the input, its value in the
+       output is [0].}}
   {{🦔 If a marker starts in the last line, its value in the output is
        `len(lines) - 1`.}}
-  {{🦔 Correctly handles a file where a marker starts in the first line and
+  {{🦔 Correctly handles an input where a marker starts in the first line and
        finishes in the last line.}}
   {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
-  {{🦔 Returns all markers in a file with ten markers.}}
-  {{🦔 The index of markers returned in a file with ten markers is correct.}}
-  {{🦔 A file can have repeated markers; the output just lists their
+  {{🦔 Returns all markers in an input with ten markers.}}
+  {{🦔 The index of markers returned in an input with ten markers is correct.}}
+  {{🦔 An input can have repeated markers; the output just lists their
        positions.}}
-  {{🦔 A file where two markers overlap (one ends in the same line where the
+  {{🦔 An input where two markers overlap (one ends in the same line where the
        other begins) raises `MarkersOverlapError`.}}
   {{🦔 The returned object is sorted by appearance order (i.e., iterating across
        the keys of the returned dictionary matches the order in which the first
-       appearance of each marker was found in the file).}}
+       appearance of each marker was found in the input).}}
 
   Raises:
       MarkersOverlapError: if two markers share a common line.
+  """
+  raise NotImplementedError()  # {{🍄 get markers str}}
+
+
+async def get_markers(char: MarkerChar,
+                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+  """Reads the file contents and calls `get_markers_str`.
+
+  {{🦔 Reads `path` asynchronously}}
+  {{🦔 Raises FileNotFoundError for a non-existent file}}
   """
   raise NotImplementedError()  # {{🍄 get markers}}
 
@@ -265,6 +273,8 @@ class Validator:
       implementation: MarkerImplementation) -> ValidationResult:
     """Validates the implementation of a marker on a copy of `source`.
 
+    {{🦔 Validation fails if the implementation contains markers (per
+         `get_markers(MUSHROOM, …)`).}}
     {{🦔 The read operation is async}}
     {{🦔 The write operation is async}}
     {{🦔 Does not modify `source`}}
