@@ -1,4 +1,5 @@
 # DM validator:
+#
 # MYPYPATH=~/coding-agent/src mypy $DMPATH && ~/local/bin/python3 $DMPATH
 #
 # These tests have a few constraints:
@@ -11,12 +12,19 @@
 #
 # * These tests must NOT subclass AgentLoop nor AgentLoopFactory, nor mock any
 #   of their methods.
+#
+# * These tests must NOT contain the 🍄 character anywhere (in order to avoid
+#   possible clashes with Duende, since that is already interpreting markers).
+#
+# * If they need to get a conversation, these tests must get it from the
+#   self.conversation_factory. They must NOT get it from the conversational_ai.
 
 import aiofiles
 from collections import defaultdict
 import os
 import pathlib
 import re
+import shutil
 import tempfile
 from typing import Callable, Awaitable, Any
 import unittest
@@ -63,29 +71,11 @@ class TestSelectionManager(SelectionManager):
   pass  # Default implementation is fine for now
 
 
-def write_valid_tmp_file_with_hedgehog_markers() -> pathlib.Path:
-  """Writes tmp file with valid `"{{" + HEDGEHOG + property + "}}"` markers.
-
-  The file contains two different non-overlapping markers.
-  """
-  raise NotImplementedError()  # {{🍄 tmp file with markers}}
-
-
-async def build_workflow(
-    conversation_factory: ConversationFactory,
-    scripted_messages: dict[str,
-                            list[Message]]) -> CodeSpecsTestsSkeletonWorkflow:
-  """Sets up a CodeSpecTestsSkeletonWorkflow with fake objects.
-
-  The workflow will use the conversation_factory given.
-  """
-  raise NotImplementedError()  # {{🍄 build workflow}}
-
-
 class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
   def setUp(self):
-    self.conversation_factory = ConversationFactory()
+    self.conversation_factory = ConversationFactory(
+        ConversationFactoryOptions())
 
   async def done_message_for_file(self, contents: str) -> Message:
     """Returns a Message calling `done` with `path_to_test_variable`.
@@ -94,9 +84,26 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     `path_to_test_variable`. Clean-up of the temporary file is scheduled.
 
     The returned messages can be given directly to a FakeConversationalAI's list
-    of messages.
+    of messages. That implies that role should be "assistant".
     """
     raise NotImplementedError()  # {{🍄 done message for contents}}
+
+  def get_valid_contents_with_hedgehog_markers(self) -> str:
+    """Returns a file (contents) with valid `"{{"+HEDGEHOG+prop+"}}"` markers.
+
+    The file contains two different non-overlapping markers. Does not actually
+    write the file, just returns text contents.
+    """
+    raise NotImplementedError()  # {{🍄 tmp file with markers}}
+
+  async def build_workflow(
+      self, scripted_messages: dict[str, list[Message]]
+  ) -> CodeSpecsTestsSkeletonWorkflow:
+    """Sets up a CodeSpecTestsSkeletonWorkflow with fake objects.
+
+    Sets option skip_implicit_validation to True.
+    """
+    raise NotImplementedError()  # {{🍄 build workflow}}
 
   def filter_content_sections(
       self, predicate: Callable[[ContentSection],
