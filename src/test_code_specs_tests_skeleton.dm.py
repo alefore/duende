@@ -81,7 +81,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     """Returns a Message calling `done` with `path_to_test_variable`."""
     raise NotImplementedError()  # {{🍄 done message with path to test}}
 
-  async def write_path_to_test_and_return_done_message(
+  def write_path_to_test_and_return_done_message(
       self, contents: str) -> tuple[Message, pathlib.Path]:
     """Returns a Message calling `done` with `path_to_test_variable`.
 
