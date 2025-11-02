@@ -77,19 +77,24 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     self.conversation_factory = ConversationFactory(
         ConversationFactoryOptions())
 
-  async def done_message_for_file(self, contents: str) -> Message:
+  def done_message_with_path_to_test(self, path: pathlib.Path) -> Message:
+    """Returns a Message calling `done` with `path_to_test_variable`."""
+    raise NotImplementedError()  # {{🍄 done message with path to test}}
+
+  async def write_path_to_test_and_return_done_message(
+      self, contents: str) -> tuple[Message, pathlib.Path]:
     """Returns a Message calling `done` with `path_to_test_variable`.
 
     The contents are written to a temporary file; its path is given to
-    `path_to_test_variable`. Clean-up of the temporary file is scheduled.
+    `path_to_test_variable` and returned. Clean-up of the temporary file is
+    scheduled.
 
     The returned messages can be given directly to a FakeConversationalAI's list
     of messages. That implies that role should be "assistant".
     """
-    raise NotImplementedError()  # {{🍄 done message for contents}}
+    raise NotImplementedError()  # {{🍄 write path to test}}
 
-  async def done_message_for_tests_skeleton(self,
-                                            skeleton_content: str) -> Message:
+  def done_message_for_tests_skeleton(self, skeleton_content: str) -> Message:
     """Returns a Message calling `done` with `tests_skeleton_variable`.
 
     The returned messages can be given directly to a FakeConversationalAI's list
