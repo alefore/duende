@@ -295,8 +295,8 @@ class MarkersOverlapError(ValueError):
   """
 
 
-async def get_markers_str(char: MarkerChar,
-                          input: str) -> dict[MarkerName, list[int]]:
+def get_markers_str(char: MarkerChar,
+                    input: str) -> dict[MarkerName, list[int]]:
   """Returns the positions (line index) of all markers in `path`.
 
   {{🦔 Returns {} for an empty input}}
@@ -389,7 +389,7 @@ async def get_markers(char: MarkerChar,
   except FileNotFoundError:
     raise
 
-  return await get_markers_str(char, content)
+  return get_markers_str(char, content)
   # ✨
 
 
@@ -609,8 +609,7 @@ class Validator:
     # ✨ implement validator
     # New validation: check for mushroom markers in the implementation content.
     try:
-      mushroom_markers = await get_markers_str(
-          MarkerChar('🍄'), implementation.value)
+      mushroom_markers = get_markers_str(MarkerChar('🍄'), implementation.value)
       if mushroom_markers:
         marker_names = ", ".join(
             f"'{{🍄 {name.name}}}'" for name in mushroom_markers.keys())
@@ -675,6 +674,35 @@ class PathAndValidator:
         )
     # ✨
 
+  def file_extension(self) -> FileExtension:
+    """Returns the file extension of the `dm_path`.
+
+    {{🦔 For `dm_path` "foo/bar/quux.dm.py", returns "py"}}
+    """
+    # ✨ PathAndValidator file extension
+    file_extension_str = self.dm_path.suffix.lstrip('.')
+    # If the file has a compound extension like .dm.py,
+    # we take the last part (e.g., 'py').
+    if '.dm.' in self.dm_path.name:
+      parts = self.dm_path.name.split('.')
+      # Find the index of 'dm' and take the next part as the extension
+      try:
+        dm_index = parts.index('dm')
+        if dm_index + 1 < len(parts):
+          file_extension_str = parts[dm_index + 1]
+        else:  # Handle cases like 'foo.dm' where there's no extension after '.dm'
+          file_extension_str = ''
+      except ValueError:
+        # This case should ideally not be reached if '.dm.' is in the name.
+        # Fallback to general suffix if 'dm' part itself is not found in parts
+        # (e.g., if dm_path.name was "my.dm.test.py" and we looked for "notdm").
+        # However, for ".dm." to be in name and "dm" not in parts is contradictory
+        # unless ".dm." is a substring not a component.
+        # Given the structure of "foo.dm.py", splitting by '.' should yield 'dm' as a part.
+        file_extension_str = self.dm_path.suffix.lstrip('.')
+    return FileExtension(file_extension_str)
+    # ✨
+
   def output_path(self) -> pathlib.Path:
     """Returns `dm_path` without the `.dm` part.
 
@@ -683,6 +711,21 @@ class PathAndValidator:
     # ✨ PathAndValidator output path
     return pathlib.Path(self.dm_path.parent /
                         self.dm_path.name.replace(".dm.", "."))
+    # ✨
+
+  def old_path(self) -> pathlib.Path:
+    """Returns the "old" path, where the previous implementation is backed up.
+
+    This is done by replacing the ".dm." part with ".old.".
+
+    When expansion begins, we use these paths to make a copy of previous files
+    that we'll overwrite.
+
+    {{🦔 For `dm_path` "foo/bar.dm.py", returns "foo/bar.old.py".}}
+    """
+    # ✨ PathAndValidator old path
+    return pathlib.Path(self.dm_path.parent /
+                        self.dm_path.name.replace(".dm.", ".old."))
     # ✨
 
   async def overwrite(self, target: pathlib.Path) -> None:
