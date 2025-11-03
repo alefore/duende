@@ -34,42 +34,18 @@ from agent_command import Argument, AgentCommand, CommandOutput, CommandInput, A
 from agent_loop import AgentLoop, AgentLoopFactory
 from agent_loop_options import AgentLoopOptions
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import PathAndValidator, Validator, prepare_command_registry, prepare_initial_message, run_agent_loop, ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
+from code_specs import Validator, ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
+from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs_path_and_validator import PathAndValidator
 from code_specs_tests_skeleton import CodeSpecsTestsSkeletonWorkflow, tests_skeleton_variable, MUSHROOM, HEDGEHOG, path_to_test_variable
 from command_registry import CommandRegistry
-from confirmation import ConfirmationManager, ConfirmationState
 from conversation import Conversation, ConversationId, ConversationFactory, ConversationFactoryOptions
 from conversation_state import ConversationState
 from conversational_ai import ConversationalAI
 from conversational_ai_test_utils import FakeConversationalAIConversation, FakeConversationalAI
 from done_command import DoneCommand
-from file_access_policy import FileAccessPolicy
 from message import ContentSection, Message
-from selection_manager import SelectionManager
-
-
-class TestFileAccessPolicy(FileAccessPolicy):
-
-  def allow_access(self, path: str) -> bool:
-    return True  # Allow all access for testing
-
-
-class TestConfirmationState(ConfirmationState):
-
-  async def RequireConfirmation(self, conversation_id: int,
-                                prompt: str) -> str | None:
-    return None  # Always confirm
-
-
-class TestConfirmationManager(ConfirmationManager):
-
-  async def RequireConfirmation(self, conversation_id: ConversationId,
-                                message: str) -> str | None:
-    return None  # Always confirm for tests
-
-
-class TestSelectionManager(SelectionManager):
-  pass  # Default implementation is fine for now
+from test_utils import FakeFileAccessPolicy, FakeConfirmationState, FakeConfirmationManager, FakeSelectionManager
 
 
 class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
@@ -177,8 +153,8 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         role="user", content_sections=[ContentSection(content="dummy")])
     empty_command_registry = CommandRegistry()
 
-    test_confirmation_manager = TestConfirmationManager()
-    test_confirmation_state = TestConfirmationState(
+    test_confirmation_manager = FakeConfirmationManager()
+    test_confirmation_state = FakeConfirmationState(
         confirmation_manager=test_confirmation_manager)
 
     agent_loop_options = AgentLoopOptions(
@@ -186,7 +162,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         start_message=dummy_message,
         command_registry=empty_command_registry,
         confirmation_state=test_confirmation_state,
-        file_access_policy=TestFileAccessPolicy(),
+        file_access_policy=FakeFileAccessPolicy(),
         conversational_ai=fake_conversational_ai,
         confirm_regex=None,
         skip_implicit_validation=True,  # Set to True as per the requirement
@@ -199,7 +175,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         agent_loop_options=agent_loop_options,
         agent_loop_factory=agent_loop_factory,
         conversation_factory=self.conversation_factory,
-        selection_manager=TestSelectionManager(),
+        selection_manager=FakeSelectionManager(),
         principle_paths=None,
         input_paths=None,
         original_task_prompt_content=None,
