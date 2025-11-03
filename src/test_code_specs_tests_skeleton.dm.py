@@ -5,7 +5,7 @@
 # These tests have a few constraints:
 #
 # * Mock is NOT allowed in this code. These tests should let all the
-#   dependencies  of CodeSpecsTestsSkeleton be used directly.
+#   dependencies of CodeSpecsTestsSkeleton be used directly.
 #
 # * These tests are not allowed to implement BaseAgentLoop directly; instead,
 #   they must always use AgentLoop and AgentLoopFactory.
@@ -33,7 +33,9 @@ from agent_command import Argument, AgentCommand, CommandOutput, CommandInput, A
 from agent_loop import AgentLoop, AgentLoopFactory
 from agent_loop_options import AgentLoopOptions
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import PathAndValidator, Validator, prepare_command_registry, prepare_initial_message, run_agent_loop, ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
+from code_specs import Validator, ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
+from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs_path_and_validator import PathAndValidator
 from code_specs_tests_skeleton import CodeSpecsTestsSkeletonWorkflow, tests_skeleton_variable, MUSHROOM, HEDGEHOG, path_to_test_variable
 from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
