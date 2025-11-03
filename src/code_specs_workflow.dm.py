@@ -111,14 +111,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
     raise NotImplementedError  # {{🍄 initial parameters}}
 
   async def _prepare_output_path(self, input: PathAndValidator) -> None:
-    """Prepares various files, moving old implementations aside."""
-    if input.output_path().exists():
-      # {{🦔 `input.output_path()` is copied to `input.old_path()`
-      #      (for example, `src/foo.py` becomes `src/foo.old.py`).}}
-      raise NotImplementedError  # {{🍄 prepare output paths if old output}}
+    """Prepares various files, moving old implementations aside.
 
-    # {{🦔 Unconditionally overwrites `input.output_path()` with
-    #   `input.dm_path`.}}
+    {{🦔 If it exists, `input.output_path()` is copied to `input.old_path()`.}}
+    {{🦔 Unconditionally overwrites `input.output_path()` with
+         `input.dm_path` (after copying it to `old_path`).}}
+    """
     raise NotImplementedError  # {{🍄 prepare output path}}
 
   async def _find_relevant_paths(
