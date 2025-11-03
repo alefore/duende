@@ -83,7 +83,7 @@ class ReadFileCommand(AgentCommand):
         # If end_line is 1, it means index 0 (and only that line). So end_index = end_line
         end_index = len(lines) if end_line is None else end_line
 
-        if start_index >= len(lines):
+        if start_index > len(lines):
           return CommandOutput(
               command_name=self.Syntax().name,
               output="",
