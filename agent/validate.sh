@@ -31,8 +31,8 @@ fi
 run_command "~/bin/mypy --strict src/agent_server.py"
 run_command "~/bin/mypy --strict src/code_specs_workflow.py"
 
-for file in src/test_{args_common,async_confirmation_manager,command_registry,list_files,validate_command_input,write_file_command,agent_loop,read_file_command,search_file_command,shell_command_command}.py; do
-  run_command "${VALIDATE_PYTHON} $file"
+for file in src/test_{args_common,async_confirmation_manager,code_specs{_agent,_path_and_validator,_tests_skeleton},command_registry,list_files,validate_command_input,write_file_command,agent_loop,read_file_command,search_file_command,shell_command_command}.py; do
+  run_command "${VALIDATE_PYTHON} -m pytest $file"
 done
 
 exit $exit_status
