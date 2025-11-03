@@ -17,8 +17,9 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, RepeatedExpandedMarkersError, Validator, comment_string, get_expanded_markers, get_markers, relevant_paths_variable
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, RepeatedExpandedMarkersError, Validator, comment_string, get_expanded_markers, get_markers, relevant_paths_variable
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs_path_and_validator import PathAndValidator
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
