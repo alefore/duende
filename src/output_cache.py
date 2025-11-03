@@ -4,7 +4,7 @@ import hashlib
 import os
 import json
 import pathlib
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
 from agent_command import VariableName, VariableValueInt, VariableValueStr, VariableValue, VariableMap
@@ -56,13 +56,15 @@ class OutputCache:
     tmp_output = output.with_suffix(f"{output.suffix}.tmp")
     # ✨ create cache dir if it doesn't exist
     await asyncio.to_thread(os.makedirs, self._base_dir, exist_ok=True)
+
     # ✨
     # ✨ use json to write both `key` and `value` to tmp_output
     class PathEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, pathlib.Path):
-                return str(obj)
-            return json.JSONEncoder.default(self, obj)
+
+      def default(self, obj: Any) -> Any:
+        if isinstance(obj, pathlib.Path):
+          return str(obj)
+        return json.JSONEncoder.default(self, obj)
 
     def _do_json_dump() -> None:
       with open(tmp_output, "w") as f:
