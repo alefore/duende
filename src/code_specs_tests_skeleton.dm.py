@@ -101,8 +101,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `tests_skeleton_variable`.}}
     {{🦔 After validating that the skeleton contains all tests, writes them to
-         a `tests_…` file (e.g., when `input` is `src/foo.py`, writes
-         `src/test_foo.py`).}}
+         a `tests_….dm.*` file (e.g., when `input` is `src/foo.py`, writes
+         `src/test_foo.dm.py`).}}
     {{🦔 `input` is passed as a relevant file to `prepare_initial_message`.'}}
     """
     start_message_content = (
