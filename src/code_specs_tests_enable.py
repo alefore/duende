@@ -308,7 +308,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     # Prepare the initial message for the agent loop, including relevant files.
     # The 'input' here is the path to the test file.
     initial_message = await prepare_initial_message(
-        start_message_content=start_message_content, relevant_files={input})
+        start_message_content=start_message_content, relevant_files=set())
 
     # Construct the conversation name based on the number of tests.
     conversation_name = f"make_tests_pass_{len(tests)}_{tests[-1]}"

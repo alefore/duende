@@ -1,14 +1,16 @@
 import aiofiles
 import asyncio
 import logging
+import os
 import pathlib
 import re
 import shutil
 import subprocess
 import tempfile
 from typing import NamedTuple, NewType, Pattern, Sequence
+import unittest
 
-from code_specs_workflow import MarkerImplementation, MarkerName, _get_comment_char
+from code_specs import MarkerImplementation, MarkerName, comment_string
 from file_access_policy import CurrentDirectoryFileAccessPolicy
 
 

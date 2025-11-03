@@ -50,7 +50,7 @@ class AgentLoop(BaseAgentLoop):
         try:
           cmd_input = cmd_input._replace(
               args=validate_command_input(cmd_input,
-                                          self.options.commands_registry,
+                                          self.options.command_registry,
                                           self.options.file_access_policy))
         except CommandValidationError as e:
           non_command_lines.append(f"Invalid command invocation: {str(e)}")
@@ -121,7 +121,7 @@ class AgentLoop(BaseAgentLoop):
       next_message.PushSection(
           ContentSection(
               content=("Response did not call any functions. " +
-                       self.options.commands_registry.available_commands_str()),
+                       self.options.command_registry.available_commands_str()),
               summary="Empty response placeholder."))
     return next_message
 
@@ -161,7 +161,7 @@ class AgentLoop(BaseAgentLoop):
   async def _execute_one_command(
       self, cmd_input: CommandInput) -> list[ContentSection]:
     command_name = cmd_input.command_name
-    command = self.options.commands_registry.Get(command_name)
+    command = self.options.command_registry.Get(command_name)
     assert command
     command_output: CommandOutput = (await command.run(
         cmd_input.args))._replace(thought_signature=cmd_input.thought_signature)

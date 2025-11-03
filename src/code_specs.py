@@ -820,12 +820,12 @@ async def run_agent_loop(workflow_options: AgentWorkflowOptions,
   conversation = workflow_options.conversation_factory.New(
       conversation_name, command_registry)
 
-  # Create new AgentLoopOptions, overriding conversation, start_message, and commands_registry
+  # Create new AgentLoopOptions, overriding conversation, start_message, and command_registry
   # from the workflow_options's agent_loop_options.
   agent_loop_options = workflow_options.agent_loop_options._replace(
       conversation=conversation,
       start_message=start_message,
-      commands_registry=command_registry)
+      command_registry=command_registry)
 
   agent_loop = workflow_options.agent_loop_factory.new(agent_loop_options)
 

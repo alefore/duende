@@ -7,7 +7,7 @@ import shutil
 import tempfile
 import unittest
 
-from code_specs_workflow import MarkerImplementation, MarkerName, _get_comment_char
+from code_specs import MarkerImplementation, MarkerName, _get_comment_char
 from file_access_policy import CurrentDirectoryFileAccessPolicy
 
 

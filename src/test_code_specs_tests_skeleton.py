@@ -168,7 +168,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # ✨ build workflow
     fake_conversational_ai = FakeConversationalAI(scripted_messages)
 
-    # `conversation`, `start_message`, and `commands_registry` in AgentLoopOptions
+    # `conversation`, `start_message`, and `command_registry` in AgentLoopOptions
     # are placeholders here, as they will be overridden by `run_agent_loop`
     # when it creates the actual AgentLoop instance for a specific conversation.
     dummy_conversation = self.conversation_factory.New(
@@ -184,7 +184,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     agent_loop_options = AgentLoopOptions(
         conversation=dummy_conversation,
         start_message=dummy_message,
-        commands_registry=empty_command_registry,
+        command_registry=empty_command_registry,
         confirmation_state=test_confirmation_state,
         file_access_policy=TestFileAccessPolicy(),
         conversational_ai=fake_conversational_ai,

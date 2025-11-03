@@ -104,7 +104,7 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
   review_options = AgentLoopOptions(
       conversation=review_conversation,
       start_message=review_start_message,
-      commands_registry=review_registry,
+      command_registry=review_registry,
       confirmation_state=review_confirmation_state,
       file_access_policy=parent_options.file_access_policy,
       conversational_ai=parent_options.conversational_ai,

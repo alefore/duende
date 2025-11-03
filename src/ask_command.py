@@ -68,7 +68,7 @@ class AskCommand(AgentCommand):
     sub_agent_options = AgentLoopOptions(
         conversation=sub_conversation,
         start_message=start_message,
-        commands_registry=self._command_registry,
+        command_registry=self._command_registry,
         confirmation_state=self._confirmation_state,
         file_access_policy=self._file_access_policy,
         conversational_ai=self._conversational_ai,

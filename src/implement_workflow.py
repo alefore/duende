@@ -134,7 +134,7 @@ class ImplementAndReviewWorkflowFactory(AgentWorkflowFactory):
     assert task
     conversation = options.conversation_factory.New(
         name='Submitted conversation',
-        command_registry=options.agent_loop_options.commands_registry)
+        command_registry=options.agent_loop_options.command_registry)
     content_sections = list(
         options.agent_loop_options.start_message.GetContentSections())
     content_sections.append(

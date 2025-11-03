@@ -126,7 +126,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
                         content=f"Original file content:\n```\n{input_content}\n```",
                         summary="Original file content")
                 ])),
-            commands_registry=command_registry,
+            command_registry=command_registry,
             confirmation_state=self._options.agent_loop_options
             .confirmation_state,
             file_access_policy=self._options.agent_loop_options

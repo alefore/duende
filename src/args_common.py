@@ -270,7 +270,7 @@ async def CreateAgentWorkflowOptions(
     common_agent_loop_options = AgentLoopOptions(
         conversation=conversation,
         start_message=start_message,
-        commands_registry=registry,
+        command_registry=registry,
         confirmation_state=confirmation_state,
         file_access_policy=file_access_policy,
         conversational_ai=GetConversationalAI(args, registry),
@@ -301,7 +301,7 @@ async def CreateAgentWorkflowOptions(
                         content='Dummy message for PrincipleReviewWorkflow',
                         summary=None)
                 ]),
-            commands_registry=registry,
+            command_registry=registry,
             confirmation_state=confirmation_state,
             file_access_policy=file_access_policy,
             conversational_ai=GetConversationalAI(args, registry),
@@ -351,7 +351,7 @@ async def CreateAgentWorkflowOptions(
   common_agent_loop_options = AgentLoopOptions(
       conversation=conversation,
       start_message=start_message,
-      commands_registry=registry,
+      command_registry=registry,
       confirmation_state=confirmation_state,
       file_access_policy=file_access_policy,
       conversational_ai=GetConversationalAI(args, registry),
