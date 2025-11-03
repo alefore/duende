@@ -1,10 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from agent_command import (AgentCommand, CommandInput, CommandOutput,
-                           CommandSyntax)
-from command_registry import (CommandRegistrationError, CommandRegistry,
-                              UnknownCommandError)
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, VariableMap
+from command_registry import CommandRegistrationError, CommandRegistry, UnknownCommandError
 
 
 class FakeCommand(AgentCommand):
@@ -18,6 +16,10 @@ class FakeCommand(AgentCommand):
 
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(description="A fake command for testing.")
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    return CommandOutput(
+        command_name=self._name, output="", errors="", summary="")
 
 
 class CommandRegistryTest(unittest.TestCase):
@@ -38,8 +40,9 @@ class CommandRegistryTest(unittest.TestCase):
 
   def test_register_clash_with_canonical_name(self) -> None:
     self.registry.Register(FakeCommand("command1"))
-    with self.assertRaisesRegex(CommandRegistrationError,
-                                "Command with name command1 already registered."):
+    with self.assertRaisesRegex(
+        CommandRegistrationError,
+        "Command with name command1 already registered."):
       self.registry.Register(FakeCommand("command1"))
 
   def test_list_all_empty(self) -> None:
