@@ -17,7 +17,7 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, PathAndValidator, RepeatedExpandedMarkersError, Validator, comment_string, get_expanded_markers, get_markers, prepare_command_registry, prepare_initial_message, relevant_paths_variable, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -79,8 +79,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
       raise NotImplementedError()  # {{🍄 initial parameters validator}}
 
     start_message_content = (
-        "GOAL: Ask the user (through text conversation) for approprivate values "
-        "for the variables expected by `done`. "
+        "GOAL: Ask the user (through text conversation) "
+        "for approprivate values for the variables expected by `done`. "
         "Describe these variables to the user "
         "to help them understand what is expected "
         "(mention the $DMPATH environment variable of `validator`)."
@@ -110,18 +110,15 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "your goal is achieved and you should run `done`.")
     raise NotImplementedError  # {{🍄 initial parameters}}
 
-  async def _prepare_output_path(
-      self, input: PathAndValidator) -> pathlib.Path | None:
+  async def _prepare_output_path(self, input: PathAndValidator) -> None:
     """Prepares various files, moving old implementations aside."""
-    return_value: pathlib.Path | None = None
     if input.output_path().exists():
-      # {{🦔 `input.output_path()` is copied to `input.output_path().old`
-      #      (for example, `src/foo.py` becomes `src/foo.py.old`).}}
-      # {{🦔 `return_value` is set to the location of the copy (`….old`).}}
+      # {{🦔 `input.output_path()` is copied to `input.old_path()`
+      #      (for example, `src/foo.py` becomes `src/foo.old.py`).}}
       raise NotImplementedError  # {{🍄 prepare output paths if old output}}
 
     # {{🦔 Unconditionally overwrites `input.output_path()` with
-    #   `input.dm_path` (after moving it to a temporary file).}}
+    #   `input.dm_path`.}}
     raise NotImplementedError  # {{🍄 prepare output path}}
 
   async def _find_relevant_paths(
@@ -202,11 +199,11 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def _implement_marker(
       self,
-      inputs: PathAndValidator,
+      path_and_validator: PathAndValidator,
       marker: MarkerName,
       relevant_paths: set[pathlib.Path],
   ) -> MarkerImplementation:
-    """Finds a suitable implementation for `marker` from `inputs`.
+    """Finds a suitable implementation for `marker` from `path_and_validator`.
 
     Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
     `prepare_initial_message`. The agent is focused exclusively on `marker`,
@@ -216,20 +213,22 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 For each file in `relevant_paths`, there's a section in the initial
          message (prompt) given to the AI.}}
-    {{🦔 If `inputs.old_path()` exists and contains an implementation for
-         `marker`, that implementation gets included as the last section of the
-         initial message. The section is the line "Previous implementation:",
-         followed by the entire implementation (of the marker).}}
+    {{🦔 If `path_and_validator.old_path()` exists and contains an
+         implementation for `marker`, that implementation gets included as the
+         last section of the initial message. The section is the line "Previous
+         implementation:", followed by the entire implementation (of the
+         marker).}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
     {{🦔 Enables caching of conversations: if two separate instances of
-         CodeSpecsWorkflow have this method called for the same inputs.dm_path
-         and marker, the 2nd call reuses the outputs from the first.}}
+         CodeSpecsWorkflow have this method called for the same
+         `path_and_validator.dm_path` and marker, the 2nd call reuses the
+         outputs from the first.}}
     {{🦔 Doesn't actually overwrite any files (the caller does).}}
 
     Arguments:
       marker: The marker to implement.
-      inputs: The dm file we're inspecting.
+      path_and_validator: The dm file we're inspecting.
       relevant_paths: A list of relevant paths for the initial prompt.
 
     Returns:
@@ -240,12 +239,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
       """Calls validator.validate_marker_implementation to validate."""
       raise NotImplementedError()  # {{🍄 implement validator}}
 
-    file_extension = FileExtension(inputs.output_path().suffix[1:])
+    file_extension = FileExtension(path_and_validator.output_path().suffix[1:])
     start_message_content = (
         "GOAL: provide the *code content* "
         "that will replace the line containing the "
         f"'{{{{{MUSHROOM} {marker.name}}}}}' marker "
-        f"in the file '{inputs.output_path()}'."
+        f"in the file '{path_and_validator.output_path()}'."
         "\n"
         "The implementation block *must* strictly follow this format:"
         "\n"
@@ -263,7 +262,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"The `done` command requires an argument `{implementation_variable}` "
         "which *must* be your full implementation block as a single string.")
 
-    # Content to append *conditionally* if `inputs.old_path()` exists:
+    # Content to append conditionally if `path_and_validator.old_path()` exists:
     additional_start_message_content_if_old_implementation_available = (
         f"In your implementation, try to reuse as much as possible the old "
         f"implementation (included in the initial message). "
@@ -277,8 +276,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
     # Enable caching in the options given to `run_agent_loop`:
     options = self._options._replace(
         agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
-            f"code_specs_workflow:{inputs.output_path()}", self._output_cache,
-            self._options.agent_loop_factory))
+            f"code_specs_workflow:{path_and_validator.output_path()}",
+            self._output_cache, self._options.agent_loop_factory))
 
     raise NotImplementedError()  # {{🍄 implement single marker}}
 
