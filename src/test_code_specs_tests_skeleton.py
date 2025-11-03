@@ -34,9 +34,10 @@ from agent_command import Argument, AgentCommand, CommandOutput, CommandInput, A
 from agent_loop import AgentLoop, AgentLoopFactory
 from agent_loop_options import AgentLoopOptions
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import Validator, ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
+from code_specs import ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
 from code_specs_path_and_validator import PathAndValidator
+from code_specs_validator import Validator
 from code_specs_tests_skeleton import CodeSpecsTestsSkeletonWorkflow, tests_skeleton_variable, MUSHROOM, HEDGEHOG, path_to_test_variable
 from command_registry import CommandRegistry
 from conversation import Conversation, ConversationId, ConversationFactory, ConversationFactoryOptions

@@ -10,7 +10,8 @@ import tempfile
 from typing import NamedTuple, NewType, Pattern, Sequence
 import unittest
 
-from code_specs import MarkerImplementation, MarkerName, comment_string
+from code_specs import MarkerName, comment_string
+from code_specs_marker_implementation import MarkerImplementation
 from file_access_policy import CurrentDirectoryFileAccessPolicy
 
 

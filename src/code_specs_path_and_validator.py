@@ -2,7 +2,8 @@ import aiofiles
 import dataclasses
 import pathlib
 
-from code_specs import FileExtension, MarkerChar, MarkersOverlapError, Validator, comment_string, get_markers
+from code_specs import FileExtension, MarkerChar, MarkersOverlapError, comment_string, get_markers
+from code_specs_validator import Validator
 
 
 @dataclasses.dataclass(frozen=True)

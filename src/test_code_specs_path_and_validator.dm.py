@@ -31,9 +31,10 @@ import unittest
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValueStr
 from agent_loop_options import AgentLoopOptions, BaseAgentLoopFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, Validator, comment_string, get_markers
+from code_specs import FileExtension, MarkerChar, comment_string, get_markers
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
 from code_specs_path_and_validator import PathAndValidator
+from code_specs_validator import Validator
 from command_registry import CommandRegistry
 from conversation import ConversationFactory, Conversation
 from done_command import DoneCommand

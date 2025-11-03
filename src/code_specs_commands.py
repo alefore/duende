@@ -15,7 +15,8 @@ import aiofiles
 
 from agent_command import AgentCommand, Argument, ArgumentContentType, CommandOutput, CommandSyntax, REASON_VARIABLE, VariableMap, VariableName, VariableValue, VariableValueStr
 from file_access_policy import FileAccessPolicy
-from code_specs import comment_string, ExpandedMarker, FileExtension, get_expanded_markers, get_markers, MarkerChar, MarkerName, MarkersOverlapError, MarkerImplementation, reindent_code, RepeatedExpandedMarkersError
+from code_specs import comment_string, ExpandedMarker, FileExtension, get_expanded_markers, get_markers, MarkerChar, MarkerName, MarkersOverlapError, reindent_code, RepeatedExpandedMarkersError
+from code_specs_marker_implementation import MarkerImplementation
 from validation import ValidationManager
 
 _PATH_VARIABLE = VariableName("path")

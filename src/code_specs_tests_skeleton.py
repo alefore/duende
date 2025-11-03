@@ -16,7 +16,9 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, Validator, comment_string, get_markers
+from code_specs import FileExtension, MarkerChar, MarkerName, MarkersOverlapError, comment_string, get_markers
+from code_specs_marker_implementation import MarkerImplementation
+from code_specs_validator import Validator
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
 from code_specs_path_and_validator import PathAndValidator
 from conversation import Conversation, ConversationId, ConversationFactory
