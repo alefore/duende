@@ -308,12 +308,31 @@ class PathAndValidator:
     """
     # {{🍄 PathAndValidator validate fields}}
 
+  def file_extension(self) -> FileExtension:
+    """Returns the file extension of the `dm_path`.
+
+    {{🦔 For `dm_path` "foo/bar/quux.dm.py", returns "py"}}
+    """
+    raise NotImplementedError()  # {{🍄 PathAndValidator file extension}}
+
   def output_path(self) -> pathlib.Path:
     """Returns `dm_path` without the `.dm` part.
 
     {{🦔 If `dm_path` is "foo/bar/quux.dm.py", returns "foo/bar/quux.py"}}
     """
     raise NotImplementedError()  # {{🍄 PathAndValidator output path}}
+
+  def old_path(self) -> pathlib.Path:
+    """Returns the "old" path, where the previous implementation is backed up.
+
+    This is done by replacing the ".dm." part with ".old.".
+
+    When expansion begins, we use these paths to make a copy of previous files
+    that we'll overwrite.
+
+    {{🦔 For `dm_path` "foo/bar.dm.py", returns "foo/bar.old.py".}}
+    """
+    raise NotImplementedError()  # {{🍄 PathAndValidator old path}}
 
   async def overwrite(self, target: pathlib.Path) -> None:
     """Copies `dm_path`'s contents to `target` (overwriting it).
