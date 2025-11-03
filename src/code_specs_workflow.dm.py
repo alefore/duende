@@ -223,8 +223,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
     {{🦔 Enables caching of conversations: if two separate instances of
-         CodeSpecsWorkflow have this method called for the same output_path and
-         marker, the 2nd call reuses the outputs from the first.}}
+         CodeSpecsWorkflow have this method called for the same inputs.dm_path
+         and marker, the 2nd call reuses the outputs from the first.}}
     {{🦔 Doesn't actually overwrite any files (the caller does).}}
 
     Arguments:
@@ -240,12 +240,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
       """Calls validator.validate_marker_implementation to validate."""
       raise NotImplementedError()  # {{🍄 implement validator}}
 
-    file_extension = FileExtension(output_path.suffix[1:])
+    file_extension = FileExtension(inputs.output_path().suffix[1:])
     start_message_content = (
         "GOAL: provide the *code content* "
         "that will replace the line containing the "
         f"'{{{{{MUSHROOM} {marker.name}}}}}' marker "
-        f"in the file '{output_path}'."
+        f"in the file '{inputs.output_path()}'."
         "\n"
         "The implementation block *must* strictly follow this format:"
         "\n"
@@ -263,10 +263,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"The `done` command requires an argument `{implementation_variable}` "
         "which *must* be your full implementation block as a single string.")
 
-    # Content to append *conditionally* if `output_path + '.old'` exists:
+    # Content to append *conditionally* if `inputs.old_path()` exists:
     additional_start_message_content_if_old_implementation_available = (
-        f"In your implementation, try to reuse as much as possible any old "
-        f"implementation (from the `{output_path}.old` file). "
+        f"In your implementation, try to reuse as much as possible the old "
+        f"implementation (included in the initial message). "
         f"Only change the implementation if this is strictly necessary: "
         f"if the old implementation has bugs "
         f"(e.g., does not honor some documented property), "
@@ -277,7 +277,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
     # Enable caching in the options given to `run_agent_loop`:
     options = self._options._replace(
         agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
-            f"code_specs_workflow:{output_path}", self._output_cache,
+            f"code_specs_workflow:{inputs.output_path()}", self._output_cache,
             self._options.agent_loop_factory))
 
     raise NotImplementedError()  # {{🍄 implement single marker}}
