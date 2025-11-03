@@ -107,10 +107,6 @@ class GeminiConversation(ConversationalAIConversation):
       raise e
 
     reply_message = Message(role="assistant")
-    if response.text:
-      logging.info(f"Text received from Gemini: '{response.text[:50]}...'")
-      reply_message.PushSection(
-          ContentSection(content=response.text, summary=None))
     if not response.candidates:
       logging.fatal(f'Invalid response: {response}')
       return reply_message  # Never executed.
@@ -118,29 +114,32 @@ class GeminiConversation(ConversationalAIConversation):
     if response.candidates[0].content and response.candidates[0].content.parts:
       for part in response.candidates[0].content.parts:
         logging.info(part)
-        if not part.function_call:
-          continue
-        name = part.function_call.name
-        if not name:
-          continue
+        if part.text:
+          logging.info(f"Text received from Gemini: '{part.text[:50]}...'")
+          reply_message.PushSection(
+              ContentSection(content=response.text, summary=None))
+        if part.function_call:
+          logging.info(f"Commands received from Gemini")
+          name = part.function_call.name
+          if not name:
+            logging.info(f"Function has no name")
+            continue
 
-        logging.info(f"Commands received from Gemini")
-        function_call: genai.types.FunctionCall = part.function_call
-        logging.info(function_call)
-        logging.info(function_call.args)
+          function_call: genai.types.FunctionCall = part.function_call
+          logging.info(function_call)
 
-        reply_message.PushSection(
-            ContentSection(
-                content="",
-                summary=f'MCP call: {function_call}',
-                command=CommandInput(
-                    command_name=name,
-                    args=VariableMap({
-                        VariableName(k): _get_value(v)
-                        for k, v in (function_call.args or {}).items()
-                    }),
-                    thought_signature=(part.thought_signature if hasattr(
-                        part, 'thought_signature') else None))))
+          reply_message.PushSection(
+              ContentSection(
+                  content="",
+                  summary=f'MCP call: {function_call}',
+                  command=CommandInput(
+                      command_name=name,
+                      args=VariableMap({
+                          VariableName(k): _get_value(v)
+                          for k, v in (function_call.args or {}).items()
+                      }),
+                      thought_signature=(part.thought_signature if hasattr(
+                          part, 'thought_signature') else None))))
 
     await self.conversation.AddMessage(reply_message)
     return reply_message
