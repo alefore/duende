@@ -17,10 +17,10 @@ from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import FileExtension, MarkerChar, MarkerName, MarkersOverlapError, comment_string, get_markers
-from code_specs_marker_implementation import MarkerImplementation
-from code_specs_validator import Validator
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs_marker_implementation import MarkerImplementation
 from code_specs_path_and_validator import PathAndValidator
+from code_specs_validator import Validator
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -179,8 +179,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `tests_skeleton_variable`.}}
     {{🦔 After validating that the skeleton contains all tests, writes them to
-         a `tests_…` file (e.g., when `input` is `src/foo.py`, writes
-         `src/test_foo.py`).}}
+         a `tests_….dm.*` file (e.g., when `input` is `src/foo.py`, writes
+         `src/test_foo.dm.py`).}}
     {{🦔 `input` is passed as a relevant file to `prepare_initial_message`.'}}
     """
     start_message_content = (
@@ -317,7 +317,7 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
           return ValidationResult(
               success=False,
               output="",
-              error=f"MUSHROOM marker content '{{{MUSHROOM} {marker_name}}}' is repeated {len(implementations)} times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation."
+              error=f"MUSHROOM marker content '{{{MUSHROOM} {marker_name.name}}}' is repeated {len(implementations)} times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation."
           )
 
       # Fails if the number of HEDGEHOG markers in the input isn't exactly
@@ -367,12 +367,12 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     tests_skeleton = output_variables[tests_skeleton_variable]
 
     # Construct the output file path.
-    # If input is 'src/foo.py', output should be 'src/test_foo.py'.
-    # If input is 'src/foo.dm.py', it should be 'src/test_foo.py'
-    input_stem = input.stem
-    if ".dm" in input_stem:
-      input_stem = input_stem.replace(".dm", "")
-    output_file_name = f"test_{input_stem}{input.suffix}"
+    # If input is 'src/foo.py', output should be 'src/test_foo.dm.py'.
+    # If input is 'src/foo.dm.py', it should be 'src/test_foo.dm.py'
+    base_name = input.stem
+    if ".dm" in base_name:
+      base_name = base_name.replace(".dm", "")
+    output_file_name = f"test_{base_name}.dm{input.suffix}"
     output_path = input.parent / output_file_name
 
     # Write the skeleton to the target file.
