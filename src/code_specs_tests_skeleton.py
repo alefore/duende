@@ -16,7 +16,8 @@ from agent_loop_options import AgentLoopOptions
 from agent_loop_options import BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers, prepare_command_registry, prepare_initial_message, run_agent_loop
+from code_specs import FileExtension, MarkerChar, MarkerImplementation, MarkerName, MarkersOverlapError, PathAndValidator, Validator, comment_string, get_markers
+from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
 from conversation import Conversation, ConversationId, ConversationFactory
 from conversation_state import ConversationState
 from done_command import DoneCommand, DoneValuesValidator
@@ -108,16 +109,18 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
             output="",
             error=f"File '{path}' not found or inaccessible.")
       except MarkersOverlapError as e:
-          # Overlapping markers indicate a structural issue, which should result in failure.
-          return ValidationResult(
-              success=False,
-              output="",
-              error=f"File '{path}' contains overlapping '{HEDGEHOG}' markers: {e}")
+        # Overlapping markers indicate a structural issue, which should result in failure.
+        return ValidationResult(
+            success=False,
+            output="",
+            error=f"File '{path}' contains overlapping '{HEDGEHOG}' markers: {e}"
+        )
       except Exception as e:
         return ValidationResult(
             success=False,
             output="",
-            error=f"An unexpected error occurred while validating file '{path}': {e}")
+            error=f"An unexpected error occurred while validating file '{path}': {e}"
+        )
 
       return ValidationResult(
           success=True, output="Path to test is valid.", error="")
@@ -154,8 +157,7 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     )
 
     start_message = await prepare_initial_message(
-        start_message_content=start_message_content, relevant_files=set()
-    )
+        start_message_content=start_message_content, relevant_files=set())
 
     output_variables = await run_agent_loop(
         workflow_options=self._options,
@@ -246,7 +248,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         return ValidationResult(
             success=False,
             output="",
-            error=f"'{tests_skeleton_variable}' is required and cannot be empty.")
+            error=f"'{tests_skeleton_variable}' is required and cannot be empty."
+        )
 
       skeleton_content = str(tests_skeleton_value)
 
@@ -254,22 +257,26 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
       try:
         # 'input' is captured from the enclosing scope and is a pathlib.Path
         hedgehog_markers_map = await get_markers(HEDGEHOG, input)
-        total_hedgehog_markers = sum(len(locations) for locations in hedgehog_markers_map.values())
+        total_hedgehog_markers = sum(
+            len(locations) for locations in hedgehog_markers_map.values())
       except MarkersOverlapError as e:
         return ValidationResult(
             success=False,
             output="",
-            error=f"Input file '{input}' contains overlapping '{HEDGEHOG}' markers: {e}")
+            error=f"Input file '{input}' contains overlapping '{HEDGEHOG}' markers: {e}"
+        )
       except FileNotFoundError:
         return ValidationResult(
             success=False,
             output="",
-            error=f"Input file '{input}' not found or inaccessible while validating skeleton.")
+            error=f"Input file '{input}' not found or inaccessible while validating skeleton."
+        )
       except Exception as e:
         return ValidationResult(
             success=False,
             output="",
-            error=f"An unexpected error occurred while processing input file '{input}': {e}")
+            error=f"An unexpected error occurred while processing input file '{input}': {e}"
+        )
 
       # Get MUSHROOM markers from the generated skeleton content
       # If mypy expects Path, write skeleton_content to a temporary file
@@ -280,23 +287,26 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         temp_dir = tempfile.mkdtemp()
         temp_file_path = pathlib.Path(temp_dir) / "temp_skeleton_file.py"
         async with aiofiles.open(temp_file_path, mode="w") as f:
-            await f.write(skeleton_content)
+          await f.write(skeleton_content)
 
         mushroom_markers_map = await get_markers(MUSHROOM, temp_file_path)
-        total_mushroom_markers = sum(len(locations) for locations in mushroom_markers_map.values())
+        total_mushroom_markers = sum(
+            len(locations) for locations in mushroom_markers_map.values())
       except MarkersOverlapError as e:
         return ValidationResult(
             success=False,
             output="",
-            error=f"Generated skeleton contains overlapping '{MUSHROOM}' markers: {e}")
+            error=f"Generated skeleton contains overlapping '{MUSHROOM}' markers: {e}"
+        )
       except Exception as e:
         return ValidationResult(
             success=False,
             output="",
-            error=f"An unexpected error occurred while processing the generated skeleton: {e}")
+            error=f"An unexpected error occurred while processing the generated skeleton: {e}"
+        )
       finally:
         if temp_dir and pathlib.Path(temp_dir).exists():
-            shutil.rmtree(temp_dir) # Clean up temporary directory
+          shutil.rmtree(temp_dir)  # Clean up temporary directory
 
       # Fails if an identical MUSHROOM marker (content) is repeated.
       for marker_name, implementations in mushroom_markers_map.items():
@@ -304,7 +314,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
           return ValidationResult(
               success=False,
               output="",
-              error=f"MUSHROOM marker content '{{{MUSHROOM} {marker_name}}}' is repeated {len(implementations)} times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation.")
+              error=f"MUSHROOM marker content '{{{MUSHROOM} {marker_name}}}' is repeated {len(implementations)} times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation."
+          )
 
       # Fails if the number of HEDGEHOG markers in the input isn't exactly
       # the same as the number of MUSHROOM markers in the output.
@@ -312,7 +323,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
         return ValidationResult(
             success=False,
             output="",
-            error=f"Mismatch in marker counts: Input has {total_hedgehog_markers} '{HEDGEHOG}' markers, but skeleton has {total_mushroom_markers} '{MUSHROOM}' markers. Counts must be equal.")
+            error=f"Mismatch in marker counts: Input has {total_hedgehog_markers} '{HEDGEHOG}' markers, but skeleton has {total_mushroom_markers} '{MUSHROOM}' markers. Counts must be equal."
+        )
 
       return ValidationResult(
           success=True, output="Tests skeleton is valid.", error="")
@@ -322,7 +334,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     done_command_arguments = [
         Argument(
             name=tests_skeleton_variable,
-            arg_type=ArgumentContentType.STRING,  # The skeleton is a string of code
+            arg_type=ArgumentContentType
+            .STRING,  # The skeleton is a string of code
             description="The complete skeleton code for the unit tests.",
             required=True,
         )
@@ -360,7 +373,8 @@ class CodeSpecsTestsSkeletonWorkflow(AgentWorkflow):
     output_path = input.parent / output_file_name
 
     # Write the skeleton to the target file.
-    async with aiofiles.open(output_path, mode="w") as f:
+    async with aiofiles.open(
+        output_path, mode="w") as f:
       await f.write(str(tests_skeleton))
     # ✨
 
