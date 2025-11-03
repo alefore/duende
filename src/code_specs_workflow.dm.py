@@ -201,9 +201,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
     raise NotImplementedError()  # {{🍄 implement file}}
 
   async def _implement_marker(
-      self, marker: MarkerName, relevant_paths: set[pathlib.Path],
-      validator: Validator, output_path: pathlib.Path) -> MarkerImplementation:
-    """Finds a suitable implementation for `marker` from `output_path`.
+      self,
+      inputs: PathAndValidator,
+      marker: MarkerName,
+      relevant_paths: set[pathlib.Path],
+  ) -> MarkerImplementation:
+    """Finds a suitable implementation for `marker` from `inputs`.
 
     Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
     `prepare_initial_message`. The agent is focused exclusively on `marker`,
@@ -213,20 +216,21 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     {{🦔 For each file in `relevant_paths`, there's a section in the initial
          message (prompt) given to the AI.}}
-    {{🦔 If `output_path + '.old'` exists, it gets included in the initial
-         message (as if it had been included in `relevant_paths`.}}
+    {{🦔 If `inputs.old_path()` exists and contains an implementation for
+         `marker`, that implementation gets included as the last section of the
+         initial message. The section is the line "Previous implementation:",
+         followed by the entire implementation (of the marker).}}
     {{🦔 The only done command argument given to `prepare_command_registry` is
          `implementation_variable`.}}
     {{🦔 Enables caching of conversations: if two separate instances of
          CodeSpecsWorkflow have this method called for the same output_path and
          marker, the 2nd call reuses the outputs from the first.}}
+    {{🦔 Doesn't actually overwrite any files (the caller does).}}
 
     Arguments:
       marker: The marker to implement.
+      inputs: The dm file we're inspecting.
       relevant_paths: A list of relevant paths for the initial prompt.
-      validator: The validator used to verify a plausible implementation.
-      output_path: The input file with the context for implementing `marker`. We
-        do not actually update it (our customer does).
 
     Returns:
       A validated MarkerImplementation that customers can call `save` on.
