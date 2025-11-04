@@ -167,7 +167,10 @@ def get_markers_str(char: MarkerChar,
   {{🦔 An input can have repeated markers; the output just lists their
        positions.}}
   {{🦔 An input where two markers overlap (one ends in the same line where the
-       other begins) raises `MarkersOverlapError`.}}
+       other begins) raises `MarkersOverlapError`. The error description
+       includes the full set of (deduplicated) markers that overlap. For each,
+       the string "{{" + char + " " + name + "}}" is included (in the
+       exception).}}
   {{🦔 The returned object is sorted by appearance order (i.e., iterating across
        the keys of the returned dictionary matches the order in which the first
        appearance of each marker was found in the input).}}
