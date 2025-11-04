@@ -1,23 +1,8 @@
 # DM validator:
 #
-# MYPYPATH=~/coding-agent/src mypy $DMPATH && $PYTHON -m pytest $DMPATH
+# mypy $DMPATH && $PYTHON -m pytest $DMPATH
 #
-# These tests have a few constraints:
-#
-# * Mock is NOT allowed in this code. These tests should let all the
-#   dependencies of CodeSpecsTestsSkeleton be used directly.
-#
-# * These tests are not allowed to implement BaseAgentLoop directly; instead,
-#   they must always use AgentLoop and AgentLoopFactory.
-#
-# * These tests must NOT subclass AgentLoop nor AgentLoopFactory, nor mock any
-#   of their methods.
-#
-# * These tests must NOT contain the 🍄 character anywhere (in order to avoid
-#   possible clashes with Duende, since that is already interpreting markers).
-#
-# * If they need to get a conversation, these tests must get it from the
-#   self.conversation_factory. They must NOT get it from the conversational_ai.
+# See src/test-constraints.md for constraints that apply to these tests.
 
 import aiofiles
 from collections import defaultdict
