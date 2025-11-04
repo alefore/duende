@@ -6,7 +6,7 @@
 # These tests have a few constraints:
 #
 # * Mock is NOT allowed in this code. These tests should let all the
-#   dependencies  of CodeSpecsTestsSkeleton be used directly.
+#   dependencies of CodeSpecsTestsSkeleton be used directly.
 #
 # * These tests are not allowed to implement BaseAgentLoop directly; instead,
 #   they must always use AgentLoop and AgentLoopFactory.
@@ -37,15 +37,18 @@ from agent_workflow_options import AgentWorkflowOptions
 from code_specs import ValidationResult, MarkerChar, MarkersOverlapError, MarkerName
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
 from code_specs_path_and_validator import PathAndValidator
-from code_specs_validator import Validator
 from code_specs_tests_skeleton import CodeSpecsTestsSkeletonWorkflow, tests_skeleton_variable, MUSHROOM, HEDGEHOG, path_to_test_variable
+from code_specs_validator import Validator
 from command_registry import CommandRegistry
+from confirmation import ConfirmationManager, ConfirmationState
 from conversation import Conversation, ConversationId, ConversationFactory, ConversationFactoryOptions
 from conversation_state import ConversationState
 from conversational_ai import ConversationalAI
 from conversational_ai_test_utils import FakeConversationalAIConversation, FakeConversationalAI
 from done_command import DoneCommand
+from file_access_policy import FileAccessPolicy
 from message import ContentSection, Message
+from selection_manager import SelectionManager
 from test_utils import FakeFileAccessPolicy, FakeConfirmationState, FakeConfirmationManager, FakeSelectionManager
 
 
@@ -121,18 +124,17 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     The file contains two different non-overlapping markers. Does not actually
     write the file, just returns text contents.
     """
-
     # ✨ tmp file with markers
-    return '''
+    return f"""
     # Some code
     def foo():
-        pass # {{🦔 property1}}
+        pass # {{{{{HEDGEHOG} property1}}}}
 
     # More code
     class Bar:
         def baz(self):
-            return 1 # {{🦔 property2}}
-    '''
+            return 1 # {{{{{HEDGEHOG} property2}}}}
+    """
     # ✨
 
   async def build_workflow(
@@ -405,14 +407,14 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
       self) -> None:
     # ✨ Validation succeeds if the file contains repeated (identical) HEDGEHOG markers (per `code_specs.get_markers`).
     # 1. Create file content that contains repeated (identical) HEDGEHOG markers.
-    repeated_hedgehog_content = """
+    repeated_hedgehog_content = f"""
             # Some code
             def func_a():
-                pass # {{🦔 property1}}
+                pass # {{{{{HEDGEHOG} property1}}}}
 
             # More code
             def func_b():
-                return 2 # {{🦔 property1}}
+                return 2 # {{{{{HEDGEHOG} property1}}}}
             """
 
     # 2. Use write_path_to_test_and_return_done_message to create a message with this content in a temporary file.
@@ -460,13 +462,15 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # 4. Build the workflow with the scripted messages.
     workflow = await self.build_workflow(scripted_messages)
 
-    # 5. Run _get_initial_parameters. It should complete successfully.
+    # 5. Run _get_initial_parameters. It should complete successfully as only the required variable is provided.
     returned_path = await workflow._get_initial_parameters()
 
     # 6. Assert that the returned path is the valid one.
     self.assertEqual(returned_path, valid_tmp_file_path)
 
     # 7. Verify that no validation error messages are present in the conversation sections.
+    #    This confirms that providing only `path_to_test_variable` (which is valid)
+    #    resulted in a successful validation and no other variables were required.
     def predicate_for_errors(section: ContentSection) -> bool:
       return section.content.startswith(
           "Error: ") or "Warning done:" in section.content
@@ -476,15 +480,46 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         len(matching_error_sections), 0,
         f"No validation error messages were expected, but found: {matching_error_sections}"
     )
+
+    # Additionally, verify that the DoneCommand in the command registry
+    # for 'initial_parameters' conversation only has 'path_to_test_variable' as an argument.
+    initial_parameters_conversation = None
+    for conv in self.conversation_factory.GetAll():
+      if conv.GetName() == "initial_parameters":
+        initial_parameters_conversation = conv
+        break
+
+    self.assertIsNotNone(
+        initial_parameters_conversation,
+        "Conversation 'initial_parameters' not found in factory.")
+
+    if initial_parameters_conversation is not None:
+      command_registry = initial_parameters_conversation.command_registry
+      self.assertIsInstance(command_registry, CommandRegistry)
+
+      done_command = None
+      for command in command_registry.GetCommands():
+        if isinstance(command, DoneCommand):
+          done_command = command
+          break
+
+      self.assertIsNotNone(done_command, "DoneCommand not found in registry.")
+      if done_command is not None:
+        done_syntax_arguments = done_command.Syntax().arguments
+        self.assertEqual(
+            len(done_syntax_arguments), 1,
+            "DoneCommand should only have one argument for path_to_test_variable."
+        )
+        self.assertEqual(
+            done_syntax_arguments[0].name, path_to_test_variable,
+            f"The only expected argument should be '{path_to_test_variable}'.")
     # ✨
 
   async def test_prepare_tests_skeleton_only_tests_skeleton_variable_argument(
       self) -> None:
     # ✨ The only done command argument given to `prepare_command_registry` in `_prepare_tests_skeleton` is `tests_skeleton_variable`.
     # 1. Prepare a valid file content with HEDGEHOG markers. This file will be the input to _prepare_tests_skeleton.
-    valid_file_content = ("# {{🦔 A test property}}"
-                          "\ndef some_function():"
-                          "\n    pass\n")
+    valid_file_content = self.get_valid_contents_with_hedgehog_markers()
 
     # 2. Use the helper to create a temporary file and the initial done message.
     done_message_for_initial_params, tmp_input_path = self.write_path_to_test_and_return_done_message(
@@ -492,12 +527,17 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 3. Define a valid skeleton content for the "prepare_tests_skeleton" conversation.
     #    This skeleton needs to have the correct number of MUSHROOM markers to pass validation.
+    #    Since `get_valid_contents_with_hedgehog_markers` returns two hedgehog markers,
+    #    we'll create two corresponding mushroom markers.
     valid_skeleton_content = (
         "import unittest\n"
         "\n"
         "class MyTests(unittest.IsolatedAsyncioTestCase):\n"
-        "  async def test_a_test_property(self) -> None:\n"
-        "    pass  # {{" + str(MUSHROOM) + " A test property}}\n"
+        "  async def test_property1(self) -> None:\n"
+        "    pass  # {{" + str(MUSHROOM) + " property1}}\n"
+        "\n"
+        "  async def test_property2(self) -> None:\n"
+        "    pass  # {{" + str(MUSHROOM) + " property2}}\n"
         "\n"
         "if __name__ == '__main__':\n"
         "  unittest.main()\n")
@@ -552,11 +592,11 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
   async def test_prepare_tests_skeleton_writes_to_test_file_after_validation(
       self) -> None:
     # ✨ After validating that the skeleton contains all tests, writes them to a `tests_…` file (e.g., when `input` is `src/foo.py`, writes `src/test_foo.py`).
-    # 1. Test case: input file is 'src/foo.py' -> output file 'src/test_foo.py'
-    input_file_content_py = '''
+    # 1. Test case: input file is 'src/foo.py' -> output file 'src/test_foo.dm.py'
+    input_file_content_py = f'''
                 # Some code
                 def func_to_test_py():
-                    pass # {{🦔 property for py file}}
+                    pass # {{{{{HEDGEHOG} property for py file}}}}
                 '''
     done_message_for_py_input, tmp_input_py_path = self.write_path_to_test_and_return_done_message(
         input_file_content_py)
@@ -570,11 +610,15 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         "\n"
         "if __name__ == '__main__':\n"
         "  unittest.main()\n")
-    # 2. Test case: input file is 'src/foo.dm.py' -> output file 'src/test_foo.py'
-    input_file_content_dm_py = '''
+
+    done_message_for_py_skeleton = self.done_message_for_tests_skeleton(
+        expected_skeleton_content_py)
+
+    # 2. Test case: input file is 'src/foo.dm.py' -> output file 'src/test_foo.dm.py'
+    input_file_content_dm_py = f'''
                 # Some code in a .dm.py file
                 def func_to_test_dm_py():
-                    pass # {{🦔 property for dm py file}}
+                    pass # {{{{{HEDGEHOG} property for dm py file}}}}
                 '''
 
     done_message_for_dm_py_input, tmp_input_dm_py_path = self.write_path_to_test_and_return_done_message(
@@ -590,12 +634,13 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         "if __name__ == '__main__':\n"
         "  unittest.main()\n")
 
+    done_message_for_dm_py_skeleton = self.done_message_for_tests_skeleton(
+        expected_skeleton_content_dm_py)
+
     # Scripted messages for the first workflow run (.py input)
     scripted_messages_py = {
         "initial_parameters": [done_message_for_py_input],
-        "prepare_tests_skeleton": [
-            self.done_message_for_tests_skeleton(expected_skeleton_content_py)
-        ]
+        "prepare_tests_skeleton": [done_message_for_py_skeleton]
     }
 
     # Build and run the workflow for .py input
@@ -603,7 +648,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     await workflow_py.run()
 
     # Verify the output file for .py input
-    output_py_file_name = f"test_{tmp_input_py_path.stem}{tmp_input_py_path.suffix}"
+    # The output path logic: `test_{base_name}.dm{input.suffix}`
+    # For `src/foo.py`, `base_name` is `foo`, `input.suffix` is `.py`. Output: `test_foo.dm.py`.
+    output_py_file_name = f"test_{tmp_input_py_path.stem}.dm{tmp_input_py_path.suffix}"
     expected_output_py_path = tmp_input_py_path.parent / output_py_file_name
 
     self.assertTrue(
@@ -621,10 +668,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # Scripted messages for the second workflow run (.dm.py input)
     scripted_messages_dm_py = {
         "initial_parameters": [done_message_for_dm_py_input],
-        "prepare_tests_skeleton": [
-            self.done_message_for_tests_skeleton(
-                expected_skeleton_content_dm_py)
-        ]
+        "prepare_tests_skeleton": [done_message_for_dm_py_skeleton]
     }
 
     # Build and run the workflow for .dm.py input
@@ -632,7 +676,10 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     await workflow_dm_py.run()
 
     # Verify the output file for .dm.py input
-    output_dm_py_file_name = f"test_{tmp_input_dm_py_path.stem.replace('.dm', '')}{tmp_input_dm_py_path.suffix}"
+    # The output path logic: `test_{base_name}.dm{input.suffix}`
+    # For `src/foo.dm.py`, `base_name` is `foo.dm` then it becomes `foo`. `input.suffix` is `.py`. Output: `test_foo.dm.py`.
+    # So `tmp_input_dm_py_path.stem` is `foo.dm`, we need to remove `.dm` from it.
+    output_dm_py_file_name = f"test_{tmp_input_dm_py_path.stem.replace('.dm', '')}.dm{tmp_input_dm_py_path.suffix}"
     expected_output_dm_py_path = tmp_input_dm_py_path.parent / output_dm_py_file_name
 
     self.assertTrue(
@@ -740,10 +787,11 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # Use the helper to create the temporary file and the initial done message.
     initial_parameters_done_message, tmp_input_file_path = self.write_path_to_test_and_return_done_message(
         valid_hedgehog_content)
-    # This file has 2 HEDGEHOG markers.
+    # This file has 2 HEDGEHOG markers based on get_valid_contents_with_hedgehog_markers.
 
     # 2. Define an invalid skeleton content that causes MarkersOverlapError.
-    #    This skeleton has two MUSHROOM markers on the same line.
+    #    This skeleton has two MUSHROOM markers on the same line, which get_markers_str (and thus get_markers) will reject.
+    #    The specific error from get_markers_str for this case is "Marker at char [...] starts on the same line as the previous marker ended".
     invalid_skeleton_content = (
         "import unittest\n"
         "\n"
@@ -759,14 +807,15 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 3. Define a valid skeleton content that passes all validations.
     #    It should have the same number of MUSHROOM markers (2) as HEDGEHOG markers in the input.
+    #    The names should correspond to the markers from get_valid_contents_with_hedgehog_markers.
     valid_skeleton_content = (
         "import unittest\n"
         "\n"
         "class MyTests(unittest.IsolatedAsyncioTestCase):\n"
         "  async def test_valid_marker_1(self) -> None:\n"
-        "    pass  # {{" + str(MUSHROOM) + " valid_marker_1}}\n"
+        "    pass  # {{" + str(MUSHROOM) + " property1}}\n"
         "  async def test_valid_marker_2(self) -> None:\n"
-        "    pass  # {{" + str(MUSHROOM) + " valid_marker_2}}\n"
+        "    pass  # {{" + str(MUSHROOM) + " property2}}\n"
         "\n"
         "if __name__ == '__main__':\n"
         "  unittest.main()\n")
@@ -787,13 +836,12 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     await workflow.run()
 
     # 6. Verify that an error message related to MarkersOverlapError is present.
-    expected_error_substring_part1 = "Generated skeleton contains overlapping '🍄' markers:"
-    expected_error_substring_part2 = "Error: "
+    #    The error message will come from `code_specs_tests_skeleton.py` (done_validate function).
+    #    It will look like "Generated skeleton contains overlapping '🍄' markers: Marker at char [...] starts on the same line as the previous marker ended".
+    expected_general_error_substring = "Generated skeleton contains overlapping"
 
     def predicate_for_errors(section: ContentSection) -> bool:
-      return section.content.startswith(
-          expected_error_substring_part2
-      ) and expected_error_substring_part1 in section.content
+      return expected_general_error_substring in section.content
 
     matching_error_sections = self.filter_content_sections(predicate_for_errors)
 
@@ -804,7 +852,8 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 7. Optionally, verify that the output file created is from the valid skeleton.
     #    This implies that the workflow recovered from the validation error and proceeded.
-    output_file_name = f"test_{tmp_input_file_path.stem}{tmp_input_file_path.suffix}"
+    #    The output path logic: `test_{base_name}.dm{input.suffix}`
+    output_file_name = f"test_{tmp_input_file_path.stem}.dm{tmp_input_file_path.suffix}"
     expected_output_path = tmp_input_file_path.parent / output_file_name
 
     self.assertTrue(
@@ -881,7 +930,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 6. Verify that an error message related to repeated MUSHROOM markers is present.
     expected_error_prefix = "Error: "
-    expected_error_substring_part1 = f"MUSHROOM marker content \'{{{str(MUSHROOM)} MarkerName(char=\'{str(MUSHROOM)}\', name=\'repeated_marker_name\')}}\' is repeated 2 times in the skeleton."
+    expected_error_substring_part1 = f"MUSHROOM marker content \'{{{str(MUSHROOM)} repeated_marker_name}}\' is repeated 2 times in the skeleton. All MUSHROOM marker contents must be unique for disambiguation."
 
     def predicate_for_errors(section: ContentSection) -> bool:
       return (section.content.startswith(expected_error_prefix) and
@@ -896,7 +945,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
 
     # 7. Verify that the output file created is from the valid skeleton.
     #    This implies that the workflow recovered from the validation error and proceeded.
-    output_file_name = f"test_{tmp_input_file_path.stem}{tmp_input_file_path.suffix}"
+    output_file_name = f"test_{tmp_input_file_path.stem}.dm{tmp_input_file_path.suffix}"
     expected_output_path = tmp_input_file_path.parent / output_file_name
 
     self.assertTrue(
@@ -971,7 +1020,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     expected_error_prefix = "Error: "
     # Corrected to match the actual error message format
     expected_error_substring_part1 = (
-        "Mismatch in marker counts: Input has 2 '🦔' markers, but skeleton has 1 '🍄' markers. "
+        f"Mismatch in marker counts: Input has 2 '{HEDGEHOG}' markers, but skeleton has 1 '{MUSHROOM}' markers. "
         "Counts must be equal.")
 
     def predicate_for_errors(section: ContentSection) -> bool:
@@ -986,7 +1035,7 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
         f"in conversation sections. Found: {matching_error_sections}")
 
     # 7. Verify that the output file created is from the valid skeleton.
-    output_file_name = f"test_{tmp_input_file_path.stem}{tmp_input_file_path.suffix}"
+    output_file_name = f"test_{tmp_input_file_path.stem}.dm{tmp_input_file_path.suffix}"
     expected_output_path = tmp_input_file_path.parent / output_file_name
 
     self.assertTrue(
@@ -1057,7 +1106,9 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     )
 
     # 6. Optionally, verify that the output file was created with the valid skeleton content.
-    output_file_name = f"test_{tmp_input_file_path.stem}{tmp_input_file_path.suffix}"
+    # The output path logic in the workflow is: `test_{base_name}.dm{input.suffix}`
+    # Here, `tmp_input_file_path.stem` is the base_name, and `tmp_input_file_path.suffix` is the input.suffix
+    output_file_name = f"test_{tmp_input_file_path.stem}.dm{tmp_input_file_path.suffix}"
     expected_output_path = tmp_input_file_path.parent / output_file_name
 
     self.assertTrue(expected_output_path.exists(),
