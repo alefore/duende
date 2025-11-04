@@ -83,6 +83,7 @@ class Validator:
     {{🦔 Returns failure when the implementation is invalid}}
     {{🦔 Uses `implementation.save` on the temporary copy of `source` (in order
          to update the implementation of the marker in the file).}}
+    {{🦔 The temporary copy of `source` is made asynchronously.}}
     """
     # ✨ implement validator
     # New validation: check for mushroom markers in the implementation content.
@@ -90,7 +91,7 @@ class Validator:
       mushroom_markers = get_markers_str(MarkerChar('🍄'), implementation.value)
       if mushroom_markers:
         marker_names = ", ".join(
-            f"'{{🍄 {name.name}}}'" for name in mushroom_markers.keys())
+            f"'{{{{🍄 {name.name}}}}}'" for name in mushroom_markers.keys())
         return ValidationResult(
             success=False,
             output="",
