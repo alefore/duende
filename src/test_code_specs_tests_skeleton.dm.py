@@ -48,30 +48,7 @@ from done_command import DoneCommand
 from file_access_policy import FileAccessPolicy
 from message import ContentSection, Message
 from selection_manager import SelectionManager
-
-
-class TestFileAccessPolicy(FileAccessPolicy):
-
-  def allow_access(self, path: str) -> bool:
-    return True  # Allow all access for testing
-
-
-class TestConfirmationState(ConfirmationState):
-
-  async def RequireConfirmation(self, conversation_id: int,
-                                prompt: str) -> str | None:
-    return None  # Always confirm
-
-
-class TestConfirmationManager(ConfirmationManager):
-
-  async def RequireConfirmation(self, conversation_id: ConversationId,
-                                message: str) -> str | None:
-    return None  # Always confirm for tests
-
-
-class TestSelectionManager(SelectionManager):
-  pass  # Default implementation is fine for now
+from test_utils import FakeFileAccessPolicy, FakeConfirmationState, FakeConfirmationManager, FakeSelectionManager
 
 
 class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
