@@ -13,8 +13,7 @@ import tempfile
 from typing import Awaitable, Callable, NamedTuple, NewType, Pattern, Sequence
 
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
-from agent_loop_options import AgentLoopOptions
-from agent_loop_options import BaseAgentLoopFactory
+from agent_loop_options import AgentLoopOptions, BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import FileExtension, MarkerChar, MarkerName, RepeatedExpandedMarkersError, comment_string, get_expanded_markers, get_markers, relevant_paths_variable
