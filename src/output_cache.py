@@ -8,6 +8,7 @@ from typing import Any, NamedTuple
 
 from agent_loop_options import AgentLoopOptions, BaseAgentLoop, BaseAgentLoopFactory
 from agent_command import VariableName, VariableValueInt, VariableValueStr, VariableValue, VariableMap
+from conversation_state import ConversationState
 
 
 class CacheKey(NamedTuple):
@@ -113,6 +114,8 @@ class CachingDelegatingAgentLoop(BaseAgentLoop):
     cache_output = await self._cache.load(key)
     match cache_output:
       case dict(data):
+        await self._options.conversation.SetState(
+            ConversationState.DONE_FROM_CACHE)
         return data
       case None:
         output = await self._delegate.run()
