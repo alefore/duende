@@ -82,20 +82,20 @@ class MarkerName:
 def reindent_code(code: str, desired_spaces: int) -> str:
   """Returns a copy of `code` with the desired leading spaces.
 
-    First finds the longest whitespace prefix that all non-empty `code` lines
-    contain and removes it (from all lines). Then prepends to all lines a prefix
-    of the desired length.
+  First finds the longest whitespace prefix that all non-empty `code` lines
+  contain and removes it (from all lines). Then prepends to all lines a prefix
+  of the desired length.
 
-    {{🦔 If an input line (from `code`) is empty or only contains whitespace
-         characters, the corresponding line in the output is empty.}}
-    {{🦔 If the whitespace prefixes are removed (from all input and output
-         lines), the output is identical to `code`.}}
-    {{🦔 All lines in the output must begin with `desired_spaces` spaces or
-         be empty.}}
-    {{🦔 The output must contain at least one line where, if `desired_spaces`
-         spaces are removed (from the start), the line starts
-         with a non-space character.}}
-    """
+  {{🦔 If an input line (from `code`) is empty or only contains whitespace
+       characters, the corresponding line in the output is empty.}}
+  {{🦔 If the whitespace prefixes are removed (from all input and output
+       lines), the output is identical to `code`.}}
+  {{🦔 All lines in the output must begin with `desired_spaces` spaces or
+       be empty.}}
+  {{🦔 The output must contain at least one line where, if `desired_spaces`
+       spaces are removed (from the start), the line starts
+       with a non-space character.}}
+  """
   raise NotImplementedError()  # {{🍄 reindent code}}
 
 
