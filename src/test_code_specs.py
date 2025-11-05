@@ -212,65 +212,392 @@ class CodeSpecsTest(unittest.IsolatedAsyncioTestCase):
 
   async def test_get_expanded_markers_given_an_file_with_four_different_markers_returns_a_list_with_four_elements_the_outputs_match_the_inputs_fields_in_the_expandedmarker_entries_are_correct_and_the_output_order_matches_the_input(
       self) -> None:
-    pass  # {{🍄 Given an file with four different markers, returns a list with four elements. The outputs match the inputs: fields in the ExpandedMarker entries are correct, and the output order matches the input.}}
+    # ✨ Given an file with four different markers, returns a list with four elements. The outputs match the inputs: fields in the ExpandedMarker entries are correct, and the output order matches the input.
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        temp_dir_path = pathlib.Path(tmpdir)
+        temp_file_path = temp_dir_path / "test_file_with_markers.py"
+
+        # Use concatenated strings to avoid implicit re-indentation issues.
+        file_content = (
+            "# Some initial lines\n"
+            "line_0\n"
+            "line_1\n"
+            "  # ✨ marker_one\n"
+            "  content_one_line_1\n"
+            "  content_one_line_2\n"
+            "  # ✨\n"
+            "line_7\n"
+            "  # ✨ marker_two\n"
+            "  content_two\n"
+            "  # ✨\n"
+            "line_11\n"
+            "# Another line\n"
+            "  # ✨ marker_three with a long name\n"
+            "  multi_line_content_1\n"
+            "  multi_line_content_2\n"
+            "  # ✨\n"
+            "line_17\n"
+            "  # ✨ marker_four\n"
+            "  last_content\n"
+            "  # ✨\n"
+            "final_line"
+        )
+        temp_file_path.write_text(file_content)
+
+        expected_markers = [
+            code_specs.ExpandedMarker(
+                name="marker_one",
+                start_index=3,
+                end_index=6,
+                contents=(
+                    "  # ✨ marker_one\n"
+                    "  content_one_line_1\n"
+                    "  content_one_line_2\n"
+                    "  # ✨"
+                )
+            ),
+            code_specs.ExpandedMarker(
+                name="marker_two",
+                start_index=8,
+                end_index=10,
+                contents=(
+                    "  # ✨ marker_two\n"
+                    "  content_two\n"
+                    "  # ✨"
+                )
+            ),
+            code_specs.ExpandedMarker(
+                name="marker_three with a long name",
+                start_index=13,
+                end_index=16,
+                contents=(
+                    "  # ✨ marker_three with a long name\n"
+                    "  multi_line_content_1\n"
+                    "  multi_line_content_2\n"
+                    "  # ✨"
+                )
+            ),
+            code_specs.ExpandedMarker(
+                name="marker_four",
+                start_index=18,
+                end_index=20,
+                contents=(
+                    "  # ✨ marker_four\n"
+                    "  last_content\n"
+                    "  # ✨"
+                )
+            ),
+        ]
+
+        actual_markers = code_specs.get_expanded_markers(temp_file_path)
+
+        self.assertEqual(len(actual_markers), len(expected_markers))
+        for actual, expected in zip(actual_markers, expected_markers):
+          self.assertEqual(actual.name, expected.name)
+          self.assertEqual(actual.start_index, expected.start_index)
+          self.assertEqual(actual.end_index, expected.end_index)
+          self.assertEqual(actual.contents, expected.contents)
+    # ✨
 
   async def test_get_expanded_markers_given_a_file_with_two_different_markers_each_ocurring_twice_raises_repeatedexpandedmarkerserror_the_exception_string_mentions_all_repeated_markers(
       self) -> None:
-    pass  # {{🍄 Given a file with two different markers each ocurring twice, raises `RepeatedExpandedMarkersError`. The exception string mentions all repeated markers.}}
+    # ✨ Given a file with two different markers each ocurring twice, raises `RepeatedExpandedMarkersError`. The exception string mentions all repeated markers.
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdir:
+        temp_dir_path = pathlib.Path(tmpdir)
+        temp_file_path = temp_dir_path / "test_repeated_expanded_markers.py"
+
+        file_content = """
+        # Some initial lines
+        # ✨ marker_one
+        content_one_line_1
+        # ✨
+        # Some intermediate lines
+        # ✨ marker_two
+        content_two_line_1
+        # ✨
+        # Another set of intermediate lines
+        # ✨ marker_one
+        content_one_line_2
+        # ✨
+        # Final set of intermediate lines
+        # ✨ marker_two
+        content_two_line_2
+        # ✨
+        # Final lines
+        """
+        temp_file_path.write_text(file_content)
+
+        with self.assertRaisesRegex(
+            code_specs.RepeatedExpandedMarkersError,
+            "Repeated expanded markers found: 'marker_one' at lines 2, 10"
+        ):
+            code_specs.get_expanded_markers(temp_file_path)
+    # ✨
 
   async def test_get_markers_str_returns_for_an_empty_input(self) -> None:
-    pass  # {{🍄 Returns {} for an empty input}}
+    # ✨ Returns {} for an empty input
+    input_str = ""
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, {})
+    # ✨
 
   async def test_get_markers_str_returns_for_an_input_with_5_lines_but_no_markers(
       self) -> None:
-    pass  # {{🍄 Returns {} for an input with 5 lines but no markers}}
+    # ✨ Returns {} for an input with 5 lines but no markers
+    input_str = "line 1\nline 2\nline 3\nline 4\nline 5"
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, {})
+    # ✨
 
   async def test_get_markers_str_correctly_returns_a_marker_in_an_input_with_just_1_marker(
       self) -> None:
-    pass  # {{🍄 Correctly returns a marker in an input with just 1 marker}}
+    # ✨ Correctly returns a marker in an input with just 1 marker
+    input_str = "Line 1\n" + "{{" + code_specs.MarkerChar("🍄") + " My Marker}}\nLine 3"
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="My Marker"): [1]
+    }
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, expected_markers)
+    # ✨
 
   async def test_get_markers_str_if_a_marker_starts_in_the_first_line_in_the_input_its_value_in_the_output_is_0(
       self) -> None:
-    pass  # {{🍄 If a marker starts in the first line in the input, its value in the output is [0].}}
+    # ✨ If a marker starts in the first line in the input, its value in the output is [0].
+    input_str = "{{" + code_specs.MarkerChar("🍄") + " First Line Marker}}\nLine 2\nLine 3"
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="First Line Marker"): [0]
+    }
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, expected_markers)
+    # ✨
 
   async def test_get_markers_str_if_a_marker_starts_in_the_last_line_its_value_in_the_output_is_len_lines_1(
       self) -> None:
-    pass  # {{🍄 If a marker starts in the last line, its value in the output is `len(lines) - 1`.}}
+    # ✨ If a marker starts in the last line, its value in the output is `len(lines) - 1`.
+    input_str = "Line 1\nLine 2\n{{" + code_specs.MarkerChar("🍄") + " Last Line Marker}}"
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Last Line Marker"): [2]
+    }
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, expected_markers)
+
+    input_str_with_newline = "Line 1\nLine 2\n{{" + code_specs.MarkerChar("🍄") + " Last Line Marker}}\n"
+    expected_markers_with_newline = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Last Line Marker"): [2]
+    }
+    result_with_newline = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str_with_newline)
+    self.assertEqual(result_with_newline, expected_markers_with_newline)
+    # ✨
 
   async def test_get_markers_str_correctly_handles_an_input_where_a_marker_starts_in_the_first_line_and_finishes_in_the_last_line(
       self) -> None:
-    pass  # {{🍄 Correctly handles an input where a marker starts in the first line and finishes in the last line.}}
+    # ✨ Correctly handles an input where a marker starts in the first line and finishes in the last line.
+    input_str = "{{" + code_specs.MarkerChar("🍄") + " Full File Marker}}"
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Full File Marker"): [0]
+    }
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, expected_markers)
+    # ✨
 
   async def test_get_markers_str_spaces_are_correctly_removed_from_a_marker_named_foo_bar(
       self) -> None:
-    pass  # {{🍄 Spaces are correctly removed from a marker named "  foo bar  ".}}
+    # ✨ Spaces are correctly removed from a marker named " foo bar ".
+    input_str = "{{" + code_specs.MarkerChar("🍄") + "  foo bar  }}"
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="foo bar"): [0]
+    }
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(result, expected_markers)
+    # ✨
 
   async def test_get_markers_str_returns_all_markers_in_an_input_with_ten_markers(
       self) -> None:
-    pass  # {{🍄 Returns all markers in an input with ten markers.}}
+    # ✨ Returns all markers in an input with ten markers.
+    input_str = (
+        "Line 0\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 1}}" + "\n"
+        "Line 2\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 2}}" + "\n"
+        "Line 4\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 3}}" + "\n"
+        "Line 6\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 4}}" + "\n"
+        "Line 8\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 5}}" + "\n"
+        "Line 10\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 6}}" + "\n"
+        "Line 12\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 7}}" + "\n"
+        "Line 14\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 8}}" + "\n"
+        "Line 16\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 9}}" + "\n"
+        "Line 18\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Marker 10}}" + "\n"
+        "Line 20\n"
+    )
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+    self.assertEqual(len(result), 10)
+    # ✨
 
   async def test_get_markers_str_the_index_of_markers_returned_in_an_input_with_ten_markers_is_correct(
       self) -> None:
-    pass  # {{🍄 The index of markers returned in an input with ten markers is correct.}}
+    # ✨ The index of markers returned in an input with ten markers is correct.
+    input_str = (
+        "Line 0\n"  # 0
+        "{{" + code_specs.MarkerChar("🍄") + " Marker A}}" + "\n"  # 1
+        "Line 2\n"  # 2
+        "{{" + code_specs.MarkerChar("🍄") + " Marker B}}" + "\n"  # 3
+        "Line 4\n"  # 4
+        "{{" + code_specs.MarkerChar("🍄") + " Marker C}}" + "\n"  # 5
+        "Line 6\n"  # 6
+        "{{" + code_specs.MarkerChar("🍄") + " Marker D}}" + "\n"  # 7
+        "Line 8\n"  # 8
+        "{{" + code_specs.MarkerChar("🍄") + " Marker E}}" + "\n"  # 9
+        "Line 10\n"  # 10
+        "{{" + code_specs.MarkerChar("🍄") + " Marker F}}" + "\n"  # 11
+        "Line 12\n"  # 12
+        "{{" + code_specs.MarkerChar("🍄") + " Marker G}}" + "\n"  # 13
+        "Line 14\n"  # 14
+        "{{" + code_specs.MarkerChar("🍄") + " Marker H}}" + "\n"  # 15
+        "Line 16\n"  # 16
+        "{{" + code_specs.MarkerChar("🍄") + " Marker I}}" + "\n"  # 17
+        "Line 18\n"  # 18
+        "{{" + code_specs.MarkerChar("🍄") + " Marker J}}" + "\n"  # 19
+        "Line 20\n"  # 20
+    )
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker A"): [1],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker B"): [3],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker C"): [5],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker D"): [7],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker E"): [9],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker F"): [11],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker G"): [13],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker H"): [15],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker I"): [17],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker J"): [19],
+    }
+
+    self.assertEqual(result, expected_markers)
+    # ✨
 
   async def test_get_markers_str_an_input_can_have_repeated_markers_the_output_just_lists_their_positions(
       self) -> None:
-    pass  # {{🍄 An input can have repeated markers; the output just lists their positions.}}
+    # ✨ An input can have repeated markers; the output just lists their positions.
+    input_str = (
+        "Line 0\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Repeated Marker}}\n"  # Line 1
+        "Line 2\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Another Marker}}\n" # Line 3
+        "Line 4\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Repeated Marker}}\n"  # Line 5
+        "Line 6\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Final Marker}}\n" # Line 7
+        "Line 8\n"
+        "{{" + code_specs.MarkerChar("🍄") + " Repeated Marker}}\n"  # Line 9
+        "Line 10"
+    )
+    result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+
+    expected_markers = {
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Repeated Marker"): [1, 5, 9],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Another Marker"): [3],
+        code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Final Marker"): [7],
+    }
+
+    self.assertEqual(result, expected_markers)
+    # ✨
 
   async def test_get_markers_str_an_input_where_two_markers_overlap_one_ends_in_the_same_line_where_the_other_begins_raises_markersoverlaperror(
       self) -> None:
-    pass  # {{🍄 An input where two markers overlap (one ends in the same line where the other begins) raises `MarkersOverlapError`.}}
+    # ✨ An input where two markers overlap (one ends in the same line where the other begins) raises `MarkersOverlapError`.
+    input_str = "{{\U0001f344 Marker1}}{{\U0001f344 Marker2}}"
+    with self.assertRaisesRegex(
+        code_specs.MarkersOverlapError,
+        r"Marker at char \d+ starts on the same line as the previous marker ended \(char \d+\) in the input string"):
+      code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+
+    input_str_with_space = "{{\U0001f344 Marker A}} {{\U0001f344 Marker B}}"
+    with self.assertRaisesRegex(
+        code_specs.MarkersOverlapError,
+        r"Marker at char \d+ starts on the same line as the previous marker ended \(char \d+\) in the input string"):
+      code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str_with_space)
+    # ✨
 
   async def test_get_markers_str_the_returned_object_is_sorted_by_appearance_order_i_e_iterating_across_the_keys_of_the_returned_dictionary_matches_the_order_in_which_the_first_appearance_of_each_marker_was_found_in_the_input(
       self) -> None:
-    pass  # {{🍄 The returned object is sorted by appearance order (i.e., iterating across the keys of the returned dictionary matches the order in which the first appearance of each marker was found in the input).}}
+        # ✨ The returned object is sorted by appearance order (i.e., iterating across the keys of the returned dictionary matches the order in which the first appearance of each marker was found in the input).
+        input_str = ("""Line 0
+    """ + "{{" + str(code_specs.MarkerChar("🍄")) + " Marker Alpha}}" + """
+    Line 2
+    """ + "{{" + str(code_specs.MarkerChar("🍄")) + " Marker Beta}}" + """
+    Line 4
+    """ + "{{" + str(code_specs.MarkerChar("🍄")) + " Marker Alpha}}" + """
+    Line 6
+    """ + "{{" + str(code_specs.MarkerChar("🍄")) + " Marker Gamma}}" + """
+    Line 8
+    """ + "{{" + str(code_specs.MarkerChar("🍄")) + " Marker Beta}}" + """
+    Line 10""")
+        result = code_specs.get_markers_str(char=code_specs.MarkerChar("🍄"), input=input_str)
+
+        expected_order = [
+            code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker Alpha"),
+            code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker Beta"),
+            code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Marker Gamma"),
+        ]
+
+        # Verify that iterating over the keys of the result dictionary matches the expected order
+        self.assertEqual(list(result.keys()), expected_order)
+
+        # Also verify the values for completeness
+        self.assertEqual(result[expected_order[0]], [1, 5])
+        self.assertEqual(result[expected_order[1]], [3, 9])
+        self.assertEqual(result[expected_order[2]], [7])
+        # ✨
 
   async def test_get_markers_reads_path_asynchronously(self) -> None:
-    pass  # {{🍄 Reads `path` asynchronously (in get_markers)}}
+    # ✨ Reads `path` asynchronously (in get_markers)
+    import tempfile
+    import os
+    import aiofiles # Import aiofiles since it is used in the test
+
+    async def _async_read_test_file(file_path: pathlib.Path) -> str:
+      async with aiofiles.open(file_path, mode='r') as f:
+        content = await f.read()
+      return content
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+      temp_dir_path = pathlib.Path(tmpdir)
+      temp_file_path = temp_dir_path / "async_test_file.txt"
+      file_content = "Line 1\n" + "{{" + code_specs.MarkerChar("🍄") + " Test Marker}}" + "\nLine 3"
+      temp_file_path.write_text(file_content)
+
+      # Call the asynchronous function and await its result
+      result = await code_specs.get_markers(code_specs.MarkerChar("🍄"), temp_file_path)
+
+      expected_markers = {
+          code_specs.MarkerName(char=code_specs.MarkerChar("🍄"), name="Test Marker"): [1]
+      }
+      self.assertEqual(result, expected_markers)
+
+      # Verify the content was read (implicitly asynchronous)
+      read_content = await _async_read_test_file(temp_file_path)
+      self.assertEqual(read_content, file_content)
+    # ✨
 
   async def test_get_markers_raises_filenotfounderror_for_a_non_existent_file(
       self) -> None:
-    pass  # {{🍄 Raises FileNotFoundError for a non-existent file (in get_markers)}}
+    # ✨ Raises FileNotFoundError for a non-existent file (in get_markers)
+    non_existent_path = pathlib.Path("this/path/does/not/exist.txt")
+    with self.assertRaises(FileNotFoundError):
+      await code_specs.get_markers(code_specs.MarkerChar("🍄"), non_existent_path)
+    # ✨
 
 
 if __name__ == '__main__':
