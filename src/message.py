@@ -27,10 +27,12 @@ class Message:
     for section in self._content_sections:
       if section.summary:
         content_summary.append(section.summary)
-      elif section.content:
+      if section.content:
         content_summary.append(section.content[:500] +
                                "..." if len(section.content) >
                                500 else section.content)
+      if section.command_output:
+        content_summary.append(str(section.command_output))
 
     return f"Message(role='{self.role}', content='{' '.join(content_summary)}')"
 
