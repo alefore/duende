@@ -20,6 +20,17 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
             "Only responses *from the AI to Duende* "
             "(role=assistant) should be included, "
             "not messages *from Duende to the AI*.")
+      for section in message.GetContentSections():
+        if section.command_output:
+          raise ValueError(
+              "A test has incorrectly included a message with a content "
+              "section that includes an unexpected `command_output` field. "
+              "That is incorrect because the AI never issues commands with "
+              "these values to Duende (which is what the scripted responses "
+              "in FakeConversationalAIConversation simulates). The test "
+              "probably meant to trigger execution of an AgentCommand, in "
+              "which case it should include a message with a `command` field "
+              f"instead. The incorrect section is: {section}")
     logging.info(f"Started fake conversation with {len(scripted_responses)=}")
 
   async def SendMessage(self, message: Message) -> Message:
@@ -36,7 +47,8 @@ class FakeConversationalAIConversation(ConversationalAIConversation):
           "did not succeed, so the AgentLoop continues to run (as expected). "
           "Your test may need to add an additional command "
           "that passes validation in order to cause the AgentLoop "
-          "to terminate successfully.")
+          "to terminate successfully. "
+          f"The last message from Duende to the AI was this: {message}")
 
     response_message = self.scripted_responses.pop(0)
     logging.info(
