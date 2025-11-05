@@ -147,6 +147,8 @@ class GeminiConversation(ConversationalAIConversation):
 
 def _get_value(v: Any) -> VariableValue:
   match v:
+    case None:
+      return VariableValueStr('')
     case str(s):
       return VariableValueStr(s)
     case int(i):
