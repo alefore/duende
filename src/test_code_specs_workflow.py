@@ -37,11 +37,99 @@ from test_utils import FakeFileAccessPolicy, FakeConfirmationState, FakeConfirma
 from validation import ValidationResult
 
 
+def _message_done_path_validator(dm_path: pathlib.Path,
+                                 validator: str) -> Message:
+  """Returns a role=assistant Message calling `done`.
+
+  Passes values for dm_path_variable and validator_variable.
+  """
+  # ✨ message done path validator
+  return Message(
+      role="assistant",
+      content_sections=[
+          ContentSection(
+              content="",
+              command=CommandInput(
+                  command_name="done",
+                  args=VariableMap({
+                      dm_path_variable: VariableValueStr(str(dm_path)),
+                      validator_variable: VariableValueStr(validator),
+                  }),
+              ))
+      ])
+  # ✨
+
+
+def _message_done_relevant_paths(paths: list[pathlib.Path]) -> Message:
+  """Returns a role=assistant Message calling `done`.
+
+  Passes values for relevant_paths_variable."""
+  # ✨ message done relevant paths
+  return Message(
+      role="assistant",
+      content_sections=[
+          ContentSection(
+              content="",
+              command=CommandInput(
+                  command_name="done",
+                  args=VariableMap({
+                      relevant_paths_variable:
+                          VariableValueStr(",".join(str(p) for p in paths)),
+                  }),
+              ))
+      ])
+  # ✨
+
+
+def _message_done_implementation(marker_name: str,
+                                 file_extension: FileExtension) -> Message:
+  """Returns a role=assistant Message calling `done` with an implementation."""
+  # ✨ message done implementation
+  start_comment = comment_string(file_extension, f"✨ {marker_name}")
+  end_comment = comment_string(file_extension, "✨")
+  implementation_code = f"{start_comment}\nprint(\"Hello from {marker_name}\")\n{end_comment}"
+  return Message(
+      role="assistant",
+      content_sections=[
+          ContentSection(
+              content="",
+              command=CommandInput(
+                  command_name="done",
+                  args=VariableMap({
+                      implementation_variable:
+                          VariableValueStr(implementation_code),
+                  }),
+              ))
+      ])
+  # ✨
+
+
+def _content_with_markers(markers: list[str]) -> str:
+  """Returns a string with a Python file containing the 🍄 markers given."""
+  # ✨ content with markers
+  python_file_content_lines = []
+  for marker_name in markers:
+    # Using string concatenation to avoid complex f-string escaping for literal '{{' and '}}'.
+    # The mushroom emoji is chr(0x1F344).
+    python_file_content_lines.append("# {{" + chr(0x1F344) + " " + marker_name + "}}")
+  return "\n".join(python_file_content_lines)
+  # ✨
+
+
 class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
   def setUp(self) -> None:
     self.conversation_factory: ConversationFactory = ConversationFactory(
         slow_conversation_factory_options())
+
+  def _find_conversation(self, conversation_name) -> Conversation:
+    """Finds and returns a conversation (uses self.fail + assert)."""
+    # ✨ find conversation by name
+    for conversation in self.conversation_factory.GetAll():
+      if conversation.GetName() == conversation_name:
+        return conversation
+    self.fail(f"Could not find conversation with name: {conversation_name}")
+    # ✨
 
   async def build_workflow(
       self, scripted_messages: dict[str, list[Message]]) -> CodeSpecsWorkflow:
@@ -95,7 +183,6 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
     """Returns any content sections in any messages that match a predicate.
 
     Extracts the messages from self.conversation_factory."""
-
     # ✨ filter content sections
     matching_sections: list[ContentSection] = []
     for conversation in self.conversation_factory.GetAll():
@@ -110,41 +197,24 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       self) -> None:
     # ✨ The done command arguments given to `prepare_command_registry` are `dm_path_variable` and `validator_variable`. (in CodeSpecsWorkflow._get_initial_parameters)
     with tempfile.TemporaryDirectory() as temp_dir:
-      temp_dm_path = pathlib.Path(temp_dir) / "my_component.dm.py"
-
-      mushroom_char = "🍄"
-      marker_name_in_file = "simple_marker"
-
-      literal_marker_in_file = "# " + '{' + '{' + "🍄 simple marker" + '}' + '}'
+      dm_path = pathlib.Path(temp_dir) / "my_component.dm.py"
 
       # Create a dummy DM file with a very simple mushroom marker.
-      content = ("# A very simple dm.py file\n" + literal_marker_in_file + "\n"
+      content = ("# A very simple dm.py file\n" +
+                 _content_with_markers(["simple marker"]) + "\n"
                  "def some_function():\n"
                  "  pass\n")
-      temp_dm_path.write_text(content, encoding='utf-8')
+      dm_path.write_text(content, encoding='utf-8')
 
-      dm_path_value = str(temp_dm_path)
       # Use a validator that always succeeds and includes $DMPATH as required by PathAndValidator.
       validator_value = "true $DMPATH"
 
       # Scripted messages to simulate the agent calling 'done' with the required parameters.
       scripted_messages = {
           "initial_parameters": [
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  dm_path_variable:
-                                      VariableValueStr(dm_path_value),
-                                  validator_variable:
-                                      VariableValueStr(validator_value),
-                              }),
-                          ))
-                  ])
+              _message_done_path_validator(
+                  dm_path=dm_path,
+                  validator=validator_value)
           ]
       }
 
@@ -153,15 +223,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       path_and_validator = await workflow._get_initial_parameters()
 
       # Get the conversation created by _get_initial_parameters
-      # Find the conversation by name, as there might be other dummy conversations.
-      conversation = None
-      for conv in self.conversation_factory.GetAll():
-        if conv.GetName() == "initial_parameters":
-          conversation = conv
-          break
-      self.assertIsNotNone(conversation,
-                           "Conversation 'initial_parameters' not found.")
-      assert conversation is not None  # For mypy narrowing
+      conversation = self._find_conversation("initial_parameters")
 
       # Get the command registry from the conversation (it should have been set during conversation creation)
       command_registry = conversation.command_registry
@@ -192,7 +254,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
                        ArgumentContentType.STRING)
 
       # Additionally, assert that the returned PathAndValidator has the correct values
-      self.assertEqual(path_and_validator.dm_path, pathlib.Path(dm_path_value))
+      self.assertEqual(path_and_validator.dm_path, dm_path)
       self.assertEqual(path_and_validator.validator.command, validator_value)
     # ✨
 
@@ -204,38 +266,23 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
     with tempfile.TemporaryDirectory() as temp_dir:
       temp_dm_path = pathlib.Path(temp_dir) / "my_component.dm.py"
 
-      # Construct the literal string for the marker line that goes into the temporary file.
-      literal_marker_in_file = "# {{" + "🍄 simple marker}}"
-
       # Create a dummy DM file with a very simple mushroom marker.
-      content = "# A very simple dm.py file\n"
-      content += f"{literal_marker_in_file}\n"
-      content += "def some_function():\n"
-      content += "  pass\n"
+      content = ("# A very simple dm.py file\n" +
+                 _content_with_markers(["simple marker"]) + "\n" +
+                 "def some_function():\n" +
+                 "  pass\n")
       temp_dm_path.write_text(content, encoding='utf-8')
 
-      dm_path_value = str(temp_dm_path)
       # Use a validator that always succeeds and includes $DMPATH as required by PathAndValidator.
       validator_value = "true $DMPATH"
 
       # Scripted messages for two calls to _get_initial_parameters.
       # Each call to run_agent_loop (for conversation "initial_parameters") will consume one 'done' command.
       two_done_commands = [
-          Message(
-              role="assistant",
-              content_sections=[
-                  ContentSection(
-                      content="",
-                      command=CommandInput(
-                          command_name="done",
-                          args=VariableMap({
-                              dm_path_variable:
-                                  VariableValueStr(dm_path_value),
-                              validator_variable:
-                                  VariableValueStr(validator_value),
-                          }),
-                      ))
-              ]) for _ in range(2)  # Repeat the done command twice
+          _message_done_path_validator(
+              dm_path=temp_dm_path,
+              validator=validator_value)
+          for _ in range(2)
       ]
 
       scripted_messages = {
@@ -250,15 +297,8 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       # First call to the method under test
       path_and_validator_1 = await workflow._get_initial_parameters()
 
-      # Get conversations specifically named "initial_parameters"
-      initial_parameters_conversations_1 = [
-          c for c in self.conversation_factory.GetAll()
-          if c.GetName() == "initial_parameters"
-      ]
-
-      self.assertEqual(len(initial_parameters_conversations_1), 1,
-                       "Expected exactly one 'initial_parameters' conversation after the first call.")
-      first_conversation = initial_parameters_conversations_1[0]
+      # Get the conversation created by the first call
+      first_conversation = self._find_conversation("initial_parameters")
 
       # Get the agent_loop_factory instance after the first call
       final_agent_loop_factory_1 = workflow._options.agent_loop_factory
@@ -273,7 +313,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           "CachingDelegatingAgentLoopFactory found after first call, indicating caching was enabled unexpectedly.")
 
       # Additionally, assert that the returned PathAndValidator has the correct values for the first call
-      self.assertEqual(path_and_validator_1.dm_path, pathlib.Path(dm_path_value))
+      self.assertEqual(path_and_validator_1.dm_path, temp_dm_path)
       self.assertEqual(path_and_validator_1.validator.command, validator_value)
 
       # Second call to the method under test
@@ -313,7 +353,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           "CachingDelegatingAgentLoopFactory found after second call, indicating caching was enabled unexpectedly.")
 
       # Additionally, assert that the returned PathAndValidator has the correct values for the second call
-      self.assertEqual(path_and_validator_2.dm_path, pathlib.Path(dm_path_value))
+      self.assertEqual(path_and_validator_2.dm_path, temp_dm_path)
       self.assertEqual(path_and_validator_2.validator.command, validator_value)
     # ✨
 
@@ -332,28 +372,13 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
     with tempfile.TemporaryDirectory() as temp_dir:
       # --- Failing DM path setup ---
       temp_dm_path_failing = pathlib.Path(temp_dir) / "failing.dm.py"
-      mushroom_char_escaped = chr(0x1F344)
-      # Corrected marker string: no space after "{{"
-      mushroom_marker_failing_str = "{{" + mushroom_char_escaped + " RepeatedMarker}}"
-      content_failing = f"""# A dm.py file with repeated markers
-    {mushroom_marker_failing_str}
-    # Some code in between
-    {mushroom_marker_failing_str}
-    def some_function_failing():
-      pass
-    """
+      content_failing = _content_with_markers(["RepeatedMarker", "RepeatedMarker"])
       temp_dm_path_failing.write_text(content_failing, encoding='utf-8')
       dm_path_value_failing = str(temp_dm_path_failing)
 
       # --- Succeeding DM path setup ---
       temp_dm_path_succeeding = pathlib.Path(temp_dir) / "succeeding.dm.py"
-      # Corrected marker string: no space after "{{"
-      mushroom_marker_succeeding_str = "{{" + mushroom_char_escaped + " SingleMarker}}"
-      content_succeeding = f"""# A dm.py file with a single marker
-    {mushroom_marker_succeeding_str}
-    def some_function_succeeding():
-      pass
-    """
+      content_succeeding = _content_with_markers(["SingleMarker"])
       temp_dm_path_succeeding.write_text(content_succeeding, encoding='utf-8')
       dm_path_value_succeeding = str(temp_dm_path_succeeding)
 
@@ -362,38 +387,11 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       scripted_messages = {
           "initial_parameters": [
               # First attempt: fails validation due to repeated markers
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  dm_path_variable:
-                                      VariableValueStr(dm_path_value_failing),
-                                  validator_variable:
-                                      VariableValueStr(validator_value),
-                              }),
-                          ))
-                  ]),
+              _message_done_path_validator(
+                  dm_path=temp_dm_path_failing, validator=validator_value),
               # Second attempt: succeeds validation
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  dm_path_variable:
-                                      VariableValueStr(dm_path_value_succeeding
-                                                      ),
-                                  validator_variable:
-                                      VariableValueStr(validator_value),
-                              }),
-                          ))
-                  ])
+              _message_done_path_validator(
+                  dm_path=temp_dm_path_succeeding, validator=validator_value)
           ]
       }
 
@@ -408,14 +406,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       self.assertEqual(path_and_validator.validator.command, validator_value)
 
       # Find the conversation named "initial_parameters".
-      conversation = None
-      for conv in self.conversation_factory.GetAll():
-        if conv.GetName() == "initial_parameters":
-          conversation = conv
-          break
-      self.assertIsNotNone(conversation,
-                           "Conversation 'initial_parameters' not found.")
-      assert conversation is not None
+      conversation = self._find_conversation("initial_parameters")
 
       # Check if any message from the user (containing a system error) contains the expected error.
       found_error_message_in_conversation = False
@@ -423,7 +414,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       # Construct the expected error string, including the "Error: " prefix and dynamic path.
       # Use chr(0x1F344) for the mushroom character.
       full_expected_error_message = (
-          f"Error: Invalid parameters for PathAndValidator: Repeated {chr(0x1F344)} marker 'RepeatedMarker' found in '{dm_path_value_failing}' at lines: 1, 3. "
+          f"Error: Invalid parameters for PathAndValidator: Repeated {chr(0x1F344)} marker 'RepeatedMarker' found in '{dm_path_value_failing}' at lines: 0, 1. "
           "Each marker name must be unique.")
 
       for message in conversation.GetMessagesList():
@@ -445,13 +436,6 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       self) -> None:
     # ✨ Catches exceptions from PathAndValidator and turns them into a failed `ValidationResult`. (in CodeSpecsWorkflow._get_initial_parameters.done_validator)
     # No mocks allowed.
-    import asyncio  # For async functions
-    import code_specs_workflow
-    from agent_command import CommandInput, VariableMap, VariableName, VariableValueStr
-    from message import ContentSection, Message
-    from conversational_ai_test_utils import FakeConversationalAI
-    from validation import ValidationResult  # Re-adding this import as it's a type used by done_validator
-
     with tempfile.TemporaryDirectory() as temp_dir:
       # --- Failing DM path setup: Missing .dm. ---
       temp_dm_path_failing = pathlib.Path(temp_dir) / "no_dm_part.py"
@@ -461,13 +445,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # --- Succeeding DM path setup ---
       temp_dm_path_succeeding = pathlib.Path(temp_dir) / "succeeding.dm.py"
-      mushroom_char_escaped = chr(0x1F344)  # 🍄
-      mushroom_marker_succeeding_str = "{{" + mushroom_char_escaped + " SingleMarker}}"
-      content_succeeding = f"""# A dm.py file with a single marker
-    {mushroom_marker_succeeding_str}
-    def some_function_succeeding():
-      pass
-    """
+      content_succeeding = _content_with_markers(["SingleMarker"])
       temp_dm_path_succeeding.write_text(content_succeeding, encoding='utf-8')
       dm_path_value_succeeding = str(temp_dm_path_succeeding)
 
@@ -476,38 +454,11 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       scripted_messages = {
           "initial_parameters": [
               # First attempt: fails validation because dm_path is missing '.dm.'
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  dm_path_variable:
-                                      VariableValueStr(dm_path_value_failing),
-                                  validator_variable:
-                                      VariableValueStr(validator_value),
-                              }),
-                          ))
-                  ]),
+              _message_done_path_validator(
+                  dm_path=temp_dm_path_failing, validator=validator_value),
               # Second attempt: succeeds validation
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  dm_path_variable:
-                                      VariableValueStr(dm_path_value_succeeding
-                                                      ),
-                                  validator_variable:
-                                      VariableValueStr(validator_value),
-                              }),
-                          ))
-                  ])
+              _message_done_path_validator(
+                  dm_path=temp_dm_path_succeeding, validator=validator_value),
           ]
       }
 
@@ -521,14 +472,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       self.assertEqual(path_and_validator.validator.command, validator_value)
 
       # Find the conversation named "initial_parameters".
-      conversation = None
-      for conv in self.conversation_factory.GetAll():
-        if conv.GetName() == "initial_parameters":
-          conversation = conv
-          break
-      self.assertIsNotNone(conversation,
-                           "Conversation 'initial_parameters' not found.")
-      assert conversation is not None
+      conversation = self._find_conversation("initial_parameters")
 
       # Check if any message from the user (containing a system error) contains the expected error.
       found_error_message_in_conversation = False
@@ -549,13 +493,14 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
             break
       self.assertTrue(
           found_error_message_in_conversation,
-          f"Expected error message '{full_expected_error_message}' not found in conversation history. Actual content sections: {[s.content for m in conversation.GetMessagesList() for s in m.GetContentSections()]}."
+          f"Expected error message '{full_expected_error_message}' not found in conversation history. Actual content sections: {[s.content for m in conversation.GetMessagesList() for s in m.GetContentSections()]}. Aspect being tested: missing .dm. in path."
       )
 
     # ✨
 
   async def test_codespecsworkflow__prepare_output_path_if_it_exists_inputoutput_path_is_copied_to_inputold_path_1(
       self) -> None:
+
     # ✨ If it exists, `input.output_path()` is copied to `input.old_path()`. (in CodeSpecsWorkflow._prepare_output_path)
     # No mocks allowed.
 
@@ -572,11 +517,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       old_path = temp_path / old_file_name
 
       # Content for the dm_path
-      dm_file_content = """# Some code from DM file
-    def dm_function():
-      pass
-    # {{' + '🍄 MyMarker' + '}}
-    """
+      dm_file_content = _content_with_markers(["MyMarker"])
       # Original content for the output_path, which should be copied to old_path
       output_file_original_content = """# Original content of output file
     class MyClass:
@@ -685,277 +626,224 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
   async def test_codespecsworkflow__find_relevant_paths_calls_find_relevant_paths_for_marker_exactly_once_for_each_marker_found_in_path_1(
       self) -> None:
-        # ✨ Calls `find_relevant_paths_for_marker` exactly once for each marker found in `path`. (in CodeSpecsWorkflow._find_relevant_paths)
-        import code_specs
-        from collections import OrderedDict
-        import os # Needed for os.access check in done_validate
+    # ✨ Calls `find_relevant_paths_for_marker` exactly once for each marker found in `path`. (in CodeSpecsWorkflow._find_relevant_paths)
+    import code_specs
+    from collections import OrderedDict
+    import os # Needed for os.access check in done_validate
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-          temp_path = pathlib.Path(temp_dir)
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_path = pathlib.Path(temp_dir)
 
-          # 1. Setup: Create a dummy DM file with multiple unique markers
-          dm_file_name = "multi_marker.dm.py"
-          dm_path = temp_path / dm_file_name
+      # 1. Setup: Create a dummy DM file with multiple unique markers
+      dm_file_name = "multi_marker.dm.py"
+      dm_path = temp_path / dm_file_name
 
-          marker1_name_str = "MarkerOne"
-          marker2_name_str = "MarkerTwo"
-          marker3_name_str = "MarkerThree"
+      marker1_name_str = "MarkerOne"
+      marker2_name_str = "MarkerTwo"
+      marker3_name_str = "MarkerThree"
 
-          # Use chr(0x1F344) to insert the mushroom character without having it as a literal in the test file itself.
-          mushroom_char_str = chr(0x1F344)
-
-          # Define MarkerName objects for our test markers (using the actual MUSHROOM constant in code_specs_workflow)
-          from code_specs_workflow import MUSHROOM as ACTUAL_MUSHROOM_CHAR
-          marker1_obj = code_specs.MarkerName(char=ACTUAL_MUSHROOM_CHAR, name=code_specs.MarkerChar(marker1_name_str))
-          marker2_obj = code_specs.MarkerName(char=ACTUAL_MUSHROOM_CHAR, name=code_specs.MarkerChar(marker2_name_str))
-          marker3_obj = code_specs.MarkerName(char=ACTUAL_MUSHROOM_CHAR, name=code_specs.MarkerChar(marker3_name_str))
+      # Define MarkerName objects for our test markers (using the actual MUSHROOM constant in code_specs_workflow)
+      from code_specs_workflow import MUSHROOM as ACTUAL_MUSHROOM_CHAR
+      marker1_obj = code_specs.MarkerName(char=ACTUAL_MUSHROOM_CHAR, name=code_specs.MarkerChar(marker1_name_str))
+      marker2_obj = code_specs.MarkerName(char=ACTUAL_MUSHROOM_CHAR, name=code_specs.MarkerChar(marker2_name_str))
+      marker3_obj = code_specs.MarkerName(char=ACTUAL_MUSHROOM_CHAR, name=code_specs.MarkerChar(marker3_name_str))
 
 
-          content = f"""# DM file with multiple markers
-    # {{{{{mushroom_char_str} {marker1_name_str}}}}}
-    # Some code for marker one
-    # {{{{{mushroom_char_str} {marker2_name_str}}}}}
-    # Some code for marker two
-    # {{{{{mushroom_char_str} {marker3_name_str}}}}}
-    # Some code for marker three
-    """
-          dm_path.write_text(content, encoding='utf-8')
+      content = _content_with_markers([marker1_name_str, marker2_name_str, marker3_name_str])
+      dm_path.write_text(content, encoding='utf-8')
 
-          # Create actual dummy files for the "relevant paths" within the temporary directory
-          file1_path = temp_path / "file_one.py"
-          file2_path = temp_path / "file_two.py"
-          file3_path = temp_path / "file_three.py"
-          file_another_path = temp_path / "file_another.py"
+      # Create actual dummy files for the "relevant paths" within the temporary directory
+      file1_path = temp_path / "file_one.py"
+      file2_path = temp_path / "file_two.py"
+      file3_path = temp_path / "file_three.py"
+      file_another_path = temp_path / "file_another.py"
 
-          file1_path.write_text("content for file one")
-          file2_path.write_text("content for file two")
-          file3_path.write_text("content for file three")
-          file_another_path.write_text("content for another file")
+      file1_path.write_text("content for file one")
+      file2_path.write_text("content for file two")
+      file3_path.write_text("content for file three")
+      file_another_path.write_text("content for another file")
 
-          # Paths that _find_relevant_paths_for_marker will return for each marker
-          paths_for_marker1 = {file1_path}
-          paths_for_marker2 = {file2_path, file_another_path}
-          paths_for_marker3 = {file3_path}
+      # Paths that _find_relevant_paths_for_marker will return for each marker
+      paths_for_marker1 = {file1_path}
+      paths_for_marker2 = {file2_path, file_another_path}
+      paths_for_marker3 = {file3_path}
 
-          # 2. Script FakeConversationalAI to provide responses for _get_initial_parameters
-          # and each call to _find_relevant_paths_for_marker
-          scripted_messages = {
-              "initial_parameters": [
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      dm_path_variable: VariableValueStr(str(dm_path)),
-                                      validator_variable: VariableValueStr("true $DMPATH"),
-                                  }),
-                              ))
-                      ])
-              ],
-              f"find_relevant_paths_for_{marker1_name_str}": [
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(','.join(str(p) for p in paths_for_marker1)),
-                                  }),
-                              ))
-                      ])
-              ],
-              f"find_relevant_paths_for_{marker2_name_str}": [
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(','.join(str(p) for p in paths_for_marker2)),
-                                  }),
-                              ))
-                      ])
-              ],
-              f"find_relevant_paths_for_{marker3_name_str}": [
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(','.join(str(p) for p in paths_for_marker3)),
-                                  }),
-                              ))
-                      ])
-              ],
-          }
+      # 2. Script FakeConversationalAI to provide responses for _get_initial_parameters
+      # and each call to _find_relevant_paths_for_marker
+      scripted_messages = {
+          "initial_parameters": [
+              _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+          ],
+          f"find_relevant_paths_for_{marker1_name_str}": [
+              _message_done_relevant_paths(paths=list(paths_for_marker1))
+          ],
+          f"find_relevant_paths_for_{marker2_name_str}": [
+              _message_done_relevant_paths(paths=list(paths_for_marker2))
+          ],
+          f"find_relevant_paths_for_{marker3_name_str}": [
+              _message_done_relevant_paths(paths=list(paths_for_marker3))
+          ],
+      }
 
-          workflow = await self.build_workflow(scripted_messages)
+      workflow = await self.build_workflow(scripted_messages)
 
-          # First, run the _get_initial_parameters call, which will use the "initial_parameters" script.
-          initial_path_and_validator = await workflow._get_initial_parameters()
+      # First, run the _get_initial_parameters call, which will use the "initial_parameters" script.
+      initial_path_and_validator = await workflow._get_initial_parameters()
 
-          # Then, run _prepare_output_path. This will create the output file at initial_path_and_validator.output_path()
-          # with the content of dm_path and the "DO NOT EDIT" header.
-          await workflow._prepare_output_path(initial_path_and_validator)
+      # Then, run _prepare_output_path. This will create the output file at initial_path_and_validator.output_path()
+      # with the content of dm_path and the "DO NOT EDIT" header.
+      await workflow._prepare_output_path(initial_path_and_validator)
 
-          # 3. Call the method under test with the output_path, which _find_relevant_paths will read.
-          relevant_paths = await workflow._find_relevant_paths(initial_path_and_validator.output_path())
+      # 3. Call the method under test with the output_path, which _find_relevant_paths will read.
+      relevant_paths = await workflow._find_relevant_paths(initial_path_and_validator.output_path())
 
-          # 4. Assertions
-          self.assertIsInstance(relevant_paths, dict)
-          self.assertEqual(len(relevant_paths), 3)
+      # 4. Assertions
+      self.assertIsInstance(relevant_paths, dict)
+      self.assertEqual(len(relevant_paths), 3)
 
-          # Check for marker1
-          self.assertIn(marker1_obj, relevant_paths)
-          self.assertEqual(relevant_paths[marker1_obj], paths_for_marker1)
+      # Check for marker1
+      self.assertIn(marker1_obj, relevant_paths)
+      self.assertEqual(relevant_paths[marker1_obj], paths_for_marker1)
 
-          # Check for marker2
-          self.assertIn(marker2_obj, relevant_paths)
-          self.assertEqual(relevant_paths[marker2_obj], paths_for_marker2)
+      # Check for marker2
+      self.assertIn(marker2_obj, relevant_paths)
+      self.assertEqual(relevant_paths[marker2_obj], paths_for_marker2)
 
-          # Check for marker3
-          self.assertIn(marker3_obj, relevant_paths)
-          self.assertEqual(relevant_paths[marker3_obj], paths_for_marker3)
+      # Check for marker3
+      self.assertIn(marker3_obj, relevant_paths)
+      self.assertEqual(relevant_paths[marker3_obj], paths_for_marker3)
 
-          # Assert that exactly 4 conversations were created (excluding the initial "dummy" conversation).
-          self.assertEqual(len([c for c in self.conversation_factory.GetAll() if c.GetName() != "dummy"]), 4)
-        # ✨
+      # Assert that exactly 4 conversations were created (excluding the initial "dummy" conversation).
+      # One for _get_initial_parameters, and one for each of the three _find_relevant_paths_for_marker calls.
+      self.assertEqual(len([c for c in self.conversation_factory.GetAll() if c.GetName() != "dummy"]), 4)
+    # ✨
 
   async def test_codespecsworkflow__find_relevant_paths_calls_to_find_relevant_paths_for_marker_happen_concurrently_1(
       self) -> None:
-        # ✨ Calls to `find_relevant_paths_for_marker` happen concurrently. (in CodeSpecsWorkflow._find_relevant_paths)
-        import asyncio
-        import time
-        from unittest import mock
-        from collections import OrderedDict # For mock_get_markers return_value
-        import code_specs # To access MarkerChar and MarkerName
+    # ✨ Calls to `find_relevant_paths_for_marker` happen concurrently. (in CodeSpecsWorkflow._find_relevant_paths)
+    from code_specs import MarkerName
+    from code_specs_workflow import MUSHROOM
+    from code_specs_path_and_validator import PathAndValidator
+    from code_specs_validator import Validator
+    import asyncio
+    import pathlib
+    import tempfile
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-          temp_path = pathlib.Path(temp_dir)
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_path = pathlib.Path(temp_dir)
 
-          # 1. Setup: Create a dummy DM file with multiple unique markers
-          dm_file_name = "concurrent_markers.dm.py"
-          dm_path = temp_path / dm_file_name
+      # 1. Setup: Create a dummy DM file with multiple unique markers
+      dm_file_name = "concurrent_markers.dm.py"
+      dm_path = temp_path / dm_file_name
 
-          marker1_name_str = "ConcurrentMarkerOne"
-          marker2_name_str = "ConcurrentMarkerTwo"
-          marker3_name_str = "ConcurrentMarkerThree"
+      marker1_name_str = "ConcurrentMarkerOne"
+      marker2_name_str = "ConcurrentMarkerTwo"
+      marker3_name_str = "ConcurrentMarkerThree"
 
-          mushroom_char_str = chr(0x1F344) # 🍄 (as a string literal for file content)
+      # Use the helper to create DM file content
+      marker_names_list = [marker1_name_str, marker2_name_str, marker3_name_str]
+      content = _content_with_markers(marker_names_list)
+      dm_path.write_text(content, encoding='utf-8')
 
-          content = f"""# DM file with multiple markers for concurrency test
-    # {{{{{mushroom_char_str} {marker1_name_str}}}}}
-    # Placeholder for marker one
-    # {{{{{mushroom_char_str} {marker2_name_str}}}}}
-    # Placeholder for marker two
-    # {{{{{mushroom_char_str} {marker3_name_str}}}}}
-    # Placeholder for marker three
-    """
-          dm_path.write_text(content, encoding='utf-8')
+      # Create actual dummy files for the "relevant paths" that _find_relevant_paths_for_marker would return
+      # These paths need to exist for the done_validate function to succeed within FakeConversationalAI.
+      file1_path = temp_path / f"relevant_{marker1_name_str}.py"
+      file2_path = temp_path / f"relevant_{marker2_name_str}.py"
+      file3_path = temp_path / f"relevant_{marker3_name_str}.py"
 
-          # Create a PathAndValidator instance, needed by CodeSpecsWorkflow but not directly used by _find_relevant_paths
-          # The validator command must include $DMPATH for PathAndValidator to be valid.
-          path_and_validator = PathAndValidator(
-              dm_path=dm_path, validator=Validator(command="true $DMPATH"))
+      file1_path.write_text("content for file one")
+      file2_path.write_text("content for file two")
+      file3_path.write_text("content for file three")
 
-          # 2. Build the workflow
-          workflow = await self.build_workflow(scripted_messages={})
+      # Paths that _find_relevant_paths_for_marker (via scripted_messages) will return for each marker
+      paths_for_marker1 = {file1_path}
+      paths_for_marker2 = {file2_path}
+      paths_for_marker3 = {file3_path}
 
-          # Prepare MarkerName objects to be consistent with get_markers and mock calls
-          mushroom_marker_char = code_specs.MarkerChar(mushroom_char_str)
-          marker1_obj = code_specs.MarkerName(char=mushroom_marker_char, name=marker1_name_str)
-          marker2_obj = code_specs.MarkerName(char=mushroom_marker_char, name=marker2_name_str)
-          marker3_obj = code_specs.MarkerName(char=mushroom_marker_char, name=marker3_name_str)
+      # Prepare MarkerName objects to be consistent with get_markers
+      marker1_obj = MarkerName(char=MUSHROOM, name=marker1_name_str)
+      marker2_obj = MarkerName(char=MUSHROOM, name=marker2_name_str)
+      marker3_obj = MarkerName(char=MUSHROOM, name=marker3_name_str)
 
-          # Mock get_markers to return our controlled MarkerName objects in a predictable order
-          with mock.patch('code_specs.get_markers', new_callable=mock.AsyncMock) as mock_get_markers:
-              mock_get_markers.return_value = OrderedDict([
-                  (marker1_obj, []), # Line numbers don't matter for this test
-                  (marker2_obj, []),
-                  (marker3_obj, []),
-              ])
+      # 2. Script FakeConversationalAI to provide responses for _get_initial_parameters
+      # and each call to _find_relevant_paths_for_marker
+      scripted_messages = {
+          "initial_parameters": [
+              _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+          ],
+          # Each of these conversation names will be used when _find_relevant_paths_for_marker is called for each marker.
+          # A small delay is introduced by slow_conversation_factory_options().
+          f"find_relevant_paths_for_{marker1_name_str}": [
+              _message_done_relevant_paths(paths=list(paths_for_marker1))
+          ],
+          f"find_relevant_paths_for_{marker2_name_str}": [
+              _message_done_relevant_paths(paths=list(paths_for_marker2))
+          ],
+          f"find_relevant_paths_for_{marker3_name_str}": [
+              _message_done_relevant_paths(paths=list(paths_for_marker3))
+          ],
+      }
 
-              # Mock _find_relevant_paths_for_marker
-              # We will record start and end times for each call to check for concurrency
-              call_times = {} # {marker_name_str: {'start': float, 'end': float}}
+      workflow = await self.build_workflow(scripted_messages)
 
-              async def mock_find_relevant_paths_for_marker_impl(current_path, marker_obj):
-                  marker_name_key = marker_obj.name
-                  start_time = asyncio.get_event_loop().time()
-                  call_times[marker_name_key] = {'start': start_time}
+      # First, run the _get_initial_parameters call, which will use the "initial_parameters" script.
+      initial_path_and_validator = await workflow._get_initial_parameters()
 
-                  # Simulate some asynchronous work
-                  await asyncio.sleep(0.1) # Small delay to allow other tasks to run
+      # Then, run _prepare_output_path. This creates the output file at initial_path_and_validator.output_path()
+      # with the content of dm_path and the "DO NOT EDIT" header.
+      await workflow._prepare_output_path(initial_path_and_validator)
 
-                  end_time = asyncio.get_event_loop().time()
-                  call_times[marker_name_key]['end'] = end_time
-                  return {current_path.parent / f"relevant_{marker_name_key}.py"}
+      # 3. Call the method under test with the output_path.
+      # _find_relevant_paths will read this file, find the markers, and then
+      # call _find_relevant_paths_for_marker for each, which will use the scripted_messages.
+      relevant_paths_result = await workflow._find_relevant_paths(initial_path_and_validator.output_path())
 
-              with mock.patch.object(
-                  workflow,
-                  '_find_relevant_paths_for_marker',
-                  side_effect=mock_find_relevant_paths_for_marker_impl,
-                  new_callable=mock.AsyncMock) as mock_find_relevant_paths_for_marker:
+      # 4. Assertions
+      # Ensure that the output contains one entry for each marker found in `path`.
+      self.assertEqual(len(relevant_paths_result), 3)
 
-                  # 3. Call the method under test
-                  relevant_paths = await workflow._find_relevant_paths(dm_path)
+      # Ensure the output values correspond to the outputs of _find_relevant_paths_for_marker for each key (marker).
+      expected_relevant_paths = {
+          marker1_obj: paths_for_marker1,
+          marker2_obj: paths_for_marker2,
+          marker3_obj: paths_for_marker3,
+      }
+      self.assertEqual(relevant_paths_result, expected_relevant_paths)
 
-                  # 4. Assertions
-                  # Ensure _find_relevant_paths_for_marker was called for each marker
-                  self.assertEqual(mock_find_relevant_paths_for_marker.call_count, 3)
+      # Assert that calls happened concurrently.
+      # We check the start and end times of the conversations that _find_relevant_paths_for_marker initiates.
+      conversations_for_markers = []
+      for marker_name in marker_names_list:
+          conversation_name = f"find_relevant_paths_for_{marker_name}"
+          conversation = self._find_conversation(conversation_name)
+          conversations_for_markers.append(conversation)
 
-                  # Assert that calls happened concurrently
-                  # Check if the start of a later task is before the end of an earlier task.
-                  # This indicates overlap.
-                  self.assertIn(marker1_name_str, call_times)
-                  self.assertIn(marker2_name_str, call_times)
-                  self.assertIn(marker3_name_str, call_times)
+      start_times = []
+      end_times = []
 
-                  # Sort markers by their recorded start times to simplify concurrency checks
-                  sorted_markers_by_start = sorted(call_times.items(), key=lambda item: item[1]['start'])
+      for conv in conversations_for_markers:
+          messages = conv.GetMessagesList()
+          self.assertGreater(len(messages), 0, f"Conversation '{conv.GetName()}' has no messages.")
+          start_times.append(messages[0].creation_time)
+          end_times.append(messages[-1].creation_time)
 
-                  # For concurrency, at least one of the subsequent markers must have started before the first one finished.
-                  # More generally, we can check if there's any overlap.
-                  # A simpler check for concurrency with N tasks: the first task should not have finished before all tasks have started.
-                  # Or, if tasks have equal simulated duration, the total time should be close to the duration of one task.
+      # Filter out None values before assertion, this will likely lead to len != 3 if values are None
+      # Note: with the direct access to creation_time, these should no longer be None,
+      # but the filter remains for robustness if an empty message list could somehow occur.
+      filtered_start_times = [t for t in start_times if t is not None]
+      filtered_end_times = [t for t in end_times if t is not None]
 
-                  first_marker_start_time = sorted_markers_by_start[0][1]['start']
-                  first_marker_end_time = sorted_markers_by_start[0][1]['end']
-                  last_marker_start_time = sorted_markers_by_start[-1][1]['start']
+      self.assertEqual(len(filtered_start_times), 3, "Failed to record start times for all marker conversations. start_times: " + str(start_times))
+      self.assertEqual(len(filtered_end_times), 3, "Failed to record end times for all marker conversations. end_times: " + str(end_times))
 
-                  # If tasks run concurrently, the last task should start before the first task finishes.
-                  # This implies that while the first task was running, other tasks began.
-                  self.assertLess(last_marker_start_time, first_marker_end_time,
-                                  "Tasks did not appear to run concurrently; the last task only started after the first one finished.")
+      # For concurrency, it's sufficient to assert that the last conversation to *start*
+      # began before the first conversation to *end*. This implies at least some overlap.
+      min_end_time = min(filtered_end_times)
+      max_start_time = max(filtered_start_times)
 
-                  # Further check: The total elapsed time for all tasks should be significantly less than the sum of individual delays
-                  # (3 * 0.1s = 0.3s) if they run concurrently.
-                  # It should be closer to the longest individual task duration (0.1s in this case, plus overhead).
-                  total_duration = max(t['end'] for t in call_times.values()) - min(t['start'] for t in call_times.values())
-                  expected_min_duration = 0.1 # The duration of a single sleep
-                  tolerance = 0.05 # Allow some overhead for task switching etc.
-                  self.assertGreater(total_duration, expected_min_duration)
-                  self.assertLess(total_duration, expected_min_duration * 1.5 + tolerance, # Should be less than sum of all delays if sequential
-                                  f"Total duration ({total_duration:.4f}s) suggests sequential execution, expected closer to {expected_min_duration:.4f}s for concurrent. Individual durations: {[t['end'] - t['start'] for t in call_times.values()]}")
-
-                  # Also confirm the mocked paths are returned
-                  expected_relevant_paths = {
-                      marker1_obj: {temp_path / "relevant_ConcurrentMarkerOne.py"},
-                      marker2_obj: {temp_path / "relevant_ConcurrentMarkerTwo.py"},
-                      marker3_obj: {temp_path / "relevant_ConcurrentMarkerThree.py"},
-                  }
-                  self.assertEqual(relevant_paths, expected_relevant_paths)
-        # ✨
+      self.assertLess(max_start_time, min_end_time,
+                      "Tasks did not appear to run concurrently; the last task only started after the first one finished.")
+    # ✨
 
   async def test_codespecsworkflow__find_relevant_paths_the_output_contains_one_entry_for_each_marker_found_in_path_1(
       self) -> None:
@@ -971,16 +859,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
               marker2_name_str = "OutputMarkerTwo"
               marker3_name_str = "OutputMarkerThree"
 
-              mushroom_char_lit = "{{" + chr(0x1F344) + " " # Start of marker with mushroom char
-              end_marker_lit = "}}" # End of marker
-
-              content = (f"# DM file for output contains one entry test\n"
-                         f"# {mushroom_char_lit}{marker1_name_str}{end_marker_lit}\n"
-                         f"# Code related to OutputMarkerOne\n"
-                         f"# {mushroom_char_lit}{marker2_name_str}{end_marker_lit}\n"
-                         f"# Code related to OutputMarkerTwo\n"
-                         f"# {mushroom_char_lit}{marker3_name_str}{end_marker_lit}\n"
-                         f"# Code related to OutputMarkerThree\n")
+              content = _content_with_markers([marker1_name_str, marker2_name_str, marker3_name_str])
               dm_path.write_text(content, encoding='utf-8')
 
               # Create a PathAndValidator instance (validator is not directly used by _find_relevant_paths)
@@ -990,7 +869,6 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
               # Define the expected relevant paths that each _find_relevant_paths_for_marker call will return
               relevant_paths_for_marker1: set[pathlib.Path] = {temp_path / "file_for_marker_one.py"}
               relevant_paths_for_marker2: set[pathlib.Path] = {temp_path / "file_for_marker_two_A.py", temp_path / "file_for_marker_two_B.py"}
-              # Corrected: provide a dummy file for marker3 so validation passes
               relevant_paths_for_marker3: set[pathlib.Path] = {temp_path / "file_for_marker_three.py"}
 
               # Create these dummy files so that `done_validate` in `_find_relevant_paths_for_marker` succeeds
@@ -999,58 +877,32 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
               # Prepare scripted messages for each agent loop initiated by _find_relevant_paths_for_marker
               scripted_messages = {
+                  "initial_parameters": [
+                      _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+                  ],
                   f"find_relevant_paths_for_{marker1_name_str}": [
-                      Message(
-                          role="assistant",
-                          content_sections=[
-                              ContentSection(
-                                  content="",
-                                  command=CommandInput(
-                                      command_name="done",
-                                      args=VariableMap({
-                                          relevant_paths_variable:
-                                              VariableValueStr(",".join(str(p) for p in relevant_paths_for_marker1)),
-                                      }),
-                                  ))
-                          ])
+                      _message_done_relevant_paths(paths=list(relevant_paths_for_marker1))
                   ],
                   f"find_relevant_paths_for_{marker2_name_str}": [
-                      Message(
-                          role="assistant",
-                          content_sections=[
-                              ContentSection(
-                                  content="",
-                                  command=CommandInput(
-                                      command_name="done",
-                                      args=VariableMap({
-                                          relevant_paths_variable:
-                                              VariableValueStr(",".join(str(p) for p in relevant_paths_for_marker2)),
-                                      }),
-                                  ))
-                          ])
+                      _message_done_relevant_paths(paths=list(relevant_paths_for_marker2))
                   ],
                   f"find_relevant_paths_for_{marker3_name_str}": [
-                      Message(
-                          role="assistant",
-                          content_sections=[
-                              ContentSection(
-                                  content="",
-                                  command=CommandInput(
-                                      command_name="done",
-                                      args=VariableMap({
-                                          relevant_paths_variable:
-                                              VariableValueStr(",".join(str(p) for p in relevant_paths_for_marker3)),
-                                      }),
-                                  ))
-                          ])
+                      _message_done_relevant_paths(paths=list(relevant_paths_for_marker3))
                   ],
               }
 
               # 2. Build the workflow
               workflow = await self.build_workflow(scripted_messages)
 
+              # Call _get_initial_parameters, which will use the "initial_parameters" script.
+              initial_path_and_validator = await workflow._get_initial_parameters()
+
+              # Then, run _prepare_output_path. This creates the output file at initial_path_and_validator.output_path()
+              # with the content of dm_path and the "DO NOT EDIT" header.
+              await workflow._prepare_output_path(initial_path_and_validator)
+
               # 3. Call the method under test
-              actual_relevant_paths_output = await workflow._find_relevant_paths(dm_path)
+              actual_relevant_paths_output = await workflow._find_relevant_paths(initial_path_and_validator.output_path())
 
               # Prepare MarkerName objects to be consistent with get_markers' output
               # (get_markers is called internally, no need to mock it)
@@ -1078,6 +930,8 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
               # Also check that conversations were created for each marker
               all_conversations = self.conversation_factory.GetAll()
               conversation_names = {c.GetName() for c in all_conversations}
+              # Need to account for the initial_parameters conversation as well.
+              self.assertIn("initial_parameters", conversation_names)
               self.assertIn(f"find_relevant_paths_for_{marker1_name_str}", conversation_names)
               self.assertIn(f"find_relevant_paths_for_{marker2_name_str}", conversation_names)
               self.assertIn(f"find_relevant_paths_for_{marker3_name_str}", conversation_names)
@@ -1107,18 +961,8 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       marker2_name_str = "ValueMarkerTwo"
       marker3_name_str = "ValueMarkerThree"
 
-      # Construct content for the DM file. Using string concatenation and chr(0x1F344)
-      # to represent the mushroom character, consistent with other passing tests
-      # and to avoid literal 🍄 in the test source code. Also ensuring that
-      # the `{{` and `}}` are correctly part of the string literal without
-      # causing f-string parsing issues.
-      content = ("# DM file for output values test\n" +
-                 "# {{" + chr(0x1F344) + " " + marker1_name_str + "}}\n" +
-                 "# Code related to ValueMarkerOne\n" +
-                 "# {{" + chr(0x1F344) + " " + marker2_name_str + "}}\n" +
-                 "# Code related to ValueMarkerTwo\n" +
-                 "# {{" + chr(0x1F344) + " " + marker3_name_str + "}}\n" +
-                 "# Code related to ValueMarkerThree\n")
+      # Construct content for the DM file using _content_with_markers helper.
+      content = _content_with_markers([marker1_name_str, marker2_name_str, marker3_name_str])
       dm_path.write_text(content, encoding='utf-8')
 
       # Create a PathAndValidator instance (validator is not directly used by _find_relevant_paths)
@@ -1136,62 +980,36 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
       # Prepare scripted messages for each agent loop initiated by _find_relevant_paths_for_marker
       scripted_messages = {
+          "initial_parameters": [
+              _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+          ],
           f"find_relevant_paths_for_{marker1_name_str}": [
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  relevant_paths_variable:
-                                      VariableValueStr(','.join(str(p) for p in expected_relevant_paths_for_marker1)),
-                              }),
-                          ))
-                  ])
+              _message_done_relevant_paths(paths=list(expected_relevant_paths_for_marker1))
           ],
           f"find_relevant_paths_for_{marker2_name_str}": [
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  relevant_paths_variable:
-                                      VariableValueStr(','.join(str(p) for p in expected_relevant_paths_for_marker2)),
-                              }),
-                          ))
-                  ])
+              _message_done_relevant_paths(paths=list(expected_relevant_paths_for_marker2))
           ],
           f"find_relevant_paths_for_{marker3_name_str}": [
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  relevant_paths_variable:
-                                      VariableValueStr(','.join(str(p) for p in expected_relevant_paths_for_marker3)),
-                              }),
-                          ))
-                  ])
+              _message_done_relevant_paths(paths=list(expected_relevant_paths_for_marker3))
           ],
       }
 
       # 2. Build the workflow with the correct scripted messages.
       workflow = await self.build_workflow(scripted_messages)
 
+      # Call _get_initial_parameters, which will use the "initial_parameters" script.
+      initial_path_and_validator = await workflow._get_initial_parameters()
+
+      # Then, run _prepare_output_path. This creates the output file at initial_path_and_validator.output_path()
+      # with the content of dm_path and the "DO NOT EDIT" header.
+      await workflow._prepare_output_path(initial_path_and_validator)
+
       # 3. Call the method under test
-      actual_relevant_paths_output = await workflow._find_relevant_paths(dm_path)
+      actual_relevant_paths_output = await workflow._find_relevant_paths(initial_path_and_validator.output_path())
 
       # 4. Assertions
       # The `get_markers` call inside `_find_relevant_paths` will use the actual file content.
-      # The keys in the output will be `MarkerName` objects created by `get_markers`. 
+      # The keys in the output will be `MarkerName` objects created by `get_markers`.
       # Type annotation for `expected_marker_names_in_order`
       expected_marker_names_in_order: collections.OrderedDict[code_specs.MarkerName, None] = collections.OrderedDict()
       # Order of markers from get_markers is insertion order of first appearance.
@@ -1222,23 +1040,11 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           dm_path = temp_path / dm_file_name
 
           marker_name_str = "RelevantPathsTest"
-          # Use chr(0x1F344) to represent '🍄' to avoid literal character in the test source.
-          mushroom_char = chr(0x1F344)
 
-          # Construct the literal marker string for the DM file.
-          literal_marker_in_file = (
-              "# "  # Comment prefix
-              + "{{"  # Start of Duende marker (literal string)
-              + mushroom_char # The mushroom character (generated from chr())
-              + " "  # Space after the mushroom character
-              + marker_name_str # The marker name string
-              + "}}"  # End of Duende marker (literal string)
-          )
-
-          # Construct the content string for the DM file using simple string concatenation
+          # Construct the content string for the DM file using _content_with_markers
           content = (
               "# DM file for relevant paths argument test\n"
-              + literal_marker_in_file + "\n"
+              + _content_with_markers([marker_name_str]) + "\n"
               + "def dummy_func():\n"
               + "  pass\n"
           )
@@ -1259,20 +1065,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           conversation_name_for_marker = f"find_relevant_paths_for_{marker_name_str}"
           scripted_messages = {
               conversation_name_for_marker: [
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable:
-                                          VariableValueStr(dummy_relevant_path_str),
-                                  }),
-                              ))
-                      ]
-                  )
+                  _message_done_relevant_paths(paths=[dummy_relevant_file])
               ]
           }
 
@@ -1342,15 +1135,11 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       dm_path = temp_path / dm_file_name
 
       marker_name_str = "CacheTestMarker"
-      mushroom_char = chr(0x1F344) # 🍄
 
-      literal_marker_in_file = (
-          "# " + "{{" + mushroom_char + " " + marker_name_str + "}}"
-      )
-
+      # Refactored: Use _content_with_markers helper
       content = (
           "# DM file for caching test\n"
-          + literal_marker_in_file + "\n"
+          + _content_with_markers([marker_name_str]) + "\n"
           + "def cache_func():\n"
           + "  return 42\n"
       )
@@ -1362,26 +1151,13 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
       dummy_relevant_file = temp_path / "dummy_cached_relevant.py"
       dummy_relevant_file.write_text("print('cached')", encoding='utf-8')
-      dummy_relevant_path_str = str(dummy_relevant_file)
       expected_relevant_paths = {dummy_relevant_file}
 
       conversation_name_for_marker = f"find_relevant_paths_for_{marker_name_str}"
+      # Refactored: Use _message_done_relevant_paths helper
       scripted_messages = {
           conversation_name_for_marker: [
-              Message(
-                  role="assistant",
-                  content_sections=[
-                      ContentSection(
-                          content="",
-                          command=CommandInput(
-                              command_name="done",
-                              args=VariableMap({
-                                  relevant_paths_variable:
-                                      VariableValueStr(dummy_relevant_path_str),
-                              }),
-                          ))
-                  ]
-              )
+              _message_done_relevant_paths(paths=[dummy_relevant_file])
           ]
       }
 
@@ -1400,10 +1176,10 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
       print(f"[DEBUG] Returned paths 1: {returned_relevant_paths_1}")
 
       # Verify after first call
-      conversations_for_marker_1 = [c for c in self.conversation_factory.GetAll() if c.GetName() == conversation_name_for_marker]
-      print(f"[DEBUG] After first call: Conversations for marker: {[c.GetName() + ' (' + str(c.GetState()) + ')' for c in conversations_for_marker_1]}")
-      self.assertEqual(len(conversations_for_marker_1), 1, "Expected exactly one conversation after the first call.")
-      self.assertEqual(conversations_for_marker_1[0].GetState(), ConversationState.DONE, "First conversation should be DONE.")
+      # Refactored: Use _find_conversation helper and assert directly
+      conversation_1 = self._find_conversation(conversation_name_for_marker)
+      print(f"[DEBUG] After first call: Conversation for marker: {conversation_1.GetName()} ({conversation_1.GetState()})")
+      self.assertEqual(conversation_1.GetState(), ConversationState.DONE, "First conversation should be DONE.")
       self.assertEqual(returned_relevant_paths_1, expected_relevant_paths)
 
       # Create the second workflow instance (crucial for "two separate instances")
@@ -1446,6 +1222,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
   async def test_codespecsworkflow__find_relevant_paths_for_marker_done_validate_if_no_files_are_given_validation_fails_with_a_message_that_at_least_one_relevant_file_should_be_given_1(
       self) -> None:
+
     # ✨ If no files are given, validation fails, with a message that at least one relevant file should be given. (in CodeSpecsWorkflow._find_relevant_paths_for_marker.done_validate)
         import asyncio  # For async functions
         import code_specs
@@ -1463,22 +1240,14 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           dm_path = temp_path / dm_file_name
 
           marker_name_str = "NoFilesGiven"
-          mushroom_char = chr(0x1F344)  # 🍄
 
-          # Construct the literal marker string for the DM file.
-          literal_marker_in_file = (
-              "# "  # Comment prefix
-              + "{{"  # Start of Duende marker (literal string)
-              + mushroom_char # The mushroom character (generated from chr())
-              + " "  # Space after the mushroom character
-              + marker_name_str # The marker name string
-              + "}}"  # End of Duende marker (literal string)
-          )
+          # Use _content_with_markers helper to create the marker part
+          marker_content = _content_with_markers([marker_name_str])
 
-          # Construct the content string for the DM file using simple string concatenation
+          # Construct the full content string for the DM file
           content = (
               "# DM file for 'no files given' validation test\n"
-              + literal_marker_in_file + "\n"
+              + marker_content + "\n"
               + "def test_func():\n"
               + "  pass\n"
           )
@@ -1490,7 +1259,6 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           # Create a dummy valid relevant file for the second 'done' call to succeed
           dummy_valid_file = temp_path / "valid_relevant.py"
           dummy_valid_file.write_text("import os\n", encoding='utf-8')
-          dummy_valid_path_str = str(dummy_valid_file)
 
           # 2. Define the expected error message from done_validate
           # The error message should come from the 'if not relevant_paths_val:' block
@@ -1504,33 +1272,9 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           scripted_messages = {
               conversation_name_for_marker: [
                   # First attempt: Fails validation because relevant_paths is an empty string
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(""),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[]),
                   # Second attempt: Succeeds validation with a valid path
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(dummy_valid_path_str),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[dummy_valid_file]),
               ]
           }
 
@@ -1546,14 +1290,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           self.assertEqual(returned_relevant_paths, {dummy_valid_file})
 
           # 6. Retrieve the conversation and assert on the error message
-          conversation = None
-          for conv in self.conversation_factory.GetAll():
-            if conv.GetName() == conversation_name_for_marker:
-              conversation = conv
-              break
-          self.assertIsNotNone(conversation,
-                               f"Conversation '{conversation_name_for_marker}' not found.")
-          assert conversation is not None  # For mypy narrowing
+          conversation = self._find_conversation(conversation_name_for_marker)
 
           found_error_message_in_conversation = False
           for message in conversation.GetMessagesList():
@@ -1569,22 +1306,18 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
               f"Expected error message '{full_expected_error_message}' not found in conversation history. "
               f"Actual content sections: {[s.content for m in conversation.GetMessagesList() for s in m.GetContentSections() if m.role == 'user']}."
           )
-        # ✨
+    # ✨
 
   async def test_codespecsworkflow__find_relevant_paths_for_marker_done_validate_all_files_must_be_readable_both_by_the_os_as_well_as_allowed_by_the_file_access_policy_if_one_isnt_validation_fails_1(
       self) -> None:
 
     # ✨ All files must be readable (both by the OS as well as allowed by the `file_access_policy`). If one isn't, validation fails. (in CodeSpecsWorkflow._find_relevant_paths_for_marker.done_validate)
-        import asyncio  # For async functions
-        import code_specs
-        from code_specs_workflow import MUSHROOM, relevant_paths_variable
-        from agent_command import CommandInput, VariableMap, VariableName, VariableValueStr
-        from message import ContentSection, Message
-        from conversational_ai_test_utils import FakeConversationalAI
-        from validation import ValidationResult
         import os  # For os.chmod
         import stat  # For file permissions
         from file_access_policy import FileAccessPolicy # For the base class
+        import pathlib # For pathlib.Path
+        import code_specs # For MarkerName
+        from code_specs_workflow import MUSHROOM, relevant_paths_variable
 
         # Define a custom FakeFileAccessPolicy that can be controlled
         class ControlledFakeFileAccessPolicy(FileAccessPolicy):
@@ -1607,14 +1340,11 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           dm_path = temp_path / dm_file_name
 
           marker_name_str = "ReadableFilesValidation"
-          mushroom_char = chr(0x1F344)  # 🍄
 
-          literal_marker_in_file = (
-              "# " + "{{" + mushroom_char + " " + marker_name_str + "}}"
-          )
+          # Use _content_with_markers helper
           content = (
               "# DM file for readable files validation test\n"
-              + literal_marker_in_file + "\n"
+              + _content_with_markers([marker_name_str]) + "\n"
               + "def test_func():\n"
               + "  pass\n"
           )
@@ -1663,75 +1393,15 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           scripted_messages = {
               conversation_name_for_marker: [
                   # Attempt 1: Non-existent file
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(non_existent_path_str),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[pathlib.Path(non_existent_path_str)]),
                   # Attempt 2: Path is a directory
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(is_directory_path_str),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[pathlib.Path(is_directory_path_str)]),
                   # Attempt 3: File not readable by OS
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(not_readable_os_path_str),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[pathlib.Path(not_readable_os_path_str)]),
                   # Attempt 4: File access denied by policy
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(denied_by_policy_path_str),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[pathlib.Path(denied_by_policy_path_str)]),
                   # Attempt 5: All files valid and readable (successful)
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(valid_readable_path_str),
-                                  }),
-                              ))
-                      ]
-                  ),
+                  _message_done_relevant_paths(paths=[pathlib.Path(valid_readable_path_str)]),
               ]
           }
 
@@ -1757,13 +1427,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           self.assertEqual(returned_relevant_paths, {valid_readable_file})
 
           # Retrieve the conversation and assert on the error messages
-          conversation = None
-          for conv in self.conversation_factory.GetAll():
-            if conv.GetName() == conversation_name_for_marker:
-              conversation = conv
-              break
-          self.assertIsNotNone(conversation,
-                               f"Conversation '{conversation_name_for_marker}' not found.")
+          conversation = self._find_conversation(conversation_name_for_marker)
           assert conversation is not None
 
           expected_error_messages = [
@@ -1811,14 +1475,11 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           dm_path = temp_path / dm_file_name
 
           marker_name_str = "SuccessfulValidation"
-          mushroom_char = chr(0x1F344)  # 🍄
 
-          literal_marker_in_file = (
-              "# " + "{{" + mushroom_char + " " + marker_name_str + "}}"
-          )
+          # Use _content_with_markers helper
           content = (
               "# DM file for successful validation test\n"
-              + literal_marker_in_file + "\n"
+              + _content_with_markers([marker_name_str]) + "\n"
               + "def test_func():\n"
               + "  pass\n"
           )
@@ -1842,25 +1503,12 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
           os.chmod(valid_file_3, stat.S_IRUSR | stat.S_IWUSR)
 
           expected_relevant_paths = {valid_file_1, valid_file_2, valid_file_3}
-          valid_paths_str = ','.join(str(p) for p in expected_relevant_paths)
 
           # --- Prepare scripted messages ---
           conversation_name_for_marker = f"find_relevant_paths_for_{marker_name_str}"
           scripted_messages = {
               conversation_name_for_marker: [
-                  Message(
-                      role="assistant",
-                      content_sections=[
-                          ContentSection(
-                              content="",
-                              command=CommandInput(
-                                  command_name="done",
-                                  args=VariableMap({
-                                      relevant_paths_variable: VariableValueStr(valid_paths_str),
-                                  }),
-                              ))
-                      ]
-                  )
+                  _message_done_relevant_paths(paths=list(expected_relevant_paths))
               ]
           }
 
@@ -1876,13 +1524,7 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
                            "The returned relevant paths do not match the expected valid paths.")
 
           # Retrieve the conversation and assert its state
-          conversation = None
-          for conv in self.conversation_factory.GetAll():
-            if conv.GetName() == conversation_name_for_marker:
-              conversation = conv
-              break
-          self.assertIsNotNone(conversation,
-                               f"Conversation '{conversation_name_for_marker}' not found.")
+          conversation = self._find_conversation(conversation_name_for_marker)
           assert conversation is not None  # For mypy narrowing
 
           self.assertEqual(conversation.GetState(), ConversationState.DONE,
@@ -1901,19 +1543,491 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
   async def test_codespecsworkflow__implement_file_the_calls_to__implement_marker_happen_sequentially_1(
       self) -> None:
-    pass  # {{🍄 The calls to `_implement_marker` happen sequentially. (in CodeSpecsWorkflow._implement_file)}}
+    # ✨ The calls to `_implement_marker` happen sequentially. (in CodeSpecsWorkflow._implement_file)
+    from code_specs_workflow import MUSHROOM
+    from code_specs import MarkerName, FileExtension
+    from code_specs_path_and_validator import PathAndValidator
+    from code_specs_validator import Validator
+    from conversation_state import ConversationState
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_path = pathlib.Path(temp_dir)
+
+      dm_file_name = "sequential_implement_test.dm.py"
+      dm_path = temp_path / dm_file_name
+
+      marker1_name_str = "FirstMarker"
+      marker2_name_str = "SecondMarker"
+      marker3_name_str = "ThirdMarker"
+
+      marker_names = [marker1_name_str, marker2_name_str, marker3_name_str]
+      content = _content_with_markers(marker_names)
+      dm_path.write_text(content, encoding='utf-8')
+
+      relevant_file_1 = temp_path / "relevant_1.py"
+      relevant_file_2 = temp_path / "relevant_2.py"
+      relevant_file_3 = temp_path / "relevant_3.py"
+      relevant_file_1.write_text("dummy", encoding='utf-8')
+      relevant_file_2.write_text("dummy", encoding='utf-8')
+      relevant_file_3.write_text("dummy", encoding='utf-8')
+
+      marker1_obj = MarkerName(char=MUSHROOM, name=marker1_name_str)
+      marker2_obj = MarkerName(char=MUSHROOM, name=marker2_name_str)
+      marker3_obj = MarkerName(char=MUSHROOM, name=marker3_name_str)
+
+      scripted_messages = {
+          "initial_parameters": [
+              _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+          ],
+          f"find_relevant_paths_for_{marker1_name_str}": [
+              _message_done_relevant_paths(paths=[relevant_file_1])
+          ],
+          f"find_relevant_paths_for_{marker2_name_str}": [
+              _message_done_relevant_paths(paths=[relevant_file_2])
+          ],
+          f"find_relevant_paths_for_{marker3_name_str}": [
+              _message_done_relevant_paths(paths=[relevant_file_3])
+          ],
+          f"implement_marker_{marker1_name_str}": [
+              _message_done_implementation(marker1_name_str, FileExtension("py"))
+          ],
+          f"implement_marker_{marker2_name_str}": [
+              _message_done_implementation(marker2_name_str, FileExtension("py"))
+          ],
+          f"implement_marker_{marker3_name_str}": [
+              _message_done_implementation(marker3_name_str, FileExtension("py"))
+          ],
+      }
+
+      workflow = await self.build_workflow(scripted_messages)
+
+      path_and_validator_obj = await workflow._get_initial_parameters()
+      await workflow._prepare_output_path(path_and_validator_obj)
+      relevant_paths_dict = await workflow._find_relevant_paths(path_and_validator_obj.output_path())
+      await workflow._implement_file(path_and_validator_obj, relevant_paths_dict)
+
+      all_conversations = self.conversation_factory.GetAll()
+
+      implement_marker_conversations = []
+      for marker_name in marker_names:
+          conv_name = f"implement_marker_{marker_name}"
+          conversation = self._find_conversation(conv_name)
+          self.assertIsNotNone(conversation, f"Expected conversation '{conv_name}' not found.")
+          self.assertEqual(conversation.GetState(), ConversationState.DONE,
+                           f"Conversation '{conv_name}' did not complete successfully. State: {conversation.GetState()}")
+
+          messages = conversation.GetMessagesList()
+          self.assertGreater(len(messages), 0, f"Conversation '{conv_name}' has no messages.")
+          start_time = messages[0].creation_time
+          end_time = messages[-1].creation_time
+          implement_marker_conversations.append((marker_name, start_time, end_time))
+
+      sorted_implement_marker_conversations = sorted(
+          implement_marker_conversations, key=lambda x: marker_names.index(x[0]))
+
+      for i in range(len(sorted_implement_marker_conversations) - 1):
+          current_marker_name, _, current_end_time = sorted_implement_marker_conversations[i]
+          next_marker_name, next_start_time, _ = sorted_implement_marker_conversations[i+1]
+
+          self.assertLess(current_end_time, next_start_time,
+                          f"Expected conversation for '{current_marker_name}' (ended at {current_end_time}) "
+                          f"to finish before conversation for '{next_marker_name}' (started at {next_start_time}). "
+                          "This indicates non-sequential execution.")
+
+      final_output_content = path_and_validator_obj.output_path().read_text(encoding='utf-8')
+      file_extension = FileExtension(dm_path.suffix[1:])
+
+      for marker_name in marker_names:
+          expected_code_line = f"print(\"Hello from {marker_name}\")"
+          self.assertIn(expected_code_line, final_output_content,
+                        f"Code line '{expected_code_line}' for marker '{marker_name}' not found in final output.")
+
+          # Use string concatenation to avoid f-string parsing issues with `{{` and `}}`
+          original_marker_placeholder = "# {{" + MUSHROOM + " " + marker_name + "}}"
+          self.assertNotIn(original_marker_placeholder,
+                           final_output_content,
+                           f"Original marker placeholder '{original_marker_placeholder}' for '{marker_name}' still found in final output.")
+
+          self.assertIn(comment_string(file_extension, f"✨ {marker_name}").strip(), final_output_content.strip(),
+                        f"Start comment for '{marker_name}' not found in final output.")
+          self.assertIn(comment_string(file_extension, "✨").strip(), final_output_content.strip(),
+                        f"End comment for '{marker_name}' not found in final output.")
+    # ✨
 
   async def test_codespecsworkflow__implement_file_the_output_of_a_call_to__implement_marker_is_stored_through_markerimplementation_save_on_inputsoutput_path_1(
       self) -> None:
-    pass  # {{🍄 The output of a call to `_implement_marker` is stored through `MarkerImplementation.save` on `inputs.output_path()`. (in CodeSpecsWorkflow._implement_file)}}
+    # ✨ The output of a call to `_implement_marker` is stored through `MarkerImplementation.save` on `inputs.output_path()`. (in CodeSpecsWorkflow._implement_file)
+    from code_specs_workflow import MUSHROOM
+    from code_specs import MarkerName, FileExtension
+    from code_specs_path_and_validator import PathAndValidator
+    from code_specs_validator import Validator
+    from unittest import mock # Import mock
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_path = pathlib.Path(temp_dir)
+
+      dm_file_name = "save_output_test.dm.py"
+      dm_path = temp_path / dm_file_name
+
+      marker_name_str = "SaveTestMarker"
+      marker_names = [marker_name_str]
+      content = _content_with_markers(marker_names)
+      dm_path.write_text(content, encoding='utf-8')
+
+      # Create a dummy relevant file, needed for _find_relevant_paths to return a valid result
+      relevant_file = temp_path / "relevant_file.py"
+      relevant_file.write_text("dummy content", encoding='utf-8')
+
+      marker_obj = MarkerName(char=MUSHROOM, name=marker_name_str)
+      file_extension = FileExtension(dm_path.suffix[1:])
+
+      scripted_messages = {
+          "initial_parameters": [
+              _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+          ],
+          f"find_relevant_paths_for_{marker_name_str}": [
+              _message_done_relevant_paths(paths=[relevant_file])
+          ],
+          # We need a scripted message for implement_marker_ even though we are mocking _implement_marker itself.
+          # This is because the FakeConversationalAI needs to consume a message for the conversation it expects.
+          # The content of this message doesn't actually matter for this test, as we are mocking the function.
+          f"implement_marker_{marker_name_str}": [
+              _message_done_implementation(marker_name_str, file_extension)
+          ],
+      }
+
+      workflow = await self.build_workflow(scripted_messages)
+
+      # 1. Obtain PathAndValidator object
+      path_and_validator_obj = await workflow._get_initial_parameters()
+
+      # 2. Prepare output path (creates output_path, potentially old_path)
+      await workflow._prepare_output_path(path_and_validator_obj)
+
+      # 3. Find relevant paths
+      relevant_paths_dict = await workflow._find_relevant_paths(path_and_validator_obj.output_path())
+
+      # 4. Mock MarkerImplementation.save and CodeSpecsWorkflow._implement_marker
+      mock_marker_implementation_instance = mock.AsyncMock()
+      # Set some properties on the mock as _implement_file might access them, though not directly tested here.
+      mock_marker_implementation_instance.name = marker_obj
+      mock_marker_implementation_instance.value = f"# ✨ {marker_name_str}\nprint(\'test\')\n# ✨"
+      mock_marker_implementation_instance.file_extension = file_extension
+
+      with mock.patch.object(
+          workflow,
+          '_implement_marker',
+          return_value=mock_marker_implementation_instance,
+          new_callable=mock.AsyncMock) as mock_implement_marker:
+
+          # 5. Call _implement_file
+          await workflow._implement_file(path_and_validator_obj, relevant_paths_dict)
+
+          # 6. Assertions
+          # Assert that _implement_marker was called for our marker
+          mock_implement_marker.assert_awaited_once_with(
+              path_and_validator=path_and_validator_obj,
+              marker=marker_obj,
+              relevant_paths=relevant_paths_dict.get(marker_obj, set())
+          )
+
+          # Assert that the `save` method on the returned MarkerImplementation mock was called
+          # with the correct output path.
+          mock_marker_implementation_instance.save.assert_awaited_once_with(
+              path_and_validator_obj.output_path()
+          )
+
+          # Additionally, verify that the actual output file content was NOT changed by _implement_file directly,
+          # as _implement_file *delegates* the saving to MarkerImplementation.save.
+          # The content should still be the initial "DO NOT EDIT" + original dm content
+          expected_output_content_prefix = comment_string(
+              FileExtension("py"),
+              "DO NOT EDIT. This file is automatically generated by Duende.")
+          expected_initial_output_content = expected_output_content_prefix + "\n" + content
+          self.assertEqual(
+              path_and_validator_obj.output_path().read_text(encoding='utf-8'),
+              expected_initial_output_content
+          )
+    # ✨
 
   async def test_codespecsworkflow__implement_file_the_output_of_a_call_to__implement_marker_is_stored_before_the_next_call_begins_so_that_the_next_call_already_sees_the_output_of_the_previous_call_1(
       self) -> None:
-    pass  # {{🍄 The output of a call to `_implement_marker` is stored before the next call begins (so that the next call already sees the output of the previous call). (in CodeSpecsWorkflow._implement_file)}}
+    # ✨ The output of a call to `_implement_marker` is stored before the next call begins (so that the next call already sees the output of the previous call). (in CodeSpecsWorkflow._implement_file)
+    from code_specs_workflow import MUSHROOM, implementation_variable
+    from code_specs import MarkerName, FileExtension, comment_string
+    from code_specs_path_and_validator import PathAndValidator
+    from code_specs_validator import Validator
+    from agent_command import CommandInput, VariableMap, VariableValueStr
+    from message import ContentSection, Message
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+      temp_path = pathlib.Path(temp_dir)
+
+      dm_file_name = "sequential_output_test.dm.py"
+      dm_path = temp_path / dm_file_name
+
+      marker1_name_str = "MarkerA"
+      marker2_name_str = "MarkerB"
+      marker_names = [marker1_name_str, marker2_name_str]
+      content_with_placeholders = _content_with_markers(marker_names)
+      dm_path.write_text(content_with_placeholders, encoding='utf-8')
+
+      relevant_file_a = temp_path / "relevant_a.py"
+      relevant_file_b = temp_path / "relevant_b.py"
+      relevant_file_a.write_text("dummy A", encoding='utf-8')
+      relevant_file_b.write_text("dummy B", encoding='utf-8')
+
+      marker1_obj = MarkerName(char=MUSHROOM, name=marker1_name_str)
+      marker2_obj = MarkerName(char=MUSHROOM, name=marker2_name_str)
+      file_extension = FileExtension(dm_path.suffix[1:])
+
+      # Initial scripted messages for parameters and relevant paths
+      scripted_messages = {
+          "initial_parameters": [
+              _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+          ],
+          f"find_relevant_paths_for_{marker1_name_str}": [
+              _message_done_relevant_paths(paths=[relevant_file_a])
+          ],
+          f"find_relevant_paths_for_{marker2_name_str}": [
+              _message_done_relevant_paths(paths=[relevant_file_b])
+          ],
+      }
+
+      # Build the workflow with initial scripted messages
+      workflow = await self.build_workflow(scripted_messages)
+
+      path_and_validator_obj = await workflow._get_initial_parameters()
+      await workflow._prepare_output_path(path_and_validator_obj)
+      relevant_paths_dict = await workflow._find_relevant_paths(path_and_validator_obj.output_path())
+
+      # --- Prepare scripted implementations for MarkerA and MarkerB ---
+      # These implementations will be provided by FakeConversationalAI
+
+      # Implementation for MarkerA
+      marker_a_implementation_code = (
+          comment_string(file_extension, f"✨ {marker1_name_str}") + "\n"
+          "print(\"This is MarkerA's implementation.\")\n"
+          + comment_string(file_extension, "✨")
+      )
+      scripted_messages[f"implement_marker_{marker1_name_str}"] = [
+          Message(
+              role="assistant",
+              content_sections=[
+                  ContentSection(
+                      content="",
+                      command=CommandInput(
+                          command_name="done",
+                          args=VariableMap({
+                              implementation_variable: VariableValueStr(
+                                  marker_a_implementation_code
+                              ),
+                          }),
+                      ),
+                  )
+              ]
+          )
+      ]
+
+      # Implementation for MarkerB
+      marker_b_implementation_code = (
+          comment_string(file_extension, f"✨ {marker2_name_str}") + "\n"
+          "print(\"This is MarkerB's implementation.\")\n"
+          + comment_string(file_extension, "✨")
+      )
+      scripted_messages[f"implement_marker_{marker2_name_str}"] = [
+          Message(
+              role="assistant",
+              content_sections=[
+                  ContentSection(
+                      content="",
+                      command=CommandInput(
+                          command_name="done",
+                          args=VariableMap({
+                              implementation_variable: VariableValueStr(
+                                  marker_b_implementation_code
+                              ),
+                          }),
+                      ),
+                  )
+              ]
+          )
+      ]
+
+      # Re-build workflow with updated scripted messages including implementations
+      workflow = await self.build_workflow(scripted_messages)
+
+      # 5. Call _implement_file to run the sequential implementations
+      await workflow._implement_file(path_and_validator_obj, relevant_paths_dict)
+
+      # 6. Assertions
+      # Verify that MarkerB's initial prompt contained MarkerA's implementation
+      marker_b_conversation = self._find_conversation(f"implement_marker_{marker2_name_str}")
+      self.assertIsNotNone(marker_b_conversation, "MarkerB conversation not found.")
+
+      # The first message in the conversation for MarkerB is the prompt sent by Duende to the AI.
+      # This prompt should contain the content of the output file *after* MarkerA's implementation.
+      # FakeConversationalAI handles messages from Duende as 'user' role messages in its internal list.
+      marker_b_initial_prompt_messages = [
+          m for m in marker_b_conversation.GetMessagesList() if m.role == "user"
+      ]
+      self.assertGreater(len(marker_b_initial_prompt_messages), 0,
+                         "No initial prompt messages found for MarkerB.")
+
+      marker_b_prompt_content = "".join(
+          s.content for m in marker_b_initial_prompt_messages for s in m.GetContentSections()
+      )
+
+      # The prompt content for MarkerB should include the full implementation block for MarkerA.
+      self.assertIn(marker_a_implementation_code, marker_b_prompt_content,
+                    "MarkerA's implementation not found in MarkerB's initial prompt."
+                   )
+
+      # Also check that the final output file contains both implementations and no original markers
+      final_output_content = path_and_validator_obj.output_path().read_text(encoding='utf-8')
+
+      self.assertIn(marker_a_implementation_code, final_output_content,
+                    "MarkerA's implementation not found in final output file.")
+      self.assertIn(marker_b_implementation_code, final_output_content,
+                    "MarkerB's implementation not found in final output file.")
+
+      marker_a_placeholder_in_content = "# {" + chr(0x1F344) + " " + marker1_name_str + "}}"
+      self.assertNotIn(marker_a_placeholder_in_content, final_output_content,
+                       "MarkerA placeholder still found in final output.")
+      marker_b_placeholder_in_content = "# {" + chr(0x1F344) + " " + marker2_name_str + "}}"
+      self.assertNotIn(marker_b_placeholder_in_content, final_output_content,
+                       "MarkerB placeholder still found in final output.")
+    # ✨
 
   async def test_codespecsworkflow__implement_file_the_calls_to__implement_marker_happen_in_the_order_in_which_the_markers_occur_in_the_dm_file_1(
       self) -> None:
-    pass  # {{🍄 The calls to `_implement_marker` happen in the order in which the markers occur in the DM file. (in CodeSpecsWorkflow._implement_file)}}
+    # ✨ The calls to `_implement_marker` happen in the order in which the markers occur in the DM file. (in CodeSpecsWorkflow._implement_file)
+        from code_specs_workflow import MUSHROOM
+        from code_specs import MarkerName, FileExtension
+        from code_specs_path_and_validator import PathAndValidator
+        from code_specs_validator import Validator
+        from conversation_state import ConversationState
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+          temp_path = pathlib.Path(temp_dir)
+
+          dm_file_name = "sequential_implement_test.dm.py"
+          dm_path = temp_path / dm_file_name
+
+          # Define markers in a specific order
+          marker1_name_str = "FirstMarker"
+          marker2_name_str = "SecondMarker"
+          marker3_name_str = "ThirdMarker"
+
+          marker_names = [marker1_name_str, marker2_name_str, marker3_name_str]
+          content = _content_with_markers(marker_names)
+          dm_path.write_text(content, encoding='utf-8')
+
+          # Create dummy relevant files, needed for _find_relevant_paths to return valid results
+          relevant_file_1 = temp_path / "relevant_1.py"
+          relevant_file_2 = temp_path / "relevant_2.py"
+          relevant_file_3 = temp_path / "relevant_3.py"
+          relevant_file_1.write_text("dummy", encoding='utf-8')
+          relevant_file_2.write_text("dummy", encoding='utf-8')
+          relevant_file_3.write_text("dummy", encoding='utf-8')
+
+          # Create MarkerName objects corresponding to the order in the DM file
+          marker1_obj = MarkerName(char=MUSHROOM, name=marker1_name_str)
+          marker2_obj = MarkerName(char=MUSHROOM, name=marker2_name_str)
+          marker3_obj = MarkerName(char=MUSHROOM, name=marker3_name_str)
+
+          file_extension = FileExtension(dm_path.suffix[1:])
+
+          scripted_messages = {
+              "initial_parameters": [
+                  _message_done_path_validator(dm_path=dm_path, validator="true $DMPATH")
+              ],
+              f"find_relevant_paths_for_{marker1_name_str}": [
+                  _message_done_relevant_paths(paths=[relevant_file_1])
+              ],
+              f"find_relevant_paths_for_{marker2_name_str}": [
+                  _message_done_relevant_paths(paths=[relevant_file_2])
+              ],
+              f"find_relevant_paths_for_{marker3_name_str}": [
+                  _message_done_relevant_paths(paths=[relevant_file_3])
+              ],
+              # Scripted messages for _implement_marker calls
+              f"implement_marker_{marker1_name_str}": [
+                  _message_done_implementation(marker1_name_str, file_extension)
+              ],
+              f"implement_marker_{marker2_name_str}": [
+                  _message_done_implementation(marker2_name_str, file_extension)
+              ],
+              f"implement_marker_{marker3_name_str}": [
+                  _message_done_implementation(marker3_name_str, file_extension)
+              ],
+          }
+
+          workflow = await self.build_workflow(scripted_messages)
+
+          # 1. Get initial parameters
+          path_and_validator_obj = await workflow._get_initial_parameters()
+
+          # 2. Prepare output path
+          await workflow._prepare_output_path(path_and_validator_obj)
+
+          # 3. Find relevant paths
+          # The dictionary returned will have keys in the order they were found in the DM file.
+          relevant_paths_dict = await workflow._find_relevant_paths(path_and_validator_obj.output_path())
+
+          # 4. Call the method under test: _implement_file
+          await workflow._implement_file(path_and_validator_obj, relevant_paths_dict)
+
+          # 5. Verify the order of _implement_marker calls (by checking conversation start times)
+          implement_marker_conversations = []
+          for marker_name in marker_names:
+              conv_name = f"implement_marker_{marker_name}"
+              conversation = self._find_conversation(conv_name)
+              self.assertIsNotNone(conversation, f"Expected conversation '{conv_name}' not found.")
+              self.assertEqual(conversation.GetState(), ConversationState.DONE,
+                               f"Conversation '{conv_name}' did not complete successfully. State: {conversation.GetState()}")
+
+              messages = conversation.GetMessagesList()
+              self.assertGreater(len(messages), 0, f"Conversation '{conv_name}' has no messages.")
+              # The first message's creation_time should approximate the start time of the conversation.
+              start_time = messages[0].creation_time
+              end_time = messages[-1].creation_time # To ensure conversation finished
+              implement_marker_conversations.append((marker_name, start_time, end_time))
+
+          # Sort conversations by their original marker order for comparison
+          # (This is implicitly sorted by marker_names list order, as we iterate through it)
+          # No need for explicit sorting here since `marker_names` list is already in order.
+
+          for i in range(len(implement_marker_conversations) - 1):
+              current_marker_name, current_start_time, current_end_time = implement_marker_conversations[i]
+              next_marker_name, next_start_time, next_end_time = implement_marker_conversations[i+1]
+
+              self.assertLess(current_end_time, next_start_time,
+                              f"Expected conversation for '{current_marker_name}' (ended at {current_end_time}) "
+                              f"to finish before conversation for '{next_marker_name}' (started at {next_start_time}). "
+                              "This indicates non-sequential execution or incorrect order.")
+
+          # 6. Verify the final output file content
+          final_output_content = path_and_validator_obj.output_path().read_text(encoding='utf-8')
+
+          for marker_name in marker_names:
+              # Check for the presence of the implementation code
+              expected_code_line = f"print(\"Hello from {marker_name}\")"
+              self.assertIn(expected_code_line, final_output_content,
+                            f"Code line '{expected_code_line}' for marker '{marker_name}' not found in final output.")
+
+              # Check that the original marker placeholder has been replaced
+              original_marker_placeholder = "# {{" + MUSHROOM + " " + marker_name + "}}"
+              self.assertNotIn(original_marker_placeholder,
+                               final_output_content,
+                               f"Original marker placeholder '{original_marker_placeholder}' for '{marker_name}' still found in final output.")
+
+              # Check for the start and end comments of the implementation block
+              self.assertIn(comment_string(file_extension, f"✨ {marker_name}").strip(), final_output_content.strip(),
+                            f"Start comment for '{marker_name}' not found in final output.")
+              self.assertIn(comment_string(file_extension, "✨").strip(), final_output_content.strip(),
+                            f"End comment for '{marker_name}' not found in final output.")
+        # ✨
 
   async def test_codespecsworkflow__implement_marker_for_each_file_in_relevant_paths_theres_a_section_in_the_initial_message_prompt_given_to_the_ai_1(
       self) -> None:
