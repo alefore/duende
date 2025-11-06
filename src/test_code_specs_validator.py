@@ -129,7 +129,8 @@ class TestCodeSpecsValidator(unittest.IsolatedAsyncioTestCase):
       # The expected error message now correctly matches the output format of the function under test.
       self.assertFalse(result.success)
       self.assertIn(
-          "Implementation contains mushroom markers: '{{🍄 my_bad_marker}}'. "
+          "Implementation contains mushroom markers: '{{" +
+          "🍄 my_bad_marker}}'. "
           "Please remove them or escape them like `'…{{\' + '🍄 …}}…'`.",
           result.error)
     # ✨
