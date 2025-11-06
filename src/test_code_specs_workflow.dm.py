@@ -36,6 +36,27 @@ from test_utils import FakeFileAccessPolicy, FakeConfirmationState, FakeConfirma
 from validation import ValidationResult
 
 
+def _message_done_path_validator(dm_path: pathlib.Path,
+                                 validator: str) -> Message:
+  """Returns a role=assistant Message calling `done`.
+
+  Passes values for dm_path_variable and validator_variable.
+  """
+  raise NotImplementedError()  # {{🍄 message done path validator}}
+
+
+def _message_done_relevant_paths(paths: list[pathlib.Path]) -> Message:
+  """Returns a role=assistant Message calling `done`.
+
+  Passes values for relevant_paths_variable."""
+  raise NotImplementedError()  # {{🍄 message done relevant paths}}
+
+
+def _content_with_markers(markers: list[str]) -> str:
+  """Returns a string with a Python file containing the 🍄 markers given."""
+  raise NotImplementedError()  # {{🍄 content with markers}}
+
+
 class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
 
   def setUp(self) -> None:
