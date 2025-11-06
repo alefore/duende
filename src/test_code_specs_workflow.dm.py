@@ -63,6 +63,10 @@ class TestCodeSpecsWorkflow(unittest.IsolatedAsyncioTestCase):
     self.conversation_factory: ConversationFactory = ConversationFactory(
         slow_conversation_factory_options())
 
+  def _find_conversation(self, conversation_name) -> Conversation:
+    """Finds and returns a conversation (uses self.fail + assert)."""
+    raise NotImplementedError()  # {{🍄 find conversation by name}}
+
   async def build_workflow(
       self, scripted_messages: dict[str, list[Message]]) -> CodeSpecsWorkflow:
     """Sets up a CodeSpecWorkflow with fake objects.
