@@ -52,6 +52,12 @@ def _message_done_relevant_paths(paths: list[pathlib.Path]) -> Message:
   raise NotImplementedError()  # {{🍄 message done relevant paths}}
 
 
+def _message_done_implementation(marker_name: str,
+                                 file_extension: FileExtension) -> Message:
+  """Returns a role=assistant Message calling `done` with an implementation."""
+  raise NotImplementedError()  # {{🍄 message done implementation}}
+
+
 def _content_with_markers(markers: list[str]) -> str:
   """Returns a string with a Python file containing the 🍄 markers given."""
   raise NotImplementedError()  # {{🍄 content with markers}}
