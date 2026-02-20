@@ -1,7 +1,10 @@
-let shownConversationId = null;
+import {createTimestampView} from './timestamps.js';
 
-class ConversationData {
-  constructor(id, name, state, stateEmoji, lastStateChangeTime) {
+export let shownConversationId = [null];
+
+export class ConversationData {
+  constructor(
+      id, name, state, stateEmoji, lastStateChangeTime, scrollToBottom) {
     this.id = id;
     this.name = name;
     this.state = state;
@@ -11,6 +14,7 @@ class ConversationData {
     // lastStateChangeTime when the confirmation was sent (which is good enough
     // to make sure we don't send multiple confirmations for the same request).
     this.lastConfirmationSentTime = null;
+    this.scrollToBottom = scrollToBottom;
 
     console.log(`Creating container for conversation ${this.id}`);
     this.div = $('<div>')
@@ -21,12 +25,12 @@ class ConversationData {
   }
 
   isShown() {
-    return this.id === shownConversationId;
+    return this.id === shownConversationId[0];
   }
 
   show() {
     $('.conversation').hide();  // Hide all.
-    shownConversationId = this.id;
+    shownConversationId[0] = this.id;
     this.div.show();
     const $conversationSelector = $('#conversation_selector');
     if (parseInt($conversationSelector.val()) !== this.id)
@@ -43,7 +47,7 @@ class ConversationData {
 
   updateView() {
     this._updateSelectorOption();
-    if (shownConversationId === null)
+    if (shownConversationId[0] === null)
       this.show();
     else if (this.isShown())
       this._updateShownConversationState();
@@ -193,6 +197,6 @@ class ConversationData {
           .append(createTimestampView(this.lastStateChangeTime))
           .show();
     }
-    scrollToBottom();
+    this.scrollToBottom();
   }
 }

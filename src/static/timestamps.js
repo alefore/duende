@@ -1,4 +1,4 @@
-function createTimestampView(timestamp) {
+export function createTimestampView(timestamp) {
   const $element = $('<span>').addClass('timestamp');
 
   function formatTime(value, unit) {

@@ -1,3 +1,5 @@
+import {ConversationData, shownConversationId} from './conversation.js';
+
 let currentSessionKey = null;
 const conversationsById = {};
 
@@ -6,10 +8,10 @@ function autoConfirmCheckbox() {
 }
 
 function getShownConversation() {
-  if (shownConversationId === null) return null;
+  if (shownConversationId[0] === null) return null;
   console.log(conversationsById);
-  console.log(shownConversationId);
-  return conversationsById[shownConversationId];
+  console.log(shownConversationId[0]);
+  return conversationsById[shownConversationId[0]];
 }
 
 function getMaxConversationId() {
@@ -26,13 +28,14 @@ function createOrUpdateConversation(
     conversationsById[id].updateData(
         name, state, stateEmoji, lastStateChangeTime);
   else
-    conversationsById[id] =
-        new ConversationData(id, name, state, stateEmoji, lastStateChangeTime);
+    conversationsById[id] = new ConversationData(
+        id, name, state, stateEmoji, lastStateChangeTime, scrollToBottom);
   return conversationsById[id].updateView();
 }
 
 function scrollToBottom() {
-  if (shownConversationId !== null && getShownConversation().div.is(':visible'))
+  if (shownConversationId[0] !== null &&
+      getShownConversation().div.is(':visible'))
     window.scrollTo(0, document.body.scrollHeight);
 }
 
@@ -77,7 +80,6 @@ function maybeAutoConfirm(socket) {
     }
     sendConfirmation(socket, '', conversation.id);
   }
-  showActiveConversationState();
 }
 
 function maybeRequestMessages(socket, serverMessages, conversation) {
@@ -100,7 +102,7 @@ function handleUpdate(socket, data) {
     Object.keys(conversationsById)
         .forEach(key => delete conversationsById[key]);
     $('#conversation_selector').empty();
-    shownConversationId = null;
+    shownConversationId[0] = null;
     currentSessionKey = data.session_key;
   }
 
@@ -217,7 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   $(confirmationForm).on('submit', function(event) {
     event.preventDefault();
-    sendConfirmation(socket, confirmationInput.value, shownConversationId);
+    sendConfirmation(socket, confirmationInput.value, shownConversationId[0]);
   });
 
   $conversationSelector.on('change', function() {
