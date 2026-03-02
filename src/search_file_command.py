@@ -5,7 +5,7 @@ import pathlib
 import os
 from typing import AsyncIterable, Iterable, Any
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName, VariableValue
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableName, VariableValue
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
@@ -24,6 +24,7 @@ class SearchFileCommand(AgentCommand):
         name="search_file",
         description="Searches for the specific content.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
