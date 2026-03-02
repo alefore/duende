@@ -1,3 +1,4 @@
+import pathlib
 from typing import NamedTuple
 
 from agent_loop_options import AgentLoopOptions, BaseAgentLoopFactory
@@ -16,3 +17,4 @@ class AgentWorkflowOptions(NamedTuple):
   confirm_done: str = ''
   do_review: bool = False
   review_first: bool = False
+  config_path: pathlib.Path | None = None
