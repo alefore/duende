@@ -27,7 +27,8 @@ class AsyncConfirmationManager(ConfirmationManager):
   def __init__(
       self,
       on_confirmation_requested: Callable[[ConversationId, str],
-                                          Coroutine[Any, Any, None]] | None = None
+                                          Coroutine[Any, Any, None]]
+      | None = None
   ) -> None:
     self.confirmations: dict[ConversationId, ConfirmationEntry] = {}
     self.on_confirmation_requested = on_confirmation_requested
@@ -60,8 +61,7 @@ class AsyncConfirmationManager(ConfirmationManager):
 
     asyncio.create_task(_set_result())
 
-  def get_pending_message(self,
-                          conversation_id: ConversationId) -> str | None:
+  def get_pending_message(self, conversation_id: ConversationId) -> str | None:
     entry = self.confirmations.get(conversation_id)
     return entry.message if entry else None
 
