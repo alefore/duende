@@ -25,6 +25,10 @@ class FakeConfirmationManager(ConfirmationManager):
                                 message: str) -> str | None:
     return None  # Always confirm for tests
 
+  def provide_confirmation(self, conversation_id: ConversationId,
+                           confirmation: str) -> None:
+    pass
+
 
 class FakeSelectionManager(SelectionManager):
   pass  # Default implementation is fine for now

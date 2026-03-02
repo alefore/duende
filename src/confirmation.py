@@ -21,6 +21,11 @@ class ConfirmationManager(ABC):
     """Blocks execution until confirmation is given, returning additional guidance if provided by the user."""
     pass
 
+  @abstractmethod
+  def provide_confirmation(self, conversation_id: ConversationId,
+                           confirmation: str) -> None:
+    pass
+
 
 class AsyncConfirmationManager(ConfirmationManager):
 
