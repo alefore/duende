@@ -100,14 +100,15 @@ class SwarmWorkflow(AgentWorkflow):
   async def _load_config(self, path: pathlib.Path) -> SwarmConfig:
     """Loads the configuration from JSON file in `path`."""
     # ✨ load config
-    async with aiofiles.open(path, mode="r") as f:
+    async with aiofiles.open(
+        path, mode="r") as f:
       content = await f.read()
     data = json.loads(content)
 
     agents = {}
     for agent_name, agent_data in data["agents"].items():
       agents[AgentName(agent_name)] = AgentIdentityConfig(
-          name=AgentName(agent_data["name"]),
+          name=AgentName(agent_name),
           capability=agent_data["capability"],
           prompt_path=pathlib.Path(agent_data["prompt_path"]),
           file_access_policy_regex=agent_data["file_access_policy_regex"],
@@ -144,8 +145,8 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.session_id in self._sessions
     # ✨ provide confirmation
     session = self._sessions[message.session_id]
-    session.confirmation_manager.provide_confirmation(session.conversation.GetId(),
-                                                      message.body)
+    session.confirmation_manager.provide_confirmation(
+        session.conversation.GetId(), message.body)
     # ✨
 
   async def _start_new_session(self, message: BusMessage) -> AgentSession:
@@ -191,7 +192,8 @@ class SwarmWorkflow(AgentWorkflow):
     head_path = self._config.agents[message.recipient].prompt_path
     tail = "<user_request>" + message.body + "</user_request>"
     # ✨ new start message
-    async with aiofiles.open(head_path, mode="r") as f:
+    async with aiofiles.open(
+        head_path, mode="r") as f:
       head = await f.read()
     return Message(
         role="user",
