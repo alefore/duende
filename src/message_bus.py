@@ -51,12 +51,12 @@ class MessageBus:
 
     def _open() -> sqlite3.Connection:
       # ✨ init db
-        self._connection = sqlite3.connect(
-            str(self._path), timeout=20.0, isolation_level=None)
-        self._connection.execute("PRAGMA journal_mode=WAL;")
-        self._connection.row_factory = sqlite3.Row
-        # Create tables if they don't exist
-        sql_schema = """
+      self._connection = sqlite3.connect(
+          str(self._path), timeout=20.0, isolation_level=None)
+      self._connection.execute("PRAGMA journal_mode=WAL;")
+      self._connection.row_factory = sqlite3.Row
+      # Create tables if they don't exist
+      sql_schema = """
         CREATE TABLE IF NOT EXISTS messages (
             -- Unique identifier for each message
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,10 +85,11 @@ class MessageBus:
         -- Index for the server to find "new" messages quickly
         CREATE INDEX IF NOT EXISTS idx_pending_messages ON messages(status) WHERE status = 'new';
         """
-        self._connection.executescript(sql_schema)
-        self._connection.commit()
-        return self._connection
-      # ✨
+      self._connection.executescript(sql_schema)
+      self._connection.commit()
+      return self._connection
+
+    # ✨
 
     await self._run_in_thread(_open)
 
@@ -157,12 +158,14 @@ class MessageBus:
 
   async def mark_message_as_seen(self, message_id: MessageId) -> None:
     """Updates the `status` field in self._messages_db to `seen`."""
+
     # ✨ mark message as seen
     def _mark_message_as_seen_db_op(msg_id: MessageId) -> None:
       """Database operation to mark a message as seen."""
       if self._connection is None:
         raise ValueError("Database connection is not open.")
-      self._connection.execute("UPDATE messages SET status = 'seen' WHERE id = ?", (msg_id,))
+      self._connection.execute(
+          "UPDATE messages SET status = 'seen' WHERE id = ?", (msg_id,))
       self._connection.commit()
 
     await self._run_in_thread(_mark_message_as_seen_db_op, message_id)
@@ -173,6 +176,7 @@ class MessageBus:
 
     The MessageId will be overwritten (based on database state) and returned.
     """
+
     # ✨ write new message
     def _insert_message_and_commit(
         sender: SenderName,
@@ -198,7 +202,7 @@ class MessageBus:
             """,
           (
               sender,
-              recipient,
+              recipient or '',
               session_id,
               body,
               'new',  # Default status
@@ -208,7 +212,8 @@ class MessageBus:
       self._connection.commit()
       new_id = cursor.lastrowid
       if new_id is None:
-        raise RuntimeError("Failed to retrieve the ID of the newly inserted message.")
+        raise RuntimeError(
+            "Failed to retrieve the ID of the newly inserted message.")
       logging.info('Wrote message with ID: %s', new_id)
       return new_id
 
