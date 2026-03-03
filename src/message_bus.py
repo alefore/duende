@@ -32,7 +32,8 @@ async def open_bus(path: pathlib.Path) -> MessageBus:
   (see message_bus.sql for details).
   """
   # ✨ open bus
-  db = await asyncio.to_thread(sqlite3.connect, str(path))
+  db = await asyncio.to_thread(
+      sqlite3.connect, str(path), timeout=20.0, isolation_level=None)
   db.row_factory = sqlite3.Row
   # Create tables if they don't exist
   sql_schema = """
@@ -100,6 +101,7 @@ async def wait_for_new_messages(
     def _fetch_messages():
       cursor = db.execute(query, tuple(recipients))
       return cursor.fetchall()
+
     new_messages_rows = await asyncio.to_thread(_fetch_messages)
 
     if new_messages_rows:
@@ -138,17 +140,18 @@ async def write_new_message(db: MessageBus, message: Message) -> MessageId:
 
   The MessageId will be overwritten (based on database state) and returned.
   """
+
   # ✨ write new message
   def _insert_message_and_commit(message_bus, msg_data):
-      cursor = message_bus.execute(
-          """
+    cursor = message_bus.execute(
+        """
           INSERT INTO messages (sender, recipient, session_id, body, status, message_type)
           VALUES (?, ?, ?, ?, ?, ?)
           """,
-          msg_data,
-      )
-      message_bus.commit()
-      return cursor.lastrowid
+        msg_data,
+    )
+    message_bus.commit()
+    return cursor.lastrowid
 
   new_message_id = await asyncio.to_thread(
       _insert_message_and_commit,
