@@ -18,7 +18,7 @@ from file_access_policy import RegexFileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
-from message_bus import Message as BusMessage, MessageBus, SessionId, mark_message_as_seen, open_bus, wait_for_new_messages
+from message_bus import Message as BusMessage, MessageBus, SessionId
 from swarm_commands import DisplayInfoCommand
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
@@ -57,8 +57,7 @@ class SwarmConfirmationManager(ConfirmationManager):
   async def RequireConfirmation(self, conversation_id: ConversationId,
                                 message: str) -> str | None:
     dummy_id = message_bus.MessageId(0)
-    await message_bus.write_new_message(
-        self._message_bus,
+    await self._message_bus.write_new_message(
         BusMessage(
             id=dummy_id,
             sender=self._agent_name,
@@ -89,11 +88,12 @@ class SwarmWorkflow(AgentWorkflow):
   async def run(self) -> None:
     self._config = await self._load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
-    self._message_bus = await open_bus(self._config.message_bus_path)
+    self._message_bus = MessageBus(self._config.message_bus_path)
+    await self._message_bus.open()
     self._sessions: dict[SessionId, AgentSession] = {}
     while True:
-      for message in await wait_for_new_messages(self._message_bus,
-                                                 list(self._config.agents)):
+      for message in await self._message_bus.wait_for_new_messages(
+          list(self._config.agents)):
         await self._process_message(message)
 
   async def _load_config(self, path: pathlib.Path) -> SwarmConfig:

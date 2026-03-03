@@ -19,7 +19,7 @@ from file_access_policy import RegexFileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
-from message_bus import Message as BusMessage, MessageBus, SessionId, mark_message_as_seen, open_bus, wait_for_new_messages
+from message_bus import Message as BusMessage, MessageBus, SessionId
 from swarm_commands import DisplayInfoCommand
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
@@ -58,8 +58,7 @@ class SwarmConfirmationManager(ConfirmationManager):
   async def RequireConfirmation(self, conversation_id: ConversationId,
                                 message: str) -> str | None:
     dummy_id = message_bus.MessageId(0)
-    await message_bus.write_new_message(
-        self._message_bus,
+    await self._message_bus.write_new_message(
         BusMessage(
             id=dummy_id,
             sender=self._agent_name,
@@ -90,32 +89,33 @@ class SwarmWorkflow(AgentWorkflow):
   async def run(self) -> None:
     self._config = await self._load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
-    self._message_bus = await open_bus(self._config.message_bus_path)
+    self._message_bus = MessageBus(self._config.message_bus_path)
+    await self._message_bus.open()
     self._sessions: dict[SessionId, AgentSession] = {}
     while True:
-      for message in await wait_for_new_messages(self._message_bus,
-                                                 list(self._config.agents)):
+      for message in await self._message_bus.wait_for_new_messages(
+          list(self._config.agents)):
         await self._process_message(message)
 
   async def _load_config(self, path: pathlib.Path) -> SwarmConfig:
     """Loads the configuration from JSON file in `path`."""
     # ✨ load config
-    # Read the configuration file asynchronously.
-    async with aiofiles.open(
-        path, mode="r") as f:
-      config_content = await f.read()
-    data = json.loads(config_content)
+    async with aiofiles.open(path, mode="r") as f:
+      content = await f.read()
+    data = json.loads(content)
 
     agents = {}
     for agent_name, agent_data in data["agents"].items():
       agents[AgentName(agent_name)] = AgentIdentityConfig(
-          name=AgentName(agent_name),
+          name=AgentName(agent_data["name"]),
           capability=agent_data["capability"],
           prompt_path=pathlib.Path(agent_data["prompt_path"]),
-          file_access_policy_regex=agent_data["file_access_policy_regex"])
-
+          file_access_policy_regex=agent_data["file_access_policy_regex"],
+      )
     return SwarmConfig(
-        agents=agents, message_bus_path=pathlib.Path(data["message_bus_path"]))
+        agents=agents,
+        message_bus_path=pathlib.Path(data["message_bus_path"]),
+    )
     # ✨
 
   async def _process_message(self, message: BusMessage) -> None:
@@ -124,9 +124,9 @@ class SwarmWorkflow(AgentWorkflow):
     If the message has a session_id, handles it to _provide_confirmation;
     otherwise, calls _start_new_session and updates _sessions.
     """
-    # ✨ process message
-    await mark_message_as_seen(self._message_bus, message.id)
 
+    # ✨ process message
+    await self._message_bus.mark_message_as_seen(message.id)
     if message.session_id:
       await self._provide_confirmation(message)
     else:
@@ -144,8 +144,8 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.session_id in self._sessions
     # ✨ provide confirmation
     session = self._sessions[message.session_id]
-    session.confirmation_manager.provide_confirmation(
-        session.conversation.GetId(), message.body)
+    session.confirmation_manager.provide_confirmation(session.conversation.GetId(),
+                                                      message.body)
     # ✨
 
   async def _start_new_session(self, message: BusMessage) -> AgentSession:
@@ -167,16 +167,18 @@ class SwarmWorkflow(AgentWorkflow):
     agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
     # Update _background_tasks (from agent_loop.run()) and return AgentSession:
     # ✨ register new session
-    async def _run_agent_loop_task(loop: BaseAgentLoop) -> None:
-      await loop.run()
-
-    task = asyncio.create_task(_run_agent_loop_task(agent_loop))
-    self._background_tasks.append(task)
-    return AgentSession(
+    session = AgentSession(
         session_id=session_id,
         conversation=conversation,
         loop=agent_loop,
-        confirmation_manager=confirmation_manager)
+        confirmation_manager=confirmation_manager,
+    )
+
+    async def _run_agent_loop_task() -> None:
+      await agent_loop.run()
+
+    self._background_tasks.append(asyncio.create_task(_run_agent_loop_task()))
+    return session
     # ✨
 
   async def _new_start_message(self, message: BusMessage) -> Message:
@@ -189,12 +191,15 @@ class SwarmWorkflow(AgentWorkflow):
     head_path = self._config.agents[message.recipient].prompt_path
     tail = "<user_request>" + message.body + "</user_request>"
     # ✨ new start message
-    async with aiofiles.open(
-        head_path, mode='r') as f:
-      head_content = await f.read()
-    full_content = head_content + tail
+    async with aiofiles.open(head_path, mode="r") as f:
+      head = await f.read()
     return Message(
-        role="user", content_sections=[ContentSection(content=full_content)])
+        role="user",
+        content_sections=[
+            ContentSection(content=head),
+            ContentSection(content=tail),
+        ],
+    )
     # ✨
 
   def _create_command_registry(self, config: AgentIdentityConfig,
@@ -206,6 +211,7 @@ class SwarmWorkflow(AgentWorkflow):
          DisplayInfoCommand.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
+
     # ✨ create command registry
     registry = CommandRegistry()
     file_access_policy = RegexFileAccessPolicy(config.file_access_policy_regex)
