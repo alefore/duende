@@ -3,6 +3,7 @@ from agent_workflow import AgentWorkflowFactoryContainer
 from code_specs_workflow import CodeSpecsWorkflowFactory
 from code_specs_tests_enable import CodeSpecsTestsEnableWorkflowFactory
 from code_specs_tests_skeleton import CodeSpecsTestsSkeletonWorkflowFactory
+from swarm_workflow import SwarmWorkflowFactory
 
 
 def StandardWorkflowFactoryContainer() -> AgentWorkflowFactoryContainer:
@@ -11,4 +12,5 @@ def StandardWorkflowFactoryContainer() -> AgentWorkflowFactoryContainer:
   output.add(CodeSpecsWorkflowFactory())
   output.add(CodeSpecsTestsEnableWorkflowFactory())
   output.add(CodeSpecsTestsSkeletonWorkflowFactory())
+  output.add(SwarmWorkflowFactory())
   return output
