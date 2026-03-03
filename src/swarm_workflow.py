@@ -164,6 +164,8 @@ class SwarmWorkflow(AgentWorkflow):
         conversation=conversation,
         start_message=await self._new_start_message(message),
         command_registry=command_registry,
+        file_access_policy=RegexFileAccessPolicy(
+            self._config.agents[message.recipient].file_access_policy_regex),
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
     # Update _background_tasks (from agent_loop.run()) and return AgentSession:
