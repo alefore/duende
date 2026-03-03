@@ -7,12 +7,12 @@ import sqlite3
 from typing import NewType
 import uuid
 
-from agent_loop import BaseAgentLoop
+from agent_loop_options import BaseAgentLoop
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
-from conversation import ConversationId
+from conversation import ConversationId, Conversation
 from done_command import DoneCommand
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
@@ -71,6 +71,7 @@ class SwarmConfirmationManager(ConfirmationManager):
 @dataclasses.dataclass
 class AgentSession:
   session_id: SessionId
+  conversation: Conversation
   loop: BaseAgentLoop
   confirmation_manager: ConfirmationManager
 
@@ -95,7 +96,7 @@ class SwarmWorkflow(AgentWorkflow):
     """Loads the configuration from JSON file in `path`."""
     raise NotImplementedError()  # {{🍄 load config}}
 
-  async def _process_message(self, message: BusMessage):
+  async def _process_message(self, message: BusMessage) -> None:
     """Marks the message as seen and processes it.
 
     If the message has a session_id, handles it to _provide_confirmation;
@@ -103,7 +104,7 @@ class SwarmWorkflow(AgentWorkflow):
     """
     raise NotImplementedError()  # {{🍄 process message}}
 
-  async def _provide_confirmation(self, message):
+  async def _provide_confirmation(self, message) -> None:
     """Calls `provide_confirmation` on the session for the message.
 
     {{🦔 The value of `message.body` is passed to the right confirmation
