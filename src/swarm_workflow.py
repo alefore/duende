@@ -19,6 +19,7 @@ from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, SessionId, mark_message_as_seen, open_bus, wait_for_new_messages
+from swarm_commands import DisplayInfoCommand
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
 from read_file_command import ReadFileCommand
@@ -119,7 +120,6 @@ class SwarmWorkflow(AgentWorkflow):
     If the message has a session_id, handles it to _provide_confirmation;
     otherwise, calls _start_new_session and updates _sessions.
     """
-
     # ✨ process message
     await mark_message_as_seen(self._message_bus, message.id)
 
@@ -149,7 +149,7 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.recipient
     session_id = SessionId(uuid.uuid4().hex)
     command_registry = self._create_command_registry(
-        self._config.agents[message.recipient])
+        self._config.agents[message.recipient], session_id)
     conversation = self._options.conversation_factory.New(
         f"{message.recipient}: {message.body[:50]}", command_registry)
     confirmation_manager = SwarmConfirmationManager(
@@ -161,7 +161,6 @@ class SwarmWorkflow(AgentWorkflow):
         command_registry=command_registry,
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
-
     # Update _background_tasks (from agent_loop.run()) and return AgentSession:
     # ✨ register new session
     async def _run_agent_loop_task(loop: BaseAgentLoop) -> None:
@@ -194,16 +193,25 @@ class SwarmWorkflow(AgentWorkflow):
         role="user", content_sections=[ContentSection(content=full_content)])
     # ✨
 
-  def _create_command_registry(self,
-                               config: AgentIdentityConfig) -> CommandRegistry:
-    """Iterates over all config.capabilities."""
+  def _create_command_registry(self, config: AgentIdentityConfig,
+                               session_id: SessionId) -> CommandRegistry:
+    """Creates and returns a valid registry for a specific agent identity.
+
+    {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
+         SearchFileCommand, DoneCommand (with no arguments), and
+         DisplayInfoCommand.}}
+    """
+    # ✨ create command registry
     registry = CommandRegistry()
     file_access_policy = self._options.agent_loop_options.file_access_policy
     registry.Register(ReadFileCommand(file_access_policy))
     registry.Register(ListFilesCommand(file_access_policy))
     registry.Register(SearchFileCommand(file_access_policy))
     registry.Register(DoneCommand(arguments=[]))
+    registry.Register(
+        DisplayInfoCommand(self._message_bus, config.name, session_id))
     return registry
+    # ✨
 
 
 class SwarmWorkflowFactory(AgentWorkflowFactory):
