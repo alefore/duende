@@ -18,6 +18,7 @@ from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, SessionId, mark_message_as_seen, open_bus, wait_for_new_messages
+from swarm_commands import DisplayInfoCommand
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
 from read_file_command import ReadFileCommand
@@ -119,7 +120,7 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.recipient
     session_id = SessionId(uuid.uuid4().hex)
     command_registry = self._create_command_registry(
-        self._config.agents[message.recipient])
+        self._config.agents[message.recipient], session_id)
     conversation = self._options.conversation_factory.New(
         f"{message.recipient}: {message.body[:50]}", command_registry)
     confirmation_manager = SwarmConfirmationManager(
@@ -145,16 +146,15 @@ class SwarmWorkflow(AgentWorkflow):
     tail = "<user_request>" + message.body + "</user_request>"
     raise NotImplementedError()  # {{🍄 new start message}}
 
-  def _create_command_registry(self,
-                               config: AgentIdentityConfig) -> CommandRegistry:
-    """Iterates over all config.capabilities."""
-    registry = CommandRegistry()
-    file_access_policy = self._options.agent_loop_options.file_access_policy
-    registry.Register(ReadFileCommand(file_access_policy))
-    registry.Register(ListFilesCommand(file_access_policy))
-    registry.Register(SearchFileCommand(file_access_policy))
-    registry.Register(DoneCommand(arguments=[]))
-    return registry
+  def _create_command_registry(self, config: AgentIdentityConfig,
+                               session_id: SessionId) -> CommandRegistry:
+    """Creates and returns a valid registry for a specific agent identity.
+
+    {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
+         SearchFileCommand, DoneCommand (with no arguments), and
+         DisplayInfoCommand.}}
+    """
+    raise NotImplementedError()  # {{🍄 create command registry}}
 
 
 class SwarmWorkflowFactory(AgentWorkflowFactory):
