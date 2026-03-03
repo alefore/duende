@@ -38,7 +38,7 @@ class AgentIdentityConfig:
 class SwarmConfig:
   agents: dict[AgentName, AgentIdentityConfig]
   # Path to the SQLite DB containing the messages queue.
-  messages_bus_path: pathlib.Path
+  message_bus_path: pathlib.Path
 
 
 class SwarmConfirmationManager(ConfirmationManager):
@@ -85,10 +85,10 @@ class SwarmWorkflow(AgentWorkflow):
   async def run(self) -> None:
     self._config = await self._load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
-    self._messages_bus = await open_bus(self._config.messages_bus_path)
+    self._message_bus = await open_bus(self._config.message_bus_path)
     self._sessions: dict[SessionId, AgentSession] = {}
     while True:
-      for message in await wait_for_new_messages(self._messages_bus,
+      for message in await wait_for_new_messages(self._message_bus,
                                                  list(self._config.agents)):
         await self._process_message(message)
 
@@ -123,7 +123,7 @@ class SwarmWorkflow(AgentWorkflow):
     conversation = self._options.conversation_factory.New(
         f"{message.recipient}: {message.body[:50]}", command_registry)
     confirmation_manager = SwarmConfirmationManager(
-        self._messages_bus, message.recipient, session_id, self._options
+        self._message_bus, message.recipient, session_id, self._options
         .agent_loop_options.confirmation_state.confirmation_manager)
     agent_loop_options = self._options.agent_loop_options._replace(
         conversation=conversation,

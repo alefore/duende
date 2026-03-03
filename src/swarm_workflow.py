@@ -39,7 +39,7 @@ class AgentIdentityConfig:
 class SwarmConfig:
   agents: dict[AgentName, AgentIdentityConfig]
   # Path to the SQLite DB containing the messages queue.
-  messages_bus_path: pathlib.Path
+  message_bus_path: pathlib.Path
 
 
 class SwarmConfirmationManager(ConfirmationManager):
@@ -86,10 +86,10 @@ class SwarmWorkflow(AgentWorkflow):
   async def run(self) -> None:
     self._config = await self._load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
-    self._messages_bus = await open_bus(self._config.messages_bus_path)
+    self._message_bus = await open_bus(self._config.message_bus_path)
     self._sessions: dict[SessionId, AgentSession] = {}
     while True:
-      for message in await wait_for_new_messages(self._messages_bus,
+      for message in await wait_for_new_messages(self._message_bus,
                                                  list(self._config.agents)):
         await self._process_message(message)
 
@@ -97,7 +97,8 @@ class SwarmWorkflow(AgentWorkflow):
     """Loads the configuration from JSON file in `path`."""
     # ✨ load config
     # Read the configuration file asynchronously.
-    async with aiofiles.open(path, mode="r") as f:
+    async with aiofiles.open(
+        path, mode="r") as f:
       config_content = await f.read()
     data = json.loads(config_content)
 
@@ -109,8 +110,7 @@ class SwarmWorkflow(AgentWorkflow):
           prompt_path=pathlib.Path(agent_data["prompt_path"]))
 
     return SwarmConfig(
-        agents=agents,
-        messages_bus_path=pathlib.Path(data["messages_bus_path"]))
+        agents=agents, message_bus_path=pathlib.Path(data["message_bus_path"]))
     # ✨
 
   async def _process_message(self, message: BusMessage) -> None:
@@ -121,7 +121,7 @@ class SwarmWorkflow(AgentWorkflow):
     """
 
     # ✨ process message
-    await mark_message_as_seen(self._messages_bus, message.id)
+    await mark_message_as_seen(self._message_bus, message.id)
 
     if message.session_id:
       await self._provide_confirmation(message)
@@ -140,8 +140,8 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.session_id in self._sessions
     # ✨ provide confirmation
     session = self._sessions[message.session_id]
-    session.confirmation_manager.provide_confirmation(session.conversation.GetId(),
-                                                      message.body)
+    session.confirmation_manager.provide_confirmation(
+        session.conversation.GetId(), message.body)
     # ✨
 
   async def _start_new_session(self, message: BusMessage) -> AgentSession:
@@ -153,7 +153,7 @@ class SwarmWorkflow(AgentWorkflow):
     conversation = self._options.conversation_factory.New(
         f"{message.recipient}: {message.body[:50]}", command_registry)
     confirmation_manager = SwarmConfirmationManager(
-        self._messages_bus, message.recipient, session_id, self._options
+        self._message_bus, message.recipient, session_id, self._options
         .agent_loop_options.confirmation_state.confirmation_manager)
     agent_loop_options = self._options.agent_loop_options._replace(
         conversation=conversation,
@@ -161,6 +161,7 @@ class SwarmWorkflow(AgentWorkflow):
         command_registry=command_registry,
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
+
     # Update _background_tasks (from agent_loop.run()) and return AgentSession:
     # ✨ register new session
     async def _run_agent_loop_task(loop: BaseAgentLoop) -> None:
@@ -185,7 +186,8 @@ class SwarmWorkflow(AgentWorkflow):
     head_path = self._config.agents[message.recipient].prompt_path
     tail = "<user_request>" + message.body + "</user_request>"
     # ✨ new start message
-    async with aiofiles.open(head_path, mode='r') as f:
+    async with aiofiles.open(
+        head_path, mode='r') as f:
       head_content = await f.read()
     full_content = head_content + tail
     return Message(
