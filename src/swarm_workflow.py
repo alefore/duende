@@ -15,6 +15,7 @@ from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
 from conversation import ConversationId, Conversation
 from done_command import DoneCommand
+from file_access_policy import RegexFileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
@@ -34,6 +35,8 @@ class AgentIdentityConfig:
   capability: list[str]
 
   prompt_path: pathlib.Path
+
+  file_access_policy_regex: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -108,7 +111,8 @@ class SwarmWorkflow(AgentWorkflow):
       agents[AgentName(agent_name)] = AgentIdentityConfig(
           name=AgentName(agent_name),
           capability=agent_data["capability"],
-          prompt_path=pathlib.Path(agent_data["prompt_path"]))
+          prompt_path=pathlib.Path(agent_data["prompt_path"]),
+          file_access_policy_regex=agent_data["file_access_policy_regex"])
 
     return SwarmConfig(
         agents=agents, message_bus_path=pathlib.Path(data["message_bus_path"]))
@@ -200,10 +204,12 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments), and
          DisplayInfoCommand.}}
+    {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     # ✨ create command registry
     registry = CommandRegistry()
-    file_access_policy = self._options.agent_loop_options.file_access_policy
+    file_access_policy = RegexFileAccessPolicy(config.file_access_policy_regex)
+
     registry.Register(ReadFileCommand(file_access_policy))
     registry.Register(ListFilesCommand(file_access_policy))
     registry.Register(SearchFileCommand(file_access_policy))
