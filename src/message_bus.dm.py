@@ -29,6 +29,8 @@ async def open_bus(path: pathlib.Path) -> MessageBus:
 
   If the database is empty (or does not exist), creates the expected tables
   (see message_bus.sql for details).
+
+  Passes timeout=20.0 and isolation_level=None when connecting.
   """
   raise NotImplementedError()  # {{🍄 open bus}}
 
