@@ -84,8 +84,8 @@ class SwarmWorkflow(AgentWorkflow):
     self._background_tasks: list[asyncio.Task[None]] = []
 
   async def run(self) -> None:
-    assert self._options.config_path
-    self._config = await self._load_config(self._options.config_path)
+    self._config = await self._load_config(
+        self._options.config_path or pathlib.Path('swarm/config.json'))
     self._messages_bus = await open_bus(self._config.messages_bus_path)
     self._sessions: dict[SessionId, AgentSession] = {}
     while True:
