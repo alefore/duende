@@ -1,5 +1,6 @@
 import asyncio
 import dataclasses
+import logging
 import pathlib
 import sqlite3
 from typing import NewType
@@ -40,6 +41,8 @@ async def wait_for_new_messages(
 
   Initially polls after one second, growing polling frequency exponentially up
   to one minute.
+
+  Calls logging.info as it polls/sleeps.
   """
   raise NotImplementedError()  # {{🍄 wait for new messages}}
 
