@@ -8,12 +8,12 @@ import sqlite3
 from typing import NewType
 import uuid
 
-from agent_loop import BaseAgentLoop
+from agent_loop_options import BaseAgentLoop
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
-from conversation import ConversationId
+from conversation import ConversationId, Conversation
 from done_command import DoneCommand
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
@@ -72,6 +72,7 @@ class SwarmConfirmationManager(ConfirmationManager):
 @dataclasses.dataclass
 class AgentSession:
   session_id: SessionId
+  conversation: Conversation
   loop: BaseAgentLoop
   confirmation_manager: ConfirmationManager
 
@@ -96,7 +97,8 @@ class SwarmWorkflow(AgentWorkflow):
     """Loads the configuration from JSON file in `path`."""
     # ✨ load config
     # Read the configuration file asynchronously.
-    config_content = await asyncio.to_thread(path.read_text)
+    async with aiofiles.open(path, mode="r") as f:
+      config_content = await f.read()
     data = json.loads(config_content)
 
     agents = {}
@@ -111,12 +113,13 @@ class SwarmWorkflow(AgentWorkflow):
         messages_bus_path=pathlib.Path(data["messages_bus_path"]))
     # ✨
 
-  async def _process_message(self, message: BusMessage):
+  async def _process_message(self, message: BusMessage) -> None:
     """Marks the message as seen and processes it.
 
     If the message has a session_id, handles it to _provide_confirmation;
     otherwise, calls _start_new_session and updates _sessions.
     """
+
     # ✨ process message
     await mark_message_as_seen(self._messages_bus, message.id)
 
@@ -127,7 +130,7 @@ class SwarmWorkflow(AgentWorkflow):
       self._sessions[session.session_id] = session
     # ✨
 
-  async def _provide_confirmation(self, message):
+  async def _provide_confirmation(self, message) -> None:
     """Calls `provide_confirmation` on the session for the message.
 
     {{🦔 The value of `message.body` is passed to the right confirmation
@@ -137,7 +140,7 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.session_id in self._sessions
     # ✨ provide confirmation
     session = self._sessions[message.session_id]
-    session.confirmation_manager.provide_confirmation(session.loop.conversation.id,
+    session.confirmation_manager.provide_confirmation(session.conversation.GetId(),
                                                       message.body)
     # ✨
 
@@ -167,6 +170,7 @@ class SwarmWorkflow(AgentWorkflow):
     self._background_tasks.append(task)
     return AgentSession(
         session_id=session_id,
+        conversation=conversation,
         loop=agent_loop,
         confirmation_manager=confirmation_manager)
     # ✨
@@ -180,7 +184,6 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.recipient
     head_path = self._config.agents[message.recipient].prompt_path
     tail = "<user_request>" + message.body + "</user_request>"
-
     # ✨ new start message
     async with aiofiles.open(head_path, mode='r') as f:
       head_content = await f.read()
