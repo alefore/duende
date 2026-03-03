@@ -28,12 +28,12 @@ def _ValidatePathArg(
     file_access_policy: FileAccessPolicy) -> Generator[str, None, None]:
   if not file_access_policy.allow_access(value):
     if arg.arg_type == ArgumentContentType.PATH_INPUT:
-      yield _InvalidPathError(arg, value, "File not found")
+      yield _InvalidPathError(arg, value, "File not found (policy)")
     else:
       yield _InvalidPathError(arg, value, "Permission denied")
   elif arg.arg_type == ArgumentContentType.PATH_INPUT and not os.path.exists(
       value):
-    yield _InvalidPathError(arg, value, "File not found")
+    yield _InvalidPathError(arg, value, "File not found (os.path.exists)")
 
 
 def validate_command_input(cmd_input: CommandInput,
