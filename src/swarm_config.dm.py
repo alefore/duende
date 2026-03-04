@@ -17,6 +17,8 @@ class AgentIdentityConfig:
 
   file_access_policy_regex: str
 
+  telegram_token: str | None
+
 
 @dataclasses.dataclass(frozen=True)
 class SwarmConfig:
