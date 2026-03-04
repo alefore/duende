@@ -2,13 +2,14 @@
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
 from file_access_policy import FileAccessPolicy
 from message_bus import Message as BusMessage, MessageBus, MessageId, SenderName, SessionId
+from swarm_types import AgentName
 
 
 class DisplayInfoCommand(AgentCommand):
 
   def __init__(self, message_bus: MessageBus, sender: SenderName,
                session_id: SessionId) -> None:
-    # ✨ store private fields
+    # ✨ display info store private fields
     self._message_bus = message_bus
     self._sender = sender
     self._session_id = session_id
@@ -36,7 +37,7 @@ class DisplayInfoCommand(AgentCommand):
 
     {{🦔 The message's recipient is None.}}
     """
-    # ✨ provide confirmation
+    # ✨ display info rum
     message_body = inputs[VariableName("message")]
     new_message = BusMessage(
         id=MessageId(0),  # ID will be overwritten by write_new_message
@@ -52,5 +53,64 @@ class DisplayInfoCommand(AgentCommand):
         output=f"Message '{message_body}' sent successfully.",
         errors="",
         summary=f"Displayed info: {message_body}",
+    )
+    # ✨
+
+
+class PublishMessageCommand(AgentCommand):
+
+  def __init__(self, message_bus: MessageBus, sender: SenderName,
+               session_id: SessionId) -> None:
+    # ✨ publish message store private fields
+    self._message_bus = message_bus
+    self._sender = sender
+    self._session_id = session_id
+    # ✨
+
+  def Name(self) -> str:
+    return self.Syntax().name
+
+  @classmethod
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name="publish_message",
+        description="Publishes a new message into the message bus. "
+        "The message will be consumed by an agent.",
+        arguments=[
+            REASON_VARIABLE,
+            Argument(
+                name=VariableName("message"),
+                arg_type=ArgumentContentType.STRING,
+                description="The body of the message to publish.",
+                required=True),
+            Argument(
+                name=VariableName("recipient"),
+                arg_type=ArgumentContentType.STRING,
+                description="The name of the agent that should consume the message."
+            )
+        ])
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    """Call write_new_message with a new message.
+
+    {{🦔 The message's recipient is always set.}}
+    """
+    # ✨ publish message run
+    message_body = inputs[VariableName("message")]
+    recipient_name = str(inputs[VariableName("recipient")])
+    new_message = BusMessage(
+        id=MessageId(0),  # ID will be overwritten by write_new_message
+        sender=self._sender,
+        recipient=AgentName(recipient_name),  # As specified in the prompt
+        session_id=self._session_id,
+        body=str(message_body),
+    )
+    await self._message_bus.write_new_message(new_message)
+
+    return CommandOutput(
+        command_name=self.Name(),
+        output=f"Message '{message_body}' sent successfully to {recipient_name}.",
+        errors="",
+        summary=f"Published message to {recipient_name}: {message_body}",
     )
     # ✨
