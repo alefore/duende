@@ -21,29 +21,11 @@ from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, SessionId
 from swarm_commands import DisplayInfoCommand
+from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
 from read_file_command import ReadFileCommand
 from write_file_command import WriteFileCommand
-
-
-@dataclasses.dataclass(frozen=True)
-class AgentIdentityConfig:
-  # Unique name of this agent
-  name: AgentName
-
-  capability: list[str]
-
-  prompt_path: pathlib.Path
-
-  file_access_policy_regex: str
-
-
-@dataclasses.dataclass(frozen=True)
-class SwarmConfig:
-  agents: dict[AgentName, AgentIdentityConfig]
-  # Path to the SQLite DB containing the messages queue.
-  message_bus_path: pathlib.Path
 
 
 class SwarmConfirmationManager(ConfirmationManager):
@@ -87,7 +69,7 @@ class SwarmWorkflow(AgentWorkflow):
     self._background_tasks: list[asyncio.Task[None]] = []
 
   async def run(self) -> None:
-    self._config = await self._load_config(
+    self._config = await load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
     self._message_bus = MessageBus(self._config.message_bus_path)
     await self._message_bus.open()
@@ -97,35 +79,12 @@ class SwarmWorkflow(AgentWorkflow):
           list(self._config.agents)):
         await self._process_message(message)
 
-  async def _load_config(self, path: pathlib.Path) -> SwarmConfig:
-    """Loads the configuration from JSON file in `path`."""
-    # ✨ load config
-    async with aiofiles.open(
-        path, mode="r") as f:
-      content = await f.read()
-    data = json.loads(content)
-
-    agents = {}
-    for agent_name, agent_data in data["agents"].items():
-      agents[AgentName(agent_name)] = AgentIdentityConfig(
-          name=AgentName(agent_name),
-          capability=agent_data["capability"],
-          prompt_path=pathlib.Path(agent_data["prompt_path"]),
-          file_access_policy_regex=agent_data["file_access_policy_regex"],
-      )
-    return SwarmConfig(
-        agents=agents,
-        message_bus_path=pathlib.Path(data["message_bus_path"]),
-    )
-    # ✨
-
   async def _process_message(self, message: BusMessage) -> None:
     """Marks the message as seen and processes it.
 
     If the message has a session_id, handles it to _provide_confirmation;
     otherwise, calls _start_new_session and updates _sessions.
     """
-
     # ✨ process message
     await self._message_bus.mark_message_as_seen(message.id)
     if message.session_id:
@@ -215,7 +174,6 @@ class SwarmWorkflow(AgentWorkflow):
          DisplayInfoCommand.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
-
     # ✨ create command registry
     registry = CommandRegistry()
     file_access_policy = RegexFileAccessPolicy(config.file_access_policy_regex)
