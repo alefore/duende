@@ -18,6 +18,8 @@ class AgentIdentityConfig:
 
   file_access_policy_regex: str
 
+  telegram_token: str | None
+
 
 @dataclasses.dataclass(frozen=True)
 class SwarmConfig:
@@ -41,6 +43,7 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
         capability=agent_data["capability"],
         prompt_path=pathlib.Path(agent_data["prompt_path"]),
         file_access_policy_regex=agent_data["file_access_policy_regex"],
+        telegram_token=agent_data.get("telegram_token"),
     )
   return SwarmConfig(
       agents=agents,
