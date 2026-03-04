@@ -175,19 +175,17 @@ export class ConversationData {
   }
 
   _updateShownConversationState() {
-    const $confirmationForm = $('#confirmation_form');
     const $confirmationInput = $('#confirmation_input');
     const $stateDisplay = $('#conversation_state_display');
 
     // Default to hiding both elements
-    $confirmationForm.hide();
+    $confirmationInput.addClass('disabled');
     $stateDisplay.hide();
 
     if (this.isWaitingForConfirmation()) {
-      $confirmationForm.show();
       $confirmationInput.focus();
+      $confirmationInput.removeClass('disabled');
     } else if (this.state) {
-      $confirmationInput.val('');
       const prettyState = this.state.replace(/_/g, ' ').toLowerCase();
       const stateText = this.stateEmoji + ' ' +
           prettyState.charAt(0).toUpperCase() + prettyState.slice(1);

@@ -123,7 +123,7 @@ pre {
   color: #333;
 }
 
-#confirmation_input:disabled {
+#confirmation_input.disabled {
   background-color: #e0e0e0; /* A more neutral, grayed-out background */
   border: 1px dashed #aaa; /* Dashed border for visual distinction */
   color: #666; /* Lighter text color */
@@ -165,9 +165,10 @@ pre {
     border: 1px solid #555;
   }
 
-  #confirmation_input:disabled {
-    background-color: #222; /* Darker neutral background for disabled in dark mode */
-    border: 1px dashed #777; /* Darker dashed border */
-    color: #999; /* Lighter gray text */
+  #confirmation_input.disabled {
+    background-color: #1a1a1a;
+    border: 1px dashed #333;
+    outline: none;
+    color: #e0e0e0;
   }
 }

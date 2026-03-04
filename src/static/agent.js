@@ -204,8 +204,12 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
         const shownConversation = getShownConversation();
         if (shownConversation != null &&
-            shownConversation.isWaitingForConfirmation())
+            shownConversation.isWaitingForConfirmation()) {
           $(confirmationForm).submit();
+          setTimeout(() => {
+            $(confirmationInput).val('');
+          }, 0);
+        }
       }
     }
   });
