@@ -38,11 +38,11 @@ class SearchFileCommand(AgentCommand):
         ])
 
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
-    search_term: str = inputs[VariableName("content")]
+    search_term: str = inputs[VariableName("content")].strip()
     input_path: VariableValue | None = inputs.get(VariableName("path"))
     assert isinstance(input_path, pathlib.Path | None)
 
-    if len(search_term.split()) > 1:
+    if len(search_term.splitlines()) > 1:
       raise NotImplementedError()  # {{🍄 return error pattern crosses lines}}
 
     logging.info(
