@@ -22,27 +22,33 @@ class AgentIdentityConfig:
 
 
 @dataclasses.dataclass(frozen=True)
+class SwarmTelegramConfig:
+  token: str
+
+  consumer_agent: AgentName
+
+  end_user_identity: AgentName
+
+  authorized_users: list[TelegramId]
+
+
+@dataclasses.dataclass(frozen=True)
 class SwarmConfig:
   agents: dict[AgentName, AgentIdentityConfig]
   # Path to the SQLite DB containing the messages queue.
   message_bus_path: pathlib.Path
 
-  telegram_token: str | None
-
-  telegram_consumer: AgentName | None
-
-  telegram_authorized_users: list[TelegramId]
+  telegram: SwarmTelegramConfig | None
 
 
 async def load_config(path: pathlib.Path) -> SwarmConfig:
   """Loads the configuration from JSON file in `path`.
 
-  If `telegram_token` is set:
+  If `telegram` is present, `telegram.token` MUST be set.
+  If `telegram.token` is set:
 
-  * `telegram_authorized_users` must not be empty.
-  * `telegram_consumer` must be set to a key in `agents`.
-
-  If `telegram_authorized_users` or `telegram_consumer` is set, `telegram_token`
-  must also be set.
+  * `telegram.authorized_users` MUST NOT be empty.
+  * `telegram.consumer_agent` MUST be set to a key in `agents`.
+  * `telegram.end_user_identity` MUST NOT be a key in `agents`.
   """
   raise NotImplementedError()  # {{🍄 load config}}
