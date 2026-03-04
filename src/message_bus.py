@@ -201,7 +201,7 @@ class MessageBus:
             VALUES (?, ?, ?, ?, ?, ?)
             """,
           (
-              sender,
+              sender or '',
               recipient or '',
               session_id,
               body,
