@@ -79,7 +79,7 @@ python3 src/agent_server.py --task /dev/null --test-file-access
 
 Duende will only give the AI access to files in the local directory.
 
-## Usage
+## Usage (simple workflow)
 
 The primary entry point for Duende is `src/agent_server.py`. Here is a typical command to run the agent:
 
@@ -94,7 +94,15 @@ python3 src/agent_server.py \
 
 Once the server is running, you can open the web interface at `http://localhost:6785/` to monitor and interact with the AI. The `--confirm ".*"` flag requires you to manually approve each action the AI takes.
 
-### Command-Line Arguments
+## Usage (telegram adapter)
+
+For the swarm to integrate with Telegram (receive messages from Telegram),
+you need to get a Telegram token. You obtain it by sending /newbot to
+@BotFather and following its instructions.
+
+The token is stored in swarm/config.json under the `telegram_token` directive.
+
+## Command-Line Arguments
 
 | Argument                     | Description                                                                                               | Default Value                |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------- |
