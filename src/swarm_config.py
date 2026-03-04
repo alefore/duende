@@ -23,28 +23,34 @@ class AgentIdentityConfig:
 
 
 @dataclasses.dataclass(frozen=True)
+class SwarmTelegramConfig:
+  token: str
+
+  consumer_agent: AgentName
+
+  end_user_identity: AgentName
+
+  authorized_users: list[TelegramId]
+
+
+@dataclasses.dataclass(frozen=True)
 class SwarmConfig:
   agents: dict[AgentName, AgentIdentityConfig]
   # Path to the SQLite DB containing the messages queue.
   message_bus_path: pathlib.Path
 
-  telegram_token: str | None
-
-  telegram_consumer: AgentName | None
-
-  telegram_authorized_users: list[TelegramId]
+  telegram: SwarmTelegramConfig | None
 
 
 async def load_config(path: pathlib.Path) -> SwarmConfig:
   """Loads the configuration from JSON file in `path`.
 
-  If `telegram_token` is set:
+  If `telegram` is present, `telegram.token` MUST be set.
+  If `telegram.token` is set:
 
-  * `telegram_authorized_users` must not be empty.
-  * `telegram_consumer` must be set to a key in `agents`.
-
-  If `telegram_authorized_users` or `telegram_consumer` is set, `telegram_token`
-  must also be set.
+  * `telegram.authorized_users` MUST NOT be empty.
+  * `telegram.consumer_agent` MUST be set to a key in `agents`.
+  * `telegram.end_user_identity` MUST NOT be a key in `agents`.
   """
   # ✨ load config
   async with aiofiles.open(
@@ -61,33 +67,43 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
         file_access_policy_regex=agent_data["file_access_policy_regex"],
     )
 
-  telegram_token = data.get("telegram_token")
-  telegram_consumer_name = data.get("telegram_consumer")
-  telegram_authorized_users_raw = data.get("telegram_authorized_users", [])
-  telegram_authorized_users = [TelegramId(uid) for uid in telegram_authorized_users_raw]
+  telegram_data = data.get("telegram")
+  telegram_config: SwarmTelegramConfig | None = None
 
-  telegram_consumer: AgentName | None = None
-  if telegram_consumer_name:
-    telegram_consumer = AgentName(telegram_consumer_name)
-    if telegram_consumer not in agents:
-      raise ValueError(f"telegram_consumer '{telegram_consumer_name}' is not defined in agents.")
+  if telegram_data:
+    token = telegram_data.get("token")
+    if not token:
+      raise ValueError("If 'telegram' is present, 'telegram.token' must be set.")
 
-  if telegram_token:
-    if not telegram_authorized_users:
-      raise ValueError("If 'telegram_token' is set, 'telegram_authorized_users' must not be empty.")
-    if not telegram_consumer:
-      raise ValueError("If 'telegram_token' is set, 'telegram_consumer' must be set.")
-  else: # telegram_token is None
-    if telegram_authorized_users:
-      raise ValueError("If 'telegram_authorized_users' is set, 'telegram_token' must also be set.")
-    if telegram_consumer:
-      raise ValueError("If 'telegram_consumer' is set, 'telegram_token' must also be set.")
+    authorized_users_raw = telegram_data.get("authorized_users", [])
+    if not authorized_users_raw:
+      raise ValueError("If 'telegram.token' is set, 'telegram.authorized_users' must not be empty.")
+    authorized_users = [TelegramId(uid) for uid in authorized_users_raw]
+
+    consumer_agent_name = telegram_data.get("consumer_agent")
+    if not consumer_agent_name:
+      raise ValueError("If 'telegram.token' is set, 'telegram.consumer_agent' must be set.")
+    consumer_agent = AgentName(consumer_agent_name)
+    if consumer_agent not in agents:
+      raise ValueError(f"telegram.consumer_agent '{consumer_agent_name}' is not defined in agents.")
+
+    end_user_identity_name = telegram_data.get("end_user_identity")
+    if not end_user_identity_name:
+      raise ValueError("If 'telegram.token' is set, 'telegram.end_user_identity' must be set.")
+    end_user_identity = AgentName(end_user_identity_name)
+    if end_user_identity in agents:
+      raise ValueError(f"telegram.end_user_identity '{end_user_identity_name}' MUST NOT be a key in agents.")
+
+    telegram_config = SwarmTelegramConfig(
+        token=token,
+        consumer_agent=consumer_agent,
+        end_user_identity=end_user_identity,
+        authorized_users=authorized_users,
+    )
 
   return SwarmConfig(
       agents=agents,
       message_bus_path=pathlib.Path(data["message_bus_path"]),
-      telegram_token=telegram_token,
-      telegram_consumer=telegram_consumer,
-      telegram_authorized_users=telegram_authorized_users,
+      telegram=telegram_config,
   )
   # ✨
