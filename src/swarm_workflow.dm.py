@@ -20,29 +20,11 @@ from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, SessionId
 from swarm_commands import DisplayInfoCommand
+from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
 from read_file_command import ReadFileCommand
 from write_file_command import WriteFileCommand
-
-
-@dataclasses.dataclass(frozen=True)
-class AgentIdentityConfig:
-  # Unique name of this agent
-  name: AgentName
-
-  capability: list[str]
-
-  prompt_path: pathlib.Path
-
-  file_access_policy_regex: str
-
-
-@dataclasses.dataclass(frozen=True)
-class SwarmConfig:
-  agents: dict[AgentName, AgentIdentityConfig]
-  # Path to the SQLite DB containing the messages queue.
-  message_bus_path: pathlib.Path
 
 
 class SwarmConfirmationManager(ConfirmationManager):
@@ -86,7 +68,7 @@ class SwarmWorkflow(AgentWorkflow):
     self._background_tasks: list[asyncio.Task[None]] = []
 
   async def run(self) -> None:
-    self._config = await self._load_config(
+    self._config = await load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
     self._message_bus = MessageBus(self._config.message_bus_path)
     await self._message_bus.open()
@@ -95,10 +77,6 @@ class SwarmWorkflow(AgentWorkflow):
       for message in await self._message_bus.wait_for_new_messages(
           list(self._config.agents)):
         await self._process_message(message)
-
-  async def _load_config(self, path: pathlib.Path) -> SwarmConfig:
-    """Loads the configuration from JSON file in `path`."""
-    raise NotImplementedError()  # {{🍄 load config}}
 
   async def _process_message(self, message: BusMessage) -> None:
     """Marks the message as seen and processes it.
