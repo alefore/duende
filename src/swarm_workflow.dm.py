@@ -19,7 +19,7 @@ from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, SessionId
-from swarm_commands import DisplayInfoCommand
+from swarm_commands import DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
@@ -134,8 +134,8 @@ class SwarmWorkflow(AgentWorkflow):
     """Creates and returns a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
-         SearchFileCommand, DoneCommand (with no arguments), and
-         DisplayInfoCommand.}}
+         SearchFileCommand, DoneCommand (with no arguments),
+         DisplayInfoCommand and PublishMessageCommand.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     raise NotImplementedError()  # {{🍄 create command registry}}
