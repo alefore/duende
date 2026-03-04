@@ -7,7 +7,7 @@ from swarm_types import AgentName
 class DisplayInfoCommand(AgentCommand):
 
   def __init__(self, message_bus: MessageBus, sender: SenderName,
-               session_id: SessionId) -> None:
+               recipient: AgentName, session_id: SessionId) -> None:
     raise NotImplementedError()  # {{🍄 display info store private fields}}
 
   def Name(self) -> str:
@@ -30,7 +30,7 @@ class DisplayInfoCommand(AgentCommand):
   async def run(self, inputs: VariableMap) -> CommandOutput:
     """Call write_new_message with a new message.
 
-    {{🦔 The message's recipient is None.}}
+    {{🦔 The message's recipient is self.recipient.}}
     """
     raise NotImplementedError()  # {{🍄 display info rum}}
 
