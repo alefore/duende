@@ -3,6 +3,7 @@ import datetime
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
 from file_access_policy import FileAccessPolicy
 from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageId, TelegramChatId, TelegramMessageId
+from message_queue import AgentMessageQueue
 from swarm_types import AgentName
 
 
@@ -74,3 +75,37 @@ class PublishMessageCommand(AgentCommand):
     {{🦔 The message's recipient is always set.}}
     """
     raise NotImplementedError()  # {{🍄 publish message run}}
+
+
+class AskUserCommand(AgentCommand):
+
+  def __init__(self, message_bus: MessageBus, queue: AgentMessageQueue,
+               telegram_chat_id: TelegramChatId,
+               telegram_reply_to_id: TelegramMessageId,
+               source_agent: AgentName) -> None:
+    raise NotImplementedError()  # {{🍄 ask user store private fields}}
+
+  def Name(self) -> str:
+    return self.Syntax().name
+
+  @classmethod
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name="ask_user",
+        description="Sends a message to the user and waits for a response.",
+        arguments=[
+            REASON_VARIABLE,
+            Argument(
+                name=VariableName("question"),
+                arg_type=ArgumentContentType.STRING,
+                description="The content of the question to send to the user.",
+                required=True),
+        ])
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    """Waits until self._queue has messages and returns them.
+
+    {{🦔 The CommandOutput.output is set to a str containing all the messages
+         read from the queue.}}
+    """
+    raise NotImplementedError()  # {{🍄 ask user run}}
