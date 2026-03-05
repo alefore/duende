@@ -71,13 +71,11 @@ class DisplayInfoCommand(AgentCommand):
 
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, conversation_id: ConversationId,
-               telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     # ✨ publish message store private fields
     self._message_bus = message_bus
-    self._conversation_id = conversation_id
     self._telegram_chat_id = telegram_chat_id
     self._telegram_reply_to_id = telegram_reply_to_id
     self._source_agent = source_agent
@@ -116,7 +114,7 @@ class PublishMessageCommand(AgentCommand):
         id=MessageId(0),  # Will be overwritten by write_new_message
         source_agent=self._source_agent,
         target_agent=AgentName(str(inputs[VariableName("target_agent")])),
-        conversation_id=self._conversation_id,
+        conversation_id=None,
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None,
         telegram_reply_to_id=self._telegram_reply_to_id,

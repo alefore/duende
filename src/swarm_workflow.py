@@ -86,7 +86,6 @@ class SwarmWorkflow(AgentWorkflow):
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
     """
-
     # ✨ process message
     await self._message_bus.mark_as_processed(message.id)
 
@@ -200,7 +199,6 @@ class SwarmWorkflow(AgentWorkflow):
     ))
     command_registry.Register(PublishMessageCommand(
         message_bus=self._message_bus,
-        conversation_id=conversation_id,
         telegram_chat_id=telegram_chat_id,
         telegram_reply_to_id=telegram_reply_to_id,
         source_agent=agent_name
