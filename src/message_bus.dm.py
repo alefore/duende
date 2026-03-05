@@ -1,10 +1,11 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import dataclasses
+from functools import partial
 import logging
 import pathlib
 import sqlite3
-from typing import Callable, NewType, TypeVar
+from typing import Callable, NewType, ParamSpec, TypeVar
 
 from swarm_types import AgentName
 
@@ -25,6 +26,7 @@ class Message:
 
 
 T = TypeVar("T")
+P = ParamSpec("P")
 
 
 class MessageBus:
@@ -35,9 +37,11 @@ class MessageBus:
     # _connection is only accessed by threads running in _executor.
     self._connection: sqlite3.Connection | None = None
 
-  async def _run_in_thread(self, func: Callable[..., T], *args) -> T:
+  async def _run_in_thread(self, func: Callable[P, T], *args: P.args,
+                           **kwargs: P.kwargs) -> T:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(self._executor, func, *args)
+    return await loop.run_in_executor(self._executor,
+                                      partial(func, *args, **kwargs))
 
   async def open(self) -> None:
     """Connects to the bus, potentially initializing it.
