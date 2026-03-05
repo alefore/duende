@@ -86,7 +86,7 @@ class SwarmWorkflow(AgentWorkflow):
     """
     raise NotImplementedError()  # {{🍄 process message}}
 
-  async def _provide_confirmation(self, message) -> None:
+  async def _provide_confirmation(self, message: BusMessage) -> None:
     """Calls `provide_confirmation` on the session for the message.
 
     {{🦔 The value of `message.body` is passed to the right confirmation
