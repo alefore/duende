@@ -51,11 +51,8 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       type=str,
       default=os.path.expanduser('~/.openai/api_key'))
 
-  # Use a separate group for mutually exclusive workflow-related flags.
-  workflow_group = parser.add_mutually_exclusive_group(required=False)
-  workflow_group.add_argument(
-      '--task', type=str, help="File path for task prompt.")
-  workflow_group.add_argument(
+  parser.add_argument('--task', type=str, help="File path for task prompt.")
+  parser.add_argument(
       '--input',
       action='append',
       type=str,
@@ -64,7 +61,7 @@ def CreateCommonParser() -> argparse.ArgumentParser:
 
   known_workflows = ', '.join(
       StandardWorkflowFactoryContainer().factory_names())
-  workflow_group.add_argument(
+  parser.add_argument(
       '--workflow',
       type=str,
       help=f"The name of the workflow to run (e.g., {known_workflows}). If specified, none of the following flags may be specified: --task, --input, --evaluate-evaluators."
