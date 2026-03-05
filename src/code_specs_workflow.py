@@ -14,8 +14,7 @@ import tempfile
 from typing import Awaitable, Callable, NamedTuple, NewType, Pattern, Sequence
 
 from agent_command import Argument, ArgumentContentType, VariableMap, VariableName, VariableValue
-from agent_loop_options import AgentLoopOptions
-from agent_loop_options import BaseAgentLoopFactory
+from agent_loop_options import AgentLoopOptions, BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
 from code_specs import FileExtension, MarkerChar, MarkerName, RepeatedExpandedMarkersError, comment_string, get_expanded_markers, get_markers, relevant_paths_variable
@@ -68,6 +67,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
     {{🦔 The done command arguments given to `prepare_command_registry` are
          `dm_path_variable` and `validator_variable`.}}
     {{🦔 Does *not* enable caching of conversations (through output_cache).}}
+    {{🦔 If `original_task_prompt_content` is present and non-empty, appends
+         to the initial message a section `<inputs>…</inputs>` that contains
+         it.}}}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -130,9 +132,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
       # ✨
 
     start_message_content = (
-        "GOAL: Ask the user (through text conversation) "
-        "for approprivate values for the variables expected by `done`. "
-        "Describe these variables to the user "
+        "GOAL: Extract from the user's request "
+        "approprivate values for the variables expected by `done`. "
+        "If the user's request doesn't include enough information, "
+        "describe these variables to the user "
         "to help them understand what is expected "
         "(mention the $DMPATH environment variable of `validator`)."
         "\n"
@@ -140,11 +143,14 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "try to look for likely typos in their input. "
         "Try also to list files in the directory "
         "to see if you can guess what the user may have meant. "
+        "If the user entered a file without an extension, "
+        "they probably expect you to append `.dm.py` or `.dm.ts` or similar. "
         "Your goal is to figure out which file the user means "
         "even if the user is sloppy or lazy "
         "(maybe he is too busy; "
         "or is typing on a phone with broken autocomplete). "
-        "Try to save the user time."
+        "Try to save the user time; "
+        "try to make the user as efficient as possible."
         "\n"
         "Once the user has mentioned a file, "
         "read it and try to see if the file suggests "
@@ -152,9 +158,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "typically near the top of the file."
         "\n"
         "If the dm_path is a Python file, "
-        "suggest that the validator could be `mypy` "
-        "(with an appropriate MYPATH=\"…\" value) "
-        "or `python3` (with an appropriate PYTHONPATH=\"…\" value)."
+        "suggest that the validator could be `mypy`."
         "\n"
         "Once the user has given you appropriate values "
         "(or you have inferred them), "
@@ -185,6 +189,16 @@ class CodeSpecsWorkflow(AgentWorkflow):
         start_message_content=start_message_content,
         relevant_files=set(),
     )
+
+    if self._options.original_task_prompt_content:
+      current_content_sections = start_message.GetContentSections()
+      updated_content_sections = list(current_content_sections)
+      updated_content_sections.append(
+          ContentSection(
+              content=f"<inputs>{self._options.original_task_prompt_content}</inputs>"
+          ))
+      start_message = Message(
+          role=start_message.role, content_sections=updated_content_sections)
 
     output_variables = await run_agent_loop(
         workflow_options=self._options,
@@ -530,9 +544,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
             Argument(
                 name=implementation_variable,
                 arg_type=ArgumentContentType.STRING,
-                description=("The code content that will replace the marker. "
-                             "It must be a complete and valid code block, "
-                             "following the specified format.")),
+                description="The code content that will replace the marker. " +
+                "It must be a complete and valid code block, " +
+                "following the specified format."),
         ],
         done_validator_callback=done_validate,
         file_access_policy=self._options.agent_loop_options.file_access_policy,
@@ -561,7 +575,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
           all_files_to_read.add(old_path)
       except (FileNotFoundError, ValueError) as e:
         logging.warning(
-            f"Could not load old implementation for marker '{marker.name}' "
+            f"Could not load old implementation for marker '{marker.name}' " +
             f"from '{old_path}': {e}. Including '{old_path}' as a general relevant file."
         )
         all_files_to_read.add(old_path)
