@@ -1,27 +1,20 @@
-CREATE TABLE messages (
-    -- Unique identifier for each message
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE message_bus (
+    message_id      SERIAL PRIMARY KEY,
 
-    -- Core Mailing List Fields
-    sender TEXT NOT NULL,
-    recipient TEXT NOT NULL,
-    sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    body TEXT NOT NULL,
+    source_agent     VARCHAR(50) NOT NULL,
+    target_agent     VARCHAR(50) NOT NULL,
 
-    -- Queue Management
-    -- Status can only be 'new' or 'seen'
-    status TEXT NOT NULL DEFAULT 'new'
-        CHECK (status IN ('new', 'seen')),
+    -- Starts NULL for messages that should trigger new conversations.
+    conversation_id BIGINT,
 
-    -- Metadata (Optional)
-    reply_to TEXT,
-    session_id TEXT,
+    telegram_chat_id BIGINT NOT NULL,
 
-    -- Message Classification
-    -- Type can only be 'info', 'final', or 'question'
-    message_type TEXT NOT NULL
-        CHECK (message_type IN ('info', 'final', 'question'))
+    telegram_message_id  BIGINT,
+    telegram_reply_to_id BIGINT,
+
+    content TEXT,
+
+    -- State Tracking (Null-based)
+    queued_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP WITH TIME ZONE,
 );
-
--- Index for the server to find "new" messages quickly
-CREATE INDEX idx_pending_messages ON message_bus(status) WHERE status = 'new';
