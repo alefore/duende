@@ -1,5 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import datetime
 import dataclasses
 from functools import partial
 import logging
@@ -7,22 +8,21 @@ import pathlib
 import sqlite3
 from typing import Callable, NewType, ParamSpec, TypeVar
 
+from conversation import ConversationId
 from swarm_types import AgentName
 
-SenderName = AgentName | None
-RecipientName = AgentName | None
 MessageId = NewType('MessageId', int)  # Unique ID across the bus.
-SessionId = NewType('SessionId', str)  # A UUID.
+TelegramChatId = NewType('TelegramChatId', int)
+TelegramMessageId = NewType('TelegramMessageId', int)
+
+# Fake agent name reserved to represent the end user.
+END_USER_AGENT = "duende-internal:end-user"
 
 
 @dataclasses.dataclass(frozen=True)
 class Message:
-  # Fields for the rows in the `message_bus` table (see message_bus.sql).
-  id: MessageId
-  sender: SenderName
-  recipient: RecipientName
-  session_id: SessionId | None
-  body: str
+  # The fields map directly to the rows of the `message_bus` SQL table.
+  pass  # {{🍄 message fields}}
 
 
 T = TypeVar("T")
@@ -43,6 +43,11 @@ class MessageBus:
     return await loop.run_in_executor(self._executor,
                                       partial(func, *args, **kwargs))
 
+  async def _poll_in_thread(self,
+                            func: Callable[[], list[Message]]) -> list[Message]:
+    """Runs `func` once per second until it returns values."""
+    raise NotImplementedError()  # {{🍄 poll in thread}}
+
   async def open(self) -> None:
     """Connects to the bus, potentially initializing it.
 
@@ -52,37 +57,59 @@ class MessageBus:
     Passes timeout=20.0 and isolation_level=None when connecting.
     """
 
-    def _open() -> sqlite3.Connection:
+    def _open() -> None:
       raise NotImplementedError()  # {{🍄 init db}}
 
     await self._run_in_thread(_open)
 
-  async def wait_for_new_messages(
-      self, recipients: list[RecipientName]) -> list[Message]:
-    """Polls db until new messages arrive for the recipients listed.
+  async def wait_for_incoming_messages(
+      self, agents: list[AgentName]) -> list[Message]:
+    """Polls until new incoming messages arrive for the agents listed.
 
-    A new message is one with status set to 'new'.
-
-    Initially polls after one second, growing polling frequency exponentially up
-    to one minute.
-
-    Calls logging.info as it polls/sleeps.
+    A new incoming message is one with `processed_at` set to NULL.
     """
 
     def _load_messages() -> list[Message]:
       """May return empty list."""
-      raise NotImplementedError()  # {{🍄 load messages}}
+      raise NotImplementedError()  # {{🍄 load incoming messages}}
 
-    # Call _load_messages (with exponential back-off) in _executor until it returns messages:
-    raise NotImplementedError()  # {{🍄 poll for new messages}}
+    return await self._poll_in_thread(_load_messages)
 
-  async def mark_message_as_seen(self, message_id: MessageId) -> None:
-    """Updates the `status` field in self._messages_db to `seen`."""
-    raise NotImplementedError()  # {{🍄 mark message as seen}}
+  async def wait_for_outgoing_messages(self) -> list[Message]:
+    """Polls until new outgoing messages arrive.
 
-  async def write_new_message(self, message: Message) -> MessageId:
+    A new outgoing message is one with `telegram_message_id` set to `NULL` and
+    `agent` set to the value in `END_USER_AGENT`.
+    """
+
+    def _load_messages() -> list[Message]:
+      raise NotImplementedError()  # {{🍄 load outgoing messages}}
+
+    return await self._poll_in_thread(_load_messages)
+
+  async def set_conversation_id(self, message_id: MessageId,
+                                conversation_id: ConversationId) -> None:
+    raise NotImplementedError()  # {{🍄 set message conversation}}
+
+  async def write_new_message(self, message: Message) -> Message:
     """Adds a new message to the database.
 
-    The MessageId will be overwritten (based on database state) and returned.
+    The MessageId will be overwritten (based on database state) and the
+    resulting message returned.
     """
     raise NotImplementedError()  # {{🍄 write new message}}
+
+  async def mark_as_processed(self, message_id: MessageId) -> None:
+    """Sets processed_at to the current time."""
+    raise NotImplementedError()  # {{🍄 set processed at}}
+
+  async def set_telegram_message_id(
+      self, message_id: MessageId,
+      telegram_message_id: TelegramMessageId) -> None:
+    """Updates the telegram_message_id of a given row.
+
+    It is an error to try to update a message_id where the telegram_message_id
+    already has a value (we use a conditional update and validate that exactly
+    1 row was updated).
+    """
+    raise NotImplementedError()  # {{🍄 set telegram message id}}

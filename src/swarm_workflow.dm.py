@@ -18,7 +18,7 @@ from file_access_policy import RegexFileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
-from message_bus import Message as BusMessage, MessageBus, SessionId
+from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from swarm_commands import DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
@@ -30,22 +30,15 @@ from write_file_command import WriteFileCommand
 class SwarmConfirmationManager(ConfirmationManager):
 
   def __init__(self, message_bus: MessageBus, agent_name: AgentName,
-               session_id: SessionId, delegate: ConfirmationManager) -> None:
+               delegate: ConfirmationManager) -> None:
     self._message_bus = message_bus
     self._agent_name = agent_name
-    self._session_id = session_id
     self._delegate = delegate
 
   async def RequireConfirmation(self, conversation_id: ConversationId,
                                 message: str) -> str | None:
     dummy_id = message_bus.MessageId(0)
-    await self._message_bus.write_new_message(
-        BusMessage(
-            id=dummy_id,
-            sender=self._agent_name,
-            recipient=None,
-            session_id=self._session_id,
-            body=message))
+    # TODO: Implement here.
     return await self._delegate.RequireConfirmation(conversation_id, message)
 
   def provide_confirmation(self, conversation_id: ConversationId,
@@ -53,12 +46,30 @@ class SwarmConfirmationManager(ConfirmationManager):
     return self._delegate.provide_confirmation(conversation_id, confirmation)
 
 
+class AgentMessageQueue:
+
+  def __init__(self):
+    self._data : list[str] | asyncio.Future[str] = asyncio.Future[str]()
+
+  def push(self, message:str) -> None:
+    """Appends a message to the queue.
+
+    If self._data is a list[str] (nobody is waiting for messages): The message
+    should be appended.
+
+    Otherwise, the waiting future should receive the message and self._data
+    should be set to a new empty list.
+    """
+    raise NotImplementedError()  # {{🍄 process message}}
+
+  async def read(self) -> str:
+    """If self._data is a list[str]
+
 @dataclasses.dataclass
 class AgentSession:
-  session_id: SessionId
   conversation: Conversation
   loop: BaseAgentLoop
-  confirmation_manager: ConfirmationManager
+  # message_queue: list[str] | asyncio.Future[str]
 
 
 class SwarmWorkflow(AgentWorkflow):
@@ -66,57 +77,55 @@ class SwarmWorkflow(AgentWorkflow):
   def __init__(self, options: AgentWorkflowOptions) -> None:
     self._options = options
     self._background_tasks: list[asyncio.Task[None]] = []
+    self._sessions: dict[ConversationId, AgentSession] = {}
 
   async def run(self) -> None:
     self._config = await load_config(
         self._options.config_path or pathlib.Path('swarm/config.json'))
     self._message_bus = MessageBus(self._config.message_bus_path)
     await self._message_bus.open()
-    self._sessions: dict[SessionId, AgentSession] = {}
     while True:
-      for message in await self._message_bus.wait_for_new_messages(
+      for message in await self._message_bus.wait_for_incoming_messages(
           list(self._config.agents)):
         await self._process_message(message)
 
   async def _process_message(self, message: BusMessage) -> None:
-    """Marks the message as seen and processes it.
+    """Receives a new incoming message.
 
-    If the message has a session_id, handles it to _provide_confirmation;
-    otherwise, calls _start_new_session and updates _sessions.
+    Sets the `process_at` cell to the current time.
+
+    If the message doesn't have a conversation, calls `_start_agent_loop`.
+
+    If the message has a conversation, ignores it (we'll implement support for
+    this later).
     """
     raise NotImplementedError()  # {{🍄 process message}}
 
-  async def _provide_confirmation(self, message: BusMessage) -> None:
-    """Calls `provide_confirmation` on the session for the message.
+  async def _start_agent_loop(self, message: BusMessage) -> None:
+    """Starts a new agent loop.
 
-    {{🦔 The value of `message.body` is passed to the right confirmation
-         manager.}}
+    Calls `MessageBus.set_conversation_id` to write the new conversation id.
     """
-    assert message.session_id
-    assert message.session_id in self._sessions
-    raise NotImplementedError()  # {{🍄 provide confirmation}}
-
-  async def _start_new_session(self, message: BusMessage) -> AgentSession:
-    """Starts a new session and registers it in self._sessions."""
-    assert message.recipient
-    session_id = SessionId(uuid.uuid4().hex)
+    assert message.target_agent
+    telegram_id = message.telegram_message_id or message.telegram_reply_to_id
+    assert telegram_id
     command_registry = self._create_command_registry(
-        self._config.agents[message.recipient], session_id)
+        message.telegram_chat_id, telegram_id, message.target_agent,
+        self._config.agents[message.target_agent])
     conversation = self._options.conversation_factory.New(
-        f"{message.recipient}: {message.body[:50]}", command_registry)
+        f"{message.target_agent}: {message.content[:50]}", command_registry)
     confirmation_manager = SwarmConfirmationManager(
-        self._message_bus, message.recipient, session_id, self._options
+        self._message_bus, message.target_agent, self._options
         .agent_loop_options.confirmation_state.confirmation_manager)
     agent_loop_options = self._options.agent_loop_options._replace(
         conversation=conversation,
         start_message=await self._new_start_message(message),
         command_registry=command_registry,
         file_access_policy=RegexFileAccessPolicy(
-            self._config.agents[message.recipient].file_access_policy_regex),
+            self._config.agents[message.target_agent].file_access_policy_regex),
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
-    # Update _background_tasks (from agent_loop.run()) and return AgentSession:
-    raise NotImplementedError()  # {{🍄 register new session}}
+    raise NotImplementedError()  # {{🍄 start agent loop}}
 
   async def _new_start_message(self, message: BusMessage) -> Message:
     """Returns a new Message: agent's prompt + message's body.
@@ -124,13 +133,15 @@ class SwarmWorkflow(AgentWorkflow):
     Loads the prompt from the agent's config's prompt_path and appends the body
     of the message to it.
     """
-    assert message.recipient
-    head_path = self._config.agents[message.recipient].prompt_path
-    tail = "<user_request>" + message.body + "</user_request>"
+    assert message.target_agent
+    head_path = self._config.agents[message.target_agent].prompt_path
+    tail = "<user_request>" + message.content + "</user_request>"
     raise NotImplementedError()  # {{🍄 new start message}}
 
-  def _create_command_registry(self, config: AgentIdentityConfig,
-                               session_id: SessionId) -> CommandRegistry:
+  def _create_command_registry(self, telegram_chat_id: TelegramChatId,
+                               telegram_reply_to_id: TelegramMessageId,
+                               agent_name: AgentName,
+                               config: AgentIdentityConfig) -> CommandRegistry:
     """Creates and returns a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,

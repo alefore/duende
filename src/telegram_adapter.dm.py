@@ -1,10 +1,11 @@
 import asyncio
+import datetime
 import logging
 import pathlib
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-from message_bus import MessageBus, Message as BusMessage, MessageId, SenderName, SessionId
+from message_bus import END_USER_AGENT, MessageBus, Message as BusMessage, MessageId, AgentName, TelegramChatId, TelegramMessageId
 from swarm_config import load_config, SwarmConfig
 
 logging.basicConfig(
@@ -16,41 +17,36 @@ class Handler:
 
   def __init__(self, config: SwarmConfig, message_bus: MessageBus) -> None:
     assert config.telegram
-    self._chat_id: int | None = None
     self._config = config
     self._message_bus = message_bus
 
   async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
     assert update.message
-    await update.message.reply_text(
-        "I'm awake! Send me any message and I'll repeat it.")
+    await update.message.reply_text("I'm awake!")
 
   async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Receives a message from Telegram.
+    """Receives a message from Telegram and inserts it to the message bus.
 
-    The message is written to the bus, with the `config.telegram.consumer` value
-    as the recipient.
+    If the update is a response to a previous message, looks up the previous
+    message in the message bus. If the previous message is found, the new row
+    will propagate `target_agent` and `conversation_id`.
+
+    `source_agent` is set to the value in `END_USER_AGENT`.
 
     A response is sent to the chat and logged: f"Message received ({id=})"
     """
-    assert update.effective_chat
-    self._chat_id = update.effective_chat.id
+    assert update.effective_chat  # for telegram_chat_id.
     raise NotImplementedError()  # {{🍄 write message to bus and respond}}
 
-  async def _read_message_bus(self):
-    """Calls wait_for_new_messages and dispatches messages to the user.
+  async def _send_outgoing_messages(self):
+    """Calls wait_for_outgoing_messages and dispatches messages to the user.
 
-    If self._chat_id is not set, polls doing nothing until it gets set.
+    For each message received, calls `self._app.bot.send_message` and
+    `set_telegram_message_id` (based on resulting outgoing message).
 
-    When it receives messages, calls self._app.bot.send_message to dispatch
-    them to self._chat_id.
-
-    Calls `mark_message_as_seen` on all messages processed.
-
-    Only receives messages with recipient set to
-    `config.telegram.end_user_identity.`
+    {{🦔 The content of the outgoing messages starts with the source agent.}}
     """
-    raise NotImplementedError()  # {{🍄 read message bus}}
+    raise NotImplementedError()  # {{🍄 read new outgoing messages}}
 
   async def run(self) -> None:
     await self._message_bus.open()
@@ -67,7 +63,7 @@ class Handler:
             filters.TEXT & ~filters.COMMAND
             & filters.User(self._config.telegram.authorized_users), self.echo))
 
-    asyncio.create_task(self._read_message_bus())
+    asyncio.create_task(self._send_outgoing_messages())
 
     async with self._app:
       await self._app.initialize()

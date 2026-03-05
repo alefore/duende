@@ -1,13 +1,16 @@
+import datetime
+
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
 from file_access_policy import FileAccessPolicy
-from message_bus import Message as BusMessage, MessageBus, MessageId, SenderName, SessionId
+from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageId, TelegramChatId, TelegramMessageId
 from swarm_types import AgentName
 
 
 class DisplayInfoCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, sender: SenderName,
-               recipient: AgentName, session_id: SessionId) -> None:
+  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+               telegram_reply_to_id: TelegramMessageId,
+               source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 display info store private fields}}
 
   def Name(self) -> str:
@@ -21,24 +24,25 @@ class DisplayInfoCommand(AgentCommand):
         arguments=[
             REASON_VARIABLE,
             Argument(
-                name=VariableName("message"),
+                name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
-                description="The message to send to the user.",
+                description="The content to send to the user.",
                 required=True),
         ])
 
   async def run(self, inputs: VariableMap) -> CommandOutput:
     """Call write_new_message with a new message.
 
-    {{🦔 The message's recipient is self.recipient.}}
+    {{🦔 target_agent is set to the value in `END_USER_AGENT`.}}
     """
-    raise NotImplementedError()  # {{🍄 display info rum}}
+    raise NotImplementedError()  # {{🍄 display info run}}
 
 
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, sender: SenderName,
-               session_id: SessionId) -> None:
+  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+               telegram_reply_to_id: TelegramMessageId,
+               source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 publish message store private fields}}
 
   def Name(self) -> str:
@@ -53,12 +57,12 @@ class PublishMessageCommand(AgentCommand):
         arguments=[
             REASON_VARIABLE,
             Argument(
-                name=VariableName("message"),
+                name=VariableName("content"),
                 arg_type=ArgumentContentType.STRING,
-                description="The body of the message to publish.",
+                description="The content of the message to publish.",
                 required=True),
             Argument(
-                name=VariableName("recipient"),
+                name=VariableName("target_agent"),
                 arg_type=ArgumentContentType.STRING,
                 description="The name of the agent that should consume the message."
             )
