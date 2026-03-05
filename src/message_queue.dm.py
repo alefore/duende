@@ -3,7 +3,7 @@ import asyncio
 
 class AgentMessageQueue:
 
-  def __init__(self):
+  def __init__(self) -> None:
     self._lock = asyncio.Lock()  # Guards access to _data.
     # The class can be in any of two states:
     #
