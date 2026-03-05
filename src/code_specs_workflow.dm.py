@@ -66,6 +66,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
     {{🦔 The done command arguments given to `prepare_command_registry` are
          `dm_path_variable` and `validator_variable`.}}
     {{🦔 Does *not* enable caching of conversations (through output_cache).}}
+    {{🦔 If `original_task_prompt_content` is present and non-empty, appends
+         to the initial message a section `<inputs>…</inputs>` that contains
+         it.}}}}
     """
 
     async def done_validator(inputs: VariableMap) -> ValidationResult:
@@ -82,8 +85,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
       raise NotImplementedError()  # {{🍄 initial parameters validator}}
 
     start_message_content = (
-        "GOAL: Ask the user (through text conversation) "
-        "for approprivate values for the variables expected by `done`. "
+        "GOAL: Extract from the user's request "
+        "approprivate values for the variables expected by `done`. "
         "Describe these variables to the user "
         "to help them understand what is expected "
         "(mention the $DMPATH environment variable of `validator`)."
