@@ -4,7 +4,7 @@ import asyncio
 
 class AgentMessageQueue:
 
-  def __init__(self):
+  def __init__(self) -> None:
     self._lock = asyncio.Lock()  # Guards access to _data.
     # The class can be in any of two states:
     #
@@ -19,17 +19,19 @@ class AgentMessageQueue:
 
   async def push(self, message: str) -> None:
     """Appends a message to the queue."""
+
     # ✨ push
     async def push(self, message: str) -> None:
-        async with self._lock:
-            match self._data:
-                case list() as data_list:
-                    # Nobody is waiting, collect messages in the list.
-                    data_list.append(message)
-                case asyncio.Future() as data_future:
-                    # Somebody is waiting, notify them with the new message.
-                    data_future.set_result([message])
-                    self._data = []  # Reset to list state.
+      async with self._lock:
+        match self._data:
+          case list() as data_list:
+            # Nobody is waiting, collect messages in the list.
+            data_list.append(message)
+          case asyncio.Future() as data_future:
+            # Somebody is waiting, notify them with the new message.
+            data_future.set_result([message])
+            self._data = []  # Reset to list state.
+
     # ✨
 
   async def read(self) -> list[str]:
@@ -48,7 +50,8 @@ class AgentMessageQueue:
             self._data = new_future
             # Release the lock and wait for the future to be set.
         case asyncio.Future():
-          raise RuntimeError("Concurrent calls to AgentMessageQueue.read() are not allowed.")
+          raise RuntimeError(
+              "Concurrent calls to AgentMessageQueue.read() are not allowed.")
         case _:
           # This case should ideally not happen if _data is always one of the two types.
           raise TypeError(f"Unexpected type for self._data: {type(self._data)}")
