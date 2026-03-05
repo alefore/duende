@@ -239,10 +239,16 @@ async def CreateAgentWorkflowOptions(
           validation_manager=validation_manager,
           confirm_regex=confirm_regex))
 
+  task_file_content: str = ""
+  if args.task:
+    with open(args.task, 'r') as f:
+      task_file_content = f.read()
+
+  task_file_content += _read_prompt_include_files(args.prompt_include,
+                                                  file_access_policy)
+
   if args.workflow:
     incompatible_flags = []
-    if args.task:
-      incompatible_flags.append('--task')
     if args.input:
       incompatible_flags.append('--input')
     if args.evaluate_evaluators:
@@ -283,7 +289,7 @@ async def CreateAgentWorkflowOptions(
         agent_loop_factory=AgentLoopFactory(),
         conversation_factory=conversation_factory,
         selection_manager=SelectionManager(),
-        original_task_prompt_content='',
+        original_task_prompt_content=task_file_content,
         confirm_done=args.confirm,
         do_review=args.review,
         review_first=args.review_first)
@@ -319,14 +325,6 @@ async def CreateAgentWorkflowOptions(
   conversation_name = os.path.basename(args.task or
                                        'empty-conversation').replace(
                                            '.txt', '')
-
-  task_file_content: str = ""
-  if args.task:
-    with open(args.task, 'r') as f:
-      task_file_content = f.read()
-
-  task_file_content += _read_prompt_include_files(args.prompt_include,
-                                                  file_access_policy)
 
   conversation = conversation_factory.New(
       name=conversation_name, command_registry=registry)
