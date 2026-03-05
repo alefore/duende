@@ -19,6 +19,7 @@ from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
+from message_queue import AgentMessageQueue
 from swarm_commands import DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
@@ -46,30 +47,11 @@ class SwarmConfirmationManager(ConfirmationManager):
     return self._delegate.provide_confirmation(conversation_id, confirmation)
 
 
-class AgentMessageQueue:
-
-  def __init__(self):
-    self._data : list[str] | asyncio.Future[str] = asyncio.Future[str]()
-
-  def push(self, message:str) -> None:
-    """Appends a message to the queue.
-
-    If self._data is a list[str] (nobody is waiting for messages): The message
-    should be appended.
-
-    Otherwise, the waiting future should receive the message and self._data
-    should be set to a new empty list.
-    """
-    raise NotImplementedError()  # {{🍄 process message}}
-
-  async def read(self) -> str:
-    """If self._data is a list[str]
-
 @dataclasses.dataclass
 class AgentSession:
   conversation: Conversation
   loop: BaseAgentLoop
-  # message_queue: list[str] | asyncio.Future[str]
+  message_queue: AgentMessageQueue
 
 
 class SwarmWorkflow(AgentWorkflow):
@@ -94,10 +76,13 @@ class SwarmWorkflow(AgentWorkflow):
 
     Sets the `process_at` cell to the current time.
 
-    If the message doesn't have a conversation, calls `_start_agent_loop`.
+    * If the message doesn't have a conversation: calls `_start_agent_loop`.
 
-    If the message has a conversation, ignores it (we'll implement support for
-    this later).
+    * Otherwise, if the conversation is found in `_sessions`: adds the content
+      of the message to the session's `message_queue`.
+
+    * Otherwise: writes an outgoing message informing the user that the session
+      no longer exists.
     """
     raise NotImplementedError()  # {{🍄 process message}}
 
@@ -109,9 +94,10 @@ class SwarmWorkflow(AgentWorkflow):
     assert message.target_agent
     telegram_id = message.telegram_message_id or message.telegram_reply_to_id
     assert telegram_id
+    agent_message_queue = AgentMessageQueue()
     command_registry = self._create_command_registry(
         message.telegram_chat_id, telegram_id, message.target_agent,
-        self._config.agents[message.target_agent])
+        self._config.agents[message.target_agent], agent_message_queue)
     conversation = self._options.conversation_factory.New(
         f"{message.target_agent}: {message.content[:50]}", command_registry)
     confirmation_manager = SwarmConfirmationManager(
@@ -124,8 +110,7 @@ class SwarmWorkflow(AgentWorkflow):
         file_access_policy=RegexFileAccessPolicy(
             self._config.agents[message.target_agent].file_access_policy_regex),
         confirmation_state=ConfirmationState(confirmation_manager, 30))
-    agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
-    raise NotImplementedError()  # {{🍄 start agent loop}}
+    raise NotImplementedError()  # {{🍄 create and start agent loop}}
 
   async def _new_start_message(self, message: BusMessage) -> Message:
     """Returns a new Message: agent's prompt + message's body.
@@ -141,12 +126,13 @@ class SwarmWorkflow(AgentWorkflow):
   def _create_command_registry(self, telegram_chat_id: TelegramChatId,
                                telegram_reply_to_id: TelegramMessageId,
                                agent_name: AgentName,
-                               config: AgentIdentityConfig) -> CommandRegistry:
+                               config: AgentIdentityConfig,
+                               queue: AgentMessageQueue) -> CommandRegistry:
     """Creates and returns a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
-         DisplayInfoCommand and PublishMessageCommand.}}
+         DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     raise NotImplementedError()  # {{🍄 create command registry}}
