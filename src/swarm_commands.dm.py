@@ -43,8 +43,7 @@ class DisplayInfoCommand(AgentCommand):
 
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, conversation_id: ConversationId,
-               telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 publish message store private fields}}
