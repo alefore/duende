@@ -96,11 +96,13 @@ class SwarmWorkflow(AgentWorkflow):
     telegram_id = message.telegram_message_id or message.telegram_reply_to_id
     assert telegram_id
     agent_message_queue = AgentMessageQueue()
-    command_registry = self._create_command_registry(
-        message.telegram_chat_id, telegram_id, message.target_agent,
-        self._config.agents[message.target_agent], agent_message_queue)
+    command_registry = CommandRegistry()
     conversation = self._options.conversation_factory.New(
         f"{message.target_agent}: {message.content[:50]}", command_registry)
+    self._init_command_registry(conversation.GetId(), message.telegram_chat_id,
+                                telegram_id, message.target_agent,
+                                self._config.agents[message.target_agent],
+                                agent_message_queue, command_registry)
     confirmation_manager = SwarmConfirmationManager(
         self._message_bus, message.target_agent, self._options
         .agent_loop_options.confirmation_state.confirmation_manager)
@@ -124,11 +126,12 @@ class SwarmWorkflow(AgentWorkflow):
     tail = "<user_request>" + message.content + "</user_request>"
     raise NotImplementedError()  # {{🍄 new start message}}
 
-  def _create_command_registry(self, telegram_chat_id: TelegramChatId,
-                               telegram_reply_to_id: TelegramMessageId,
-                               agent_name: AgentName,
-                               config: AgentIdentityConfig,
-                               queue: AgentMessageQueue) -> CommandRegistry:
+  def _init_command_registry(self, conversation_id: ConversationId,
+                             telegram_chat_id: TelegramChatId,
+                             telegram_reply_to_id: TelegramMessageId,
+                             agent_name: AgentName, config: AgentIdentityConfig,
+                             queue: AgentMessageQueue,
+                             command_registry: CommandRegistry) -> None:
     """Creates and returns a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,

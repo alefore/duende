@@ -2,6 +2,7 @@
 import datetime
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
+from conversation import ConversationId
 from file_access_policy import FileAccessPolicy
 from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageId, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
@@ -10,11 +11,13 @@ from swarm_types import AgentName
 
 class DisplayInfoCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, conversation_id: ConversationId,
+               telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     # ✨ display info store private fields
     self._message_bus = message_bus
+    self._conversation_id = conversation_id
     self._telegram_chat_id = telegram_chat_id
     self._telegram_reply_to_id = telegram_reply_to_id
     self._source_agent = source_agent
@@ -43,29 +46,24 @@ class DisplayInfoCommand(AgentCommand):
     {{🦔 target_agent is set to the value in `END_USER_AGENT`.}}
     """
     # ✨ display info run
-    content = inputs[VariableName("content")]
-    if not isinstance(content, str):
-      raise ValueError("Content must be a string.")
-
-    new_message = BusMessage(
-        id=MessageId(-1),  # Temporarily set, will be overwritten by MessageBus
+    message = BusMessage(
+        id=MessageId(0),  # Will be overwritten by write_new_message
         source_agent=self._source_agent,
-        target_agent=AgentName(END_USER_AGENT),  # Cast to AgentName
-        conversation_id=None,  # Not setting conversation_id for display_info
+        target_agent=AgentName(END_USER_AGENT),
+        conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None,
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=content,
+        content=str(inputs[VariableName("content")]),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )
-    written_message = await self._message_bus.write_new_message(new_message)
-
+    await self._message_bus.write_new_message(message)
     return CommandOutput(
         command_name=self.Name(),
-        output=f"Message displayed to user with ID: {written_message.id}",
+        output="Message sent.",
         errors="",
-        summary=f"Displayed: {content}",
+        summary="",
         task_done=False,
     )
     # ✨
@@ -73,11 +71,13 @@ class DisplayInfoCommand(AgentCommand):
 
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, conversation_id: ConversationId,
+               telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     # ✨ publish message store private fields
     self._message_bus = message_bus
+    self._conversation_id = conversation_id
     self._telegram_chat_id = telegram_chat_id
     self._telegram_reply_to_id = telegram_reply_to_id
     self._source_agent = source_agent
@@ -112,34 +112,24 @@ class PublishMessageCommand(AgentCommand):
     {{🦔 The message's recipient is always set.}}
     """
     # ✨ publish message run
-    content = inputs[VariableName("content")]
-    if not isinstance(content, str):
-      raise ValueError("Content must be a string.")
-
-    target_agent_str = inputs[VariableName("target_agent")]
-    if not isinstance(target_agent_str, str):
-      raise ValueError("Target agent must be a string.")
-    target_agent = AgentName(target_agent_str)
-
-    new_message = BusMessage(
-        id=MessageId(-1),  # Temporarily set, will be overwritten by MessageBus
+    message = BusMessage(
+        id=MessageId(0),  # Will be overwritten by write_new_message
         source_agent=self._source_agent,
-        target_agent=target_agent,
-        conversation_id=None,  # Not setting conversation_id for publish_message
+        target_agent=AgentName(str(inputs[VariableName("target_agent")])),
+        conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None,
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=content,
+        content=str(inputs[VariableName("content")]),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )
-    written_message = await self._message_bus.write_new_message(new_message)
-
+    await self._message_bus.write_new_message(message)
     return CommandOutput(
         command_name=self.Name(),
-        output=f"Message published to {target_agent} with ID: {written_message.id}",
+        output=f"Message published to {inputs[VariableName('target_agent')]}.",
         errors="",
-        summary=f"Published to {target_agent}: {content}",
+        summary="",
         task_done=False,
     )
     # ✨
@@ -148,12 +138,14 @@ class PublishMessageCommand(AgentCommand):
 class AskUserCommand(AgentCommand):
 
   def __init__(self, message_bus: MessageBus, queue: AgentMessageQueue,
+               conversation_id: ConversationId,
                telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     # ✨ ask user store private fields
     self._message_bus = message_bus
     self._queue = queue
+    self._conversation_id = conversation_id
     self._telegram_chat_id = telegram_chat_id
     self._telegram_reply_to_id = telegram_reply_to_id
     self._source_agent = source_agent
@@ -182,34 +174,27 @@ class AskUserCommand(AgentCommand):
     {{🦔 The CommandOutput.output is set to a str containing all the messages
          read from the queue.}}
     """
-
     # ✨ ask user run
-    question = inputs[VariableName("question")]
-    if not isinstance(question, str):
-      raise ValueError("Question must be a string.")
-
-    new_message = BusMessage(
-        id=MessageId(-1),  # Temporarily set, will be overwritten by MessageBus
+    message = BusMessage(
+        id=MessageId(0),  # Will be overwritten by write_new_message
         source_agent=self._source_agent,
         target_agent=AgentName(END_USER_AGENT),
-        conversation_id=None,
+        conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None,
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=question,
+        content=str(inputs[VariableName("question")]),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )
-    await self._message_bus.write_new_message(new_message)
-
-    user_response_list = await self._queue.read()
-    user_response_str = "\n".join(user_response_list)
-
+    await self._message_bus.write_new_message(message)
+    user_messages = await self._queue.read()
+    output_content = "\n".join(user_messages)
     return CommandOutput(
         command_name=self.Name(),
-        output=user_response_str,
+        output=output_content,
         errors="",
-        summary=f"Asked: '{question}', Received: '{user_response_str}'",
+        summary="",
         task_done=False,
     )
     # ✨

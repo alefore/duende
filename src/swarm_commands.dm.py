@@ -1,6 +1,7 @@
 import datetime
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
+from conversation import ConversationId
 from file_access_policy import FileAccessPolicy
 from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageId, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
@@ -9,7 +10,8 @@ from swarm_types import AgentName
 
 class DisplayInfoCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, conversation_id: ConversationId,
+               telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 display info store private fields}}
@@ -41,7 +43,8 @@ class DisplayInfoCommand(AgentCommand):
 
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, conversation_id: ConversationId,
+               telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 publish message store private fields}}
@@ -80,6 +83,7 @@ class PublishMessageCommand(AgentCommand):
 class AskUserCommand(AgentCommand):
 
   def __init__(self, message_bus: MessageBus, queue: AgentMessageQueue,
+               conversation_id: ConversationId,
                telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:

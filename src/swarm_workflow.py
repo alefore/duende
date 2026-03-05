@@ -86,30 +86,28 @@ class SwarmWorkflow(AgentWorkflow):
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
     """
+
     # ✨ process message
     await self._message_bus.mark_as_processed(message.id)
+
     if message.conversation_id is None:
       await self._start_agent_loop(message)
     else:
       session = self._sessions.get(message.conversation_id)
       if session:
-        # Convert the incoming bus message content to a string and push to the agent's message queue.
         await session.message_queue.push(message.content)
       else:
-        response_content = (
-            f"Error: The conversation (ID: {message.conversation_id}) "
-            "you are trying to reply to no longer exists. "
-            "Please start a new conversation."
-        )
+        # Session no longer exists, inform the user.
+        # Assuming END_USER_AGENT is defined in message_bus.py
         outgoing_message = BusMessage(
-            id=message_bus.MessageId(0),
-            source_agent=message.target_agent,
+            id=message_bus.MessageId(0),  # Will be overwritten by write_new_message
+            source_agent=AgentName(message.target_agent),
             target_agent=AgentName(message_bus.END_USER_AGENT),
-            conversation_id=None,
+            conversation_id=message.conversation_id,
             telegram_chat_id=message.telegram_chat_id,
             telegram_message_id=None,
-            telegram_reply_to_id=message.telegram_message_id or message.telegram_reply_to_id,
-            content=response_content,
+            telegram_reply_to_id=message.telegram_reply_to_id,
+            content=f"The conversation session {message.conversation_id} no longer exists.",
             queued_at=datetime.datetime.now(datetime.timezone.utc),
             processed_at=None,
         )
@@ -125,11 +123,13 @@ class SwarmWorkflow(AgentWorkflow):
     telegram_id = message.telegram_message_id or message.telegram_reply_to_id
     assert telegram_id
     agent_message_queue = AgentMessageQueue()
-    command_registry = self._create_command_registry(
-        message.telegram_chat_id, telegram_id, message.target_agent,
-        self._config.agents[message.target_agent], agent_message_queue)
+    command_registry = CommandRegistry()
     conversation = self._options.conversation_factory.New(
         f"{message.target_agent}: {message.content[:50]}", command_registry)
+    self._init_command_registry(conversation.GetId(), message.telegram_chat_id,
+                                telegram_id, message.target_agent,
+                                self._config.agents[message.target_agent],
+                                agent_message_queue, command_registry)
     confirmation_manager = SwarmConfirmationManager(
         self._message_bus, message.target_agent, self._options
         .agent_loop_options.confirmation_state.confirmation_manager)
@@ -141,16 +141,13 @@ class SwarmWorkflow(AgentWorkflow):
             self._config.agents[message.target_agent].file_access_policy_regex),
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     # ✨ create and start agent loop
-    agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
-    async def _run_agent_loop(loop: BaseAgentLoop) -> None:
-      await loop.run()
-
-    self._sessions[conversation.GetId()] = AgentSession(
-        conversation=conversation, loop=agent_loop, message_queue=agent_message_queue)
-    await self._message_bus.set_conversation_id(message.id,
-                                                conversation.GetId())
-    self._background_tasks.append(
-        asyncio.create_task(_run_agent_loop(agent_loop)))
+    loop = self._options.agent_loop_factory.new(agent_loop_options)
+    session = AgentSession(conversation, loop, agent_message_queue)
+    self._sessions[conversation.GetId()] = session
+    await self._message_bus.set_conversation_id(message.id, conversation.GetId())
+    async def _run_agent_loop_task(agent_loop: BaseAgentLoop):
+        await agent_loop.run()
+    self._background_tasks.append(asyncio.create_task(_run_agent_loop_task(loop)))
     # ✨
 
   async def _new_start_message(self, message: BusMessage) -> Message:
@@ -163,24 +160,23 @@ class SwarmWorkflow(AgentWorkflow):
     head_path = self._config.agents[message.target_agent].prompt_path
     tail = "<user_request>" + message.content + "</user_request>"
     # ✨ new start message
-    assert message.target_agent
-    head_path = self._config.agents[message.target_agent].prompt_path
-    async with aiofiles.open(head_path, mode='r') as f:
-      head = await f.read()
-    tail = "<user_request>" + message.content + "</user_request>"
+    async with aiofiles.open(head_path, mode="r") as f:
+      head_content = await f.read()
+
+    full_content = head_content + tail
+
     return Message(
-        role='user',
-        content_sections=[
-            ContentSection(content=head),
-            ContentSection(content=tail),
-        ])
+        role="user",
+        content_sections=[ContentSection(content=full_content)]
+    )
     # ✨
 
-  def _create_command_registry(self, telegram_chat_id: TelegramChatId,
-                               telegram_reply_to_id: TelegramMessageId,
-                               agent_name: AgentName,
-                               config: AgentIdentityConfig,
-                               queue: AgentMessageQueue) -> CommandRegistry:
+  def _init_command_registry(self, conversation_id: ConversationId,
+                             telegram_chat_id: TelegramChatId,
+                             telegram_reply_to_id: TelegramMessageId,
+                             agent_name: AgentName, config: AgentIdentityConfig,
+                             queue: AgentMessageQueue,
+                             command_registry: CommandRegistry) -> None:
     """Creates and returns a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
@@ -189,23 +185,34 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     # ✨ create command registry
-    registry = CommandRegistry()
     file_access_policy = RegexFileAccessPolicy(config.file_access_policy_regex)
 
-    registry.Register(ReadFileCommand(file_access_policy))
-    registry.Register(ListFilesCommand(file_access_policy))
-    registry.Register(SearchFileCommand(file_access_policy))
-    registry.Register(DoneCommand(arguments=[]))
-    registry.Register(
-        DisplayInfoCommand(self._message_bus, telegram_chat_id,
-                           telegram_reply_to_id, agent_name))
-    registry.Register(
-        PublishMessageCommand(self._message_bus, telegram_chat_id,
-                              telegram_reply_to_id, agent_name))
-    registry.Register(
-        AskUserCommand(self._message_bus, queue, telegram_chat_id,
-                       telegram_reply_to_id, agent_name))
-    return registry
+    command_registry.Register(ReadFileCommand(file_access_policy=file_access_policy))
+    command_registry.Register(ListFilesCommand(file_access_policy=file_access_policy))
+    command_registry.Register(SearchFileCommand(file_access_policy=file_access_policy))
+    command_registry.Register(DoneCommand(arguments=[]))
+    command_registry.Register(DisplayInfoCommand(
+        message_bus=self._message_bus,
+        conversation_id=conversation_id,
+        telegram_chat_id=telegram_chat_id,
+        telegram_reply_to_id=telegram_reply_to_id,
+        source_agent=agent_name
+    ))
+    command_registry.Register(PublishMessageCommand(
+        message_bus=self._message_bus,
+        conversation_id=conversation_id,
+        telegram_chat_id=telegram_chat_id,
+        telegram_reply_to_id=telegram_reply_to_id,
+        source_agent=agent_name
+    ))
+    command_registry.Register(AskUserCommand(
+        message_bus=self._message_bus,
+        queue=queue,
+        conversation_id=conversation_id,
+        telegram_chat_id=telegram_chat_id,
+        telegram_reply_to_id=telegram_reply_to_id,
+        source_agent=agent_name
+    ))
     # ✨
 
 
