@@ -279,14 +279,13 @@ class TestCodeSpecsTestsSkeletonWorkflow(unittest.IsolatedAsyncioTestCase):
     # 8. Verify that the conversation history contains an error message
     #    indicating the validation failure for the first (non-existent) path.
     #    The error message will be from the ArgumentType.PATH_INPUT's internal validation.
-    expected_error_substring = f"Warning done: Argument {path_to_test_variable}: File not found: Value: {non_existent_path}"
+    expected_error_substring = f"Warning done: Argument {path_to_test_variable}: File not found (os.path.exists): Value: {non_existent_path}"
 
     def predicate(section: ContentSection) -> bool:
       # The predicate checks for content sections that contain the expected error message.
       return expected_error_substring in section.content
 
     matching_error_sections = self.filter_content_sections(predicate)
-
     # Assert that at least one such error message was found. This indicates the validation failed and was reported.
     self.assertGreaterEqual(
         len(matching_error_sections), 1,
