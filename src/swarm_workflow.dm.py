@@ -77,7 +77,11 @@ class SwarmWorkflow(AgentWorkflow):
 
     Sets the `process_at` cell to the current time.
 
-    * If `message.message_reply_to_id is None`: calls `_start_agent_loop`.
+    * If `message.source_agent` is NOT the value in END_USER_AGENT: calls
+      `_start_agent_loop`.
+
+    * Otherwise, if the `message.message_reply_to_id is None`: calls
+      `_start_agent_loop`.
 
     * Otherwise, if the replied-to message can be found in the bus and the
       replied-to message has a `conversation_id` found in `_sessions`: adds the
