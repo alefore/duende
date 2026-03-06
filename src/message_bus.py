@@ -80,7 +80,6 @@ class MessageBus:
     """
 
     def _open() -> None:
-
       # ✨ init db
       self._connection = sqlite3.connect(
           str(self._path), timeout=20.0, isolation_level=None)
@@ -422,4 +421,74 @@ class MessageBus:
       return message
 
     return await self._run_in_thread(_read_message_db_op, message_id)
+    # ✨
+
+  async def find_message_by_telegram_id(
+      self, telegram_chat_id: TelegramChatId,
+      telegram_message_id: TelegramMessageId) -> Message:
+    """Returns a message from the database or raises ValueError."""
+    # ✨ find message by telegram id
+    def _find_message_by_telegram_id_db_op(
+        telegram_chat_id: TelegramChatId, telegram_message_id: TelegramMessageId
+    ) -> Message:
+      """Synchronous database operation to find a message by Telegram IDs."""
+      if self._connection is None:
+        raise ValueError("Database connection is not open.")
+
+      query = """
+          SELECT
+              message_id,
+              source_agent,
+              target_agent,
+              conversation_id,
+              telegram_chat_id,
+              telegram_message_id,
+              telegram_reply_to_id,
+              content,
+              queued_at,
+              processed_at
+          FROM message_bus
+          WHERE telegram_chat_id = ? AND telegram_message_id = ?
+      """
+      logging.info(
+          'Finding message by telegram_chat_id=%s, telegram_message_id=%s',
+          telegram_chat_id, telegram_message_id
+      )
+
+      cursor = self._connection.execute(query, (telegram_chat_id, telegram_message_id))
+      row = cursor.fetchone()
+
+      if row is None:
+        raise ValueError(
+            f"Message with telegram_chat_id={telegram_chat_id} and telegram_message_id={telegram_message_id} not found."
+        )
+
+      message = Message(
+          id=MessageId(row['message_id']),
+          source_agent=AgentName(row['source_agent']),
+          target_agent=AgentName(row['target_agent']),
+          conversation_id=ConversationId(row['conversation_id'])
+          if row['conversation_id']
+          else None,
+          telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
+          telegram_message_id=TelegramMessageId(row['telegram_message_id'])
+          if row['telegram_message_id']
+          else None,
+          telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id'])
+          if row['telegram_reply_to_id']
+          else None,
+          content=row['content'],
+          queued_at=datetime.datetime.fromisoformat(row['queued_at']),
+          processed_at=datetime.datetime.fromisoformat(row['processed_at'])
+          if row['processed_at']
+          else None,
+      )
+      logging.info('Found message with ID: %s', message.id)
+      return message
+
+    return await self._run_in_thread(
+        _find_message_by_telegram_id_db_op,
+        telegram_chat_id,
+        telegram_message_id,
+    )
     # ✨
