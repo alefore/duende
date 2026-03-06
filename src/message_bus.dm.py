@@ -2,11 +2,10 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 import dataclasses
-from functools import partial
 import logging
 import pathlib
 import sqlite3
-from typing import Callable, NewType, ParamSpec, TypeVar
+from typing import Callable, NewType, ParamSpec, TypeVar, cast
 
 from conversation import ConversationId
 from swarm_types import AgentName
@@ -41,7 +40,7 @@ class MessageBus:
                            **kwargs: P.kwargs) -> T:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(self._executor,
-                                      partial(func, *args, **kwargs))
+                                      lambda: func(*args, **kwargs))
 
   async def _poll_in_thread(self,
                             func: Callable[[], list[Message]]) -> list[Message]:
@@ -113,3 +112,7 @@ class MessageBus:
     1 row was updated).
     """
     raise NotImplementedError()  # {{🍄 set telegram message id}}
+
+  async def read_message(self, message_id: MessageId) -> Message:
+    """Returns a message from the database or raises ValueError."""
+    raise NotImplementedError()  # {{🍄 read message}}
