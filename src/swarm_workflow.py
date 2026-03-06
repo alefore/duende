@@ -78,7 +78,11 @@ class SwarmWorkflow(AgentWorkflow):
 
     Sets the `process_at` cell to the current time.
 
-    * If `message.message_reply_to_id is None`: calls `_start_agent_loop`.
+    * If `message.source_agent` is NOT the value in END_USER_AGENT: calls
+      `_start_agent_loop`.
+
+    * Otherwise, if the `message.message_reply_to_id is None`: calls
+      `_start_agent_loop`.
 
     * Otherwise, if the replied-to message can be found in the bus and the
       replied-to message has a `conversation_id` found in `_sessions`: adds the
@@ -87,16 +91,22 @@ class SwarmWorkflow(AgentWorkflow):
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
     """
+
     # ✨ process message
     await self._message_bus.mark_as_processed(message.id)
 
-    if message.telegram_reply_to_id is None:
+    if message.source_agent != message_bus.END_USER_AGENT:
+      # If the message is from another agent, always start a new agent loop.
+      await self._start_agent_loop(message)
+    elif message.telegram_reply_to_id is None:
+      # If the message is from the end user and not a reply, start a new agent loop.
       await self._start_agent_loop(message)
     else:
+      # The message is from the end user and is a reply.
       effective_conversation_id = None
       try:
-        replied_to_message = await self._message_bus.read_message(
-            message_bus.MessageId(message.telegram_reply_to_id)
+        replied_to_message = await self._message_bus.find_message_by_telegram_id(
+            message.telegram_chat_id, message.telegram_reply_to_id
         )
         if replied_to_message.conversation_id is not None:
           effective_conversation_id = replied_to_message.conversation_id
@@ -124,7 +134,7 @@ class SwarmWorkflow(AgentWorkflow):
 
         outgoing_message = BusMessage(
             id=message_bus.MessageId(0),  # Will be overwritten by write_new_message
-            source_agent=AgentName(message.target_agent),
+            source_agent=message.target_agent,
             target_agent=AgentName(message_bus.END_USER_AGENT),
             conversation_id=conversation_id_for_error, # Use the most relevant conversation_id we could find
             telegram_chat_id=message.telegram_chat_id,
@@ -186,11 +196,12 @@ class SwarmWorkflow(AgentWorkflow):
     async with aiofiles.open(head_path, mode="r") as f:
       head_content = await f.read()
 
-    full_content = head_content + tail
-
     return Message(
         role="user",
-        content_sections=[ContentSection(content=full_content)]
+        content_sections=[
+            ContentSection(content=head_content),
+            ContentSection(content=tail)
+        ]
     )
     # ✨
 
