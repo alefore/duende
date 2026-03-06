@@ -30,7 +30,8 @@ class Handler:
 
     If the update is a response to a previous message, looks up the previous
     message in the message bus. If the previous message is found, the new row
-    will propagate `target_agent` and `conversation_id`.
+    will set `target_agent` to `original_message.source_agent` and propagate
+    `conversation_id`.
 
     `source_agent` is set to the value in `END_USER_AGENT`.
 
@@ -56,17 +57,13 @@ class Handler:
       try:
         original_message = await self._message_bus.find_message_by_telegram_id(
             telegram_chat_id, telegram_reply_to_id)
-        if original_message.target_agent == END_USER_AGENT:
-          target_agent = self._config.telegram.consumer_agent
-        else:
-          target_agent = original_message.source_agent
+        target_agent = original_message.source_agent
         conversation_id = original_message.conversation_id
       except ValueError:
         logging.warning(
             f"Replied-to message with Telegram ID {telegram_reply_to_id} "
             f"in chat {telegram_chat_id} not found in message bus. "
-            "Proceeding with default target_agent and no conversation_id."
-        )
+            "Proceeding with default target_agent and no conversation_id.")
 
     message_to_bus = BusMessage(
         id=MessageId(0),  # Will be overwritten by write_new_message
