@@ -3,11 +3,10 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import datetime
 import dataclasses
-from functools import partial
 import logging
 import pathlib
 import sqlite3
-from typing import Callable, NewType, ParamSpec, TypeVar
+from typing import Callable, NewType, ParamSpec, TypeVar, cast
 
 from conversation import ConversationId
 from swarm_types import AgentName
@@ -53,7 +52,7 @@ class MessageBus:
                            **kwargs: P.kwargs) -> T:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(self._executor,
-                                      partial(func, *args, **kwargs))
+                                      lambda: func(*args, **kwargs))
 
   async def _poll_in_thread(self,
                             func: Callable[[], list[Message]]) -> list[Message]:
@@ -81,6 +80,7 @@ class MessageBus:
     """
 
     def _open() -> None:
+
       # ✨ init db
       self._connection = sqlite3.connect(
           str(self._path), timeout=20.0, isolation_level=None)
@@ -373,4 +373,53 @@ class MessageBus:
 
     await self._run_in_thread(_set_telegram_message_id_db_op, message_id,
                                telegram_message_id)
+    # ✨
+
+  async def read_message(self, message_id: MessageId) -> Message:
+    """Returns a message from the database or raises ValueError."""
+    # ✨ read message
+    def _read_message_db_op(msg_id: MessageId) -> Message:
+      """Synchronous database operation to read a message by its ID."""
+      if self._connection is None:
+        raise ValueError("Database connection is not open.")
+
+      query = """
+          SELECT
+              message_id,
+              source_agent,
+              target_agent,
+              conversation_id,
+              telegram_chat_id,
+              telegram_message_id,
+              telegram_reply_to_id,
+              content,
+              queued_at,
+              processed_at
+          FROM message_bus
+          WHERE message_id = ?
+      """
+      logging.info('Reading message with ID: %s', msg_id)
+
+      cursor = self._connection.execute(query, (msg_id,))
+      row = cursor.fetchone()
+
+      if row is None:
+        raise ValueError(f"Message with ID {msg_id} not found.")
+
+      message = Message(
+          id=MessageId(row['message_id']),
+          source_agent=AgentName(row['source_agent']),
+          target_agent=AgentName(row['target_agent']),
+          conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
+          telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
+          telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
+          telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
+          content=row['content'],
+          queued_at=datetime.datetime.fromisoformat(row['queued_at']),
+          processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
+      )
+      logging.info('Read message with ID: %s', msg_id)
+      return message
+
+    return await self._run_in_thread(_read_message_db_op, message_id)
     # ✨
