@@ -29,7 +29,8 @@ class Handler:
 
     If the update is a response to a previous message, looks up the previous
     message in the message bus. If the previous message is found, the new row
-    will propagate `target_agent` and `conversation_id`.
+    will set `target_agent` to `original_message.source_agent` and propagate
+    `conversation_id`.
 
     `source_agent` is set to the value in `END_USER_AGENT`.
 
