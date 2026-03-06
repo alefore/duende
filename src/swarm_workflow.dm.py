@@ -77,10 +77,12 @@ class SwarmWorkflow(AgentWorkflow):
 
     Sets the `process_at` cell to the current time.
 
-    * If the message doesn't have a conversation: calls `_start_agent_loop`.
+    * If the message doesn't have a message_reply_to_id: calls
+      `_start_agent_loop`.
 
-    * Otherwise, if the conversation is found in `_sessions`: adds the content
-      of the message to the session's `message_queue`.
+    * Otherwise, if the replied-to message can be found in the bus and has a
+      `conversation_id` found in `_sessions`: adds the content of the message to
+      the session's `message_queue`.
 
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
