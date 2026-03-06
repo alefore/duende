@@ -78,10 +78,11 @@ class SwarmWorkflow(AgentWorkflow):
 
     Sets the `process_at` cell to the current time.
 
-    * If the message doesn't have a conversation: calls `_start_agent_loop`.
+    * If `message.message_reply_to_id is None`: calls `_start_agent_loop`.
 
-    * Otherwise, if the conversation is found in `_sessions`: adds the content
-      of the message to the session's `message_queue`.
+    * Otherwise, if the replied-to message can be found in the bus and the
+      replied-to message has a `conversation_id` found in `_sessions`: adds the
+      content of the message to the session's `message_queue`.
 
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
@@ -89,24 +90,47 @@ class SwarmWorkflow(AgentWorkflow):
     # ✨ process message
     await self._message_bus.mark_as_processed(message.id)
 
-    if message.conversation_id is None:
+    if message.telegram_reply_to_id is None:
       await self._start_agent_loop(message)
     else:
-      session = self._sessions.get(message.conversation_id)
+      effective_conversation_id = None
+      try:
+        replied_to_message = await self._message_bus.read_message(
+            message_bus.MessageId(message.telegram_reply_to_id)
+        )
+        if replied_to_message.conversation_id is not None:
+          effective_conversation_id = replied_to_message.conversation_id
+      except ValueError:
+        # Replied-to message not found in the bus. effective_conversation_id remains None.
+        pass
+
+      session = None
+      if effective_conversation_id is not None:
+          session = self._sessions.get(effective_conversation_id)
+
       if session:
         await session.message_queue.push(message.content)
       else:
         # Session no longer exists, inform the user.
-        # Assuming END_USER_AGENT is defined in message_bus.py
+        conversation_id_for_error = effective_conversation_id if effective_conversation_id is not None else message.conversation_id
+
+        content_message = ""
+        if conversation_id_for_error is not None:
+            content_message = f"The conversation session {conversation_id_for_error} no longer exists."
+        else:
+            # Fallback if neither replied-to message nor current message has a conversation_id
+            content_message = "The conversation session could not be found for your reply."
+
+
         outgoing_message = BusMessage(
             id=message_bus.MessageId(0),  # Will be overwritten by write_new_message
             source_agent=AgentName(message.target_agent),
             target_agent=AgentName(message_bus.END_USER_AGENT),
-            conversation_id=message.conversation_id,
+            conversation_id=conversation_id_for_error, # Use the most relevant conversation_id we could find
             telegram_chat_id=message.telegram_chat_id,
             telegram_message_id=None,
             telegram_reply_to_id=message.telegram_reply_to_id,
-            content=f"The conversation session {message.conversation_id} no longer exists.",
+            content=content_message,
             queued_at=datetime.datetime.now(datetime.timezone.utc),
             processed_at=None,
         )
