@@ -39,25 +39,40 @@ class Handler:
     assert update.effective_chat  # for telegram_chat_id.
     # ✨ write message to bus and respond
     assert update.message
-    assert self._config.telegram # Ensure telegram config is not None
+    assert self._config.telegram  # Ensure telegram config is not None
     telegram_chat_id = TelegramChatId(update.effective_chat.id)
-    content = update.message.text or "" # Ensure content is a string
+    content = update.message.text or ""  # Ensure content is a string
     telegram_message_id = TelegramMessageId(update.message.message_id)
 
     telegram_reply_to_id: TelegramMessageId | None = None
     if update.message.reply_to_message:
-      telegram_reply_to_id = TelegramMessageId(update.message.reply_to_message.message_id)
+      telegram_reply_to_id = TelegramMessageId(
+          update.message.reply_to_message.message_id)
 
-    # Note: As per the current MessageBus API, it is not directly possible to look up
-    # the target_agent and conversation_id from a replied-to message in the bus
-    # to "propagate" them as described in the prompt. Therefore, new messages from
-    # the user are directed to the configured consumer_agent, and conversation_id
-    # is initially None. The consumer agent is expected to establish the conversation.
+    target_agent = self._config.telegram.consumer_agent
+    conversation_id = None
+
+    if telegram_reply_to_id:
+      try:
+        original_message = await self._message_bus.find_message_by_telegram_id(
+            telegram_chat_id, telegram_reply_to_id)
+        if original_message.target_agent == END_USER_AGENT:
+          target_agent = self._config.telegram.consumer_agent
+        else:
+          target_agent = original_message.source_agent
+        conversation_id = original_message.conversation_id
+      except ValueError:
+        logging.warning(
+            f"Replied-to message with Telegram ID {telegram_reply_to_id} "
+            f"in chat {telegram_chat_id} not found in message bus. "
+            "Proceeding with default target_agent and no conversation_id."
+        )
+
     message_to_bus = BusMessage(
         id=MessageId(0),  # Will be overwritten by write_new_message
-        source_agent=AgentName(END_USER_AGENT), # Cast to AgentName
-        target_agent=self._config.telegram.consumer_agent,
-        conversation_id=None,
+        source_agent=AgentName(END_USER_AGENT),
+        target_agent=target_agent,
+        conversation_id=conversation_id,
         telegram_chat_id=telegram_chat_id,
         telegram_message_id=telegram_message_id,
         telegram_reply_to_id=telegram_reply_to_id,
@@ -89,23 +104,24 @@ class Handler:
       for message in outgoing_messages:
         # Prepend the source agent to the message content as per the requirement.
         full_content = f"{message.source_agent}: {message.content}"
-        logging.info(
-            'Sending message to telegram_chat_id=%s, content="%s"',
-            message.telegram_chat_id, full_content)
+        logging.info('Sending message to telegram_chat_id=%s, content="%s"',
+                     message.telegram_chat_id, full_content)
         # Using self._app.bot.send_message to dispatch the message.
         # reply_to_message_id is used if message.telegram_reply_to_id is set.
         try:
           sent_message = await self._app.bot.send_message(
               chat_id=message.telegram_chat_id,
               text=full_content,
-              reply_to_message_id=message.telegram_reply_to_id
-          )
+              reply_to_message_id=message.telegram_reply_to_id)
           await self._message_bus.set_telegram_message_id(
               message_id=message.id,
               telegram_message_id=TelegramMessageId(sent_message.message_id))
-          logging.info('Message sent and telegram_message_id updated for bus message_id=%s, telegram_message_id=%s', message.id, sent_message.message_id)
+          logging.info(
+              'Message sent and telegram_message_id updated for bus message_id=%s, telegram_message_id=%s',
+              message.id, sent_message.message_id)
         except Exception as e:
-          logging.error('Failed to send message_id=%s to Telegram: %s', message.id, e)
+          logging.error('Failed to send message_id=%s to Telegram: %s',
+                        message.id, e)
     # ✨
 
   async def run(self) -> None:
