@@ -21,16 +21,15 @@ class AgentMessageQueue:
     """Appends a message to the queue."""
 
     # ✨ push
-    async def push(self, message: str) -> None:
-      async with self._lock:
-        match self._data:
-          case list() as data_list:
-            # Nobody is waiting, collect messages in the list.
-            data_list.append(message)
-          case asyncio.Future() as data_future:
-            # Somebody is waiting, notify them with the new message.
-            data_future.set_result([message])
-            self._data = []  # Reset to list state.
+    async with self._lock:
+      match self._data:
+        case list() as data_list:
+          # Nobody is waiting, collect messages in the list.
+          data_list.append(message)
+        case asyncio.Future() as data_future:
+          # Somebody is waiting, notify them with the new message.
+          data_future.set_result([message])
+          self._data = []  # Reset to list state.
 
     # ✨
 
