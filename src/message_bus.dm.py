@@ -116,3 +116,9 @@ class MessageBus:
   async def read_message(self, message_id: MessageId) -> Message:
     """Returns a message from the database or raises ValueError."""
     raise NotImplementedError()  # {{🍄 read message}}
+
+  async def find_message_by_telegram_id(
+      self, telegram_chat_id: TelegramChatId,
+      telegram_message_id: TelegramMessageId) -> Message:
+    """Returns a message from the database or raises ValueError."""
+    raise NotImplementedError()  # {{🍄 find message by telegram id}}
