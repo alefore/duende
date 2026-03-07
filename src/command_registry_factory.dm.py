@@ -9,7 +9,7 @@ import sys
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
 from command_registry import CommandRegistry
-from file_access_policy import FileAccessPolicy
+from file_access_policy import create_file_access_policy, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
 from validation import ValidationManager
 from validate_command import ValidateCommand
 from read_file_command import ReadFileCommand
@@ -49,22 +49,28 @@ def create_ask_command_registry(
 
 @dataclasses.dataclass(frozen=True)
 class CommandRegistryConfig:
+  # If `None`, no restrictions are placed.
+  file_access_policy: FileAccessPolicyConfig | None
+
   allow_shell: bool
 
 
-async def load_config(path: pathlib.Path) -> CommandRegistryConfig:
+async def load_command_registry_config(
+    path: pathlib.Path) -> CommandRegistryConfig:
   """Loads the configuration from JSON file in `path`."""
   raise NotImplementedError()  # {{🍄 load config}}
 
 
 async def create_command_registry(
-    file_access_policy: FileAccessPolicy,
     config: CommandRegistryConfig,
     validation_manager: ValidationManager | None,
     start_new_task: Callable[[TaskInformation], CommandOutput],
     git_dirty_accept: bool = False,
     can_write: bool = True,
     can_start_tasks: bool = True) -> CommandRegistry:
+
+  assert config.file_access_policy
+  file_access_policy = create_file_access_policy(config.file_access_policy)
   registry = _create_base_registry(file_access_policy)
 
   registry.Register(DoneCommand(arguments=[]))

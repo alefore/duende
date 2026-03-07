@@ -166,8 +166,9 @@ def GetConversationalAI(args: argparse.Namespace,
 async def CreateAgentWorkflowOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory: ConversationFactory) -> AgentWorkflowOptions:
-  file_access_policy = create_file_access_policy(await load_file_access_policy(
-      pathlib.Path(args.file_access_policy)))
+  file_access_policy_config = await load_file_access_policy(
+      pathlib.Path(args.file_access_policy))
+  file_access_policy = create_file_access_policy(file_access_policy_config)
 
   matched_files = [f async for f in list_all_files('.', file_access_policy)]
   logging.info(f"File matched by access policy: {len(matched_files)}")
@@ -196,8 +197,9 @@ async def CreateAgentWorkflowOptions(
           "Initial validation failed, aborting further operations.")
 
   registry = await create_command_registry(
-      file_access_policy,
-      CommandRegistryConfig(allow_shell=args.shell_command_execution),
+      CommandRegistryConfig(
+          file_access_policy=file_access_policy_config,
+          allow_shell=args.shell_command_execution),
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
           command_name="task", output="", errors="", summary="Not implemented"),
