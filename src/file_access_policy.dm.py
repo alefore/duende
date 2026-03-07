@@ -22,7 +22,7 @@ class FileAccessScope(Enum):
 
 @dataclasses.dataclass(frozen=True)
 class FileAccessPolicyConfig:
-  regex: str | None
+  regex: str | None = None
 
   scope: FileAccessScope = FileAccessScope.NONE
 

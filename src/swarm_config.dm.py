@@ -17,7 +17,7 @@ class AgentIdentityConfig:
 
   command_registry: CommandRegistryConfig
 
-  promt_content: str
+  prompt_content: str
 
 
 @dataclasses.dataclass(frozen=True)

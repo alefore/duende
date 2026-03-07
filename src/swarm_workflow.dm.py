@@ -15,7 +15,7 @@ from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
 from conversation import ConversationId, Conversation
 from done_command import DoneCommand
-from file_access_policy import RegexFileAccessPolicy
+from file_access_policy import create_file_access_policy, FileAccessPolicyConfig
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
@@ -116,8 +116,9 @@ class SwarmWorkflow(AgentWorkflow):
         conversation=conversation,
         start_message=await self._new_start_message(message),
         command_registry=command_registry,
-        file_access_policy=RegexFileAccessPolicy(
-            self._config.agents[message.target_agent].file_access_policy_regex),
+        file_access_policy=create_file_access_policy(self._config.agents[
+            message.target_agent].command_registry.file_access_policy or
+                                                     FileAccessPolicyConfig()),
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     raise NotImplementedError()  # {{🍄 create and start agent loop}}
 
@@ -128,7 +129,7 @@ class SwarmWorkflow(AgentWorkflow):
     of the message to it.
     """
     assert message.target_agent
-    head_path = self._config.agents[message.target_agent].prompt_path
+    head = self._config.agents[message.target_agent].prompt_content
     tail = "<user_request>" + message.content + "</user_request>"
     raise NotImplementedError()  # {{🍄 new start message}}
 
