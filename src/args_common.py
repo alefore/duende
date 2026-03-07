@@ -12,7 +12,7 @@ from agent_workflow import AgentWorkflow
 from command_registry import CommandRegistry
 from command_registry_factory import CommandRegistryConfig, create_command_registry, create_ask_command_registry
 from confirmation import ConfirmationState, ConfirmationManager
-from file_access_policy import create_file_access_policy, FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
+from file_access_policy import create_file_access_policy, load_file_access_policy, FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from validation import CreateValidationManager, ValidationManager
 from workflow_registry import StandardWorkflowFactoryContainer
@@ -165,7 +165,8 @@ def GetConversationalAI(args: argparse.Namespace,
 async def CreateAgentWorkflowOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory: ConversationFactory) -> AgentWorkflowOptions:
-  file_access_policy = create_file_access_policy(args.file_access_policy)
+  file_access_policy = create_file_access_policy(await load_file_access_policy(
+      args.file_access_policy))
 
   matched_files = [f async for f in list_all_files('.', file_access_policy)]
   logging.info(f"File matched by access policy: {len(matched_files)}")
