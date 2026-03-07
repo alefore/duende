@@ -1,4 +1,4 @@
 {
-  regex: "^(\.|(src|doc)|(src|doc)/[-a-z_/]*(.dm)?\.(css|js|html|py|md|sql)|README.md)$",
-  only_current_directory: true
+  "regex": "^(\\.|(src|doc)|(src|doc)/[-a-z_/]*(.dm)?\\.(css|js|html|py|md|sql)|README.md)$",
+  "only_current_directory": true
 }
