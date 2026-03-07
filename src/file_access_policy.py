@@ -14,7 +14,7 @@ class FileAccessPolicyConfig:
   only_current_directory: bool
 
 
-async def load_config(path: pathlib.Path) -> FileAccessPolicyConfig:
+async def load_file_access_policy(path: pathlib.Path) -> FileAccessPolicyConfig:
   """Loads the configuration from JSON file in `path`."""
   # ✨ load config
   content = path.read_text()
