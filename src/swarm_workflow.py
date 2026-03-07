@@ -22,6 +22,7 @@ from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
+from shell_command_command import ShellCommandCommand
 from swarm_commands import AskUserCommand, DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
@@ -216,6 +217,8 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
          DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
+    {{🦔 If `config.capability` includes the string `shell`, the registry
+         contains `ShellCommandCommand`.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     # ✨ create command registry
@@ -246,6 +249,8 @@ class SwarmWorkflow(AgentWorkflow):
         telegram_reply_to_id=telegram_reply_to_id,
         source_agent=agent_name
     ))
+    if "shell" in config.capability:
+      command_registry.Register(ShellCommandCommand())
     # ✨
 
 
