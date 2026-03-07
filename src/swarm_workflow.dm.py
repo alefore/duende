@@ -139,7 +139,7 @@ class SwarmWorkflow(AgentWorkflow):
                              agent_name: AgentName, config: AgentIdentityConfig,
                              queue: AgentMessageQueue,
                              command_registry: CommandRegistry) -> None:
-    """Creates and returns a valid registry for a specific agent identity.
+    """Initializes a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
@@ -148,7 +148,7 @@ class SwarmWorkflow(AgentWorkflow):
          contains `ShellCommandCommand`.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
-    raise NotImplementedError()  # {{🍄 create command registry}}
+    raise NotImplementedError()  # {{🍄 init command registry}}
 
 
 class SwarmWorkflowFactory(AgentWorkflowFactory):
