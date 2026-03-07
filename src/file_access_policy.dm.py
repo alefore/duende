@@ -13,7 +13,7 @@ class FileAccessPolicyConfig:
   only_current_directory: bool
 
 
-async def load_config(path: pathlib.Path) -> FileAccessPolicyConfig:
+async def load_fle_access_policy(path: pathlib.Path) -> FileAccessPolicyConfig:
   """Loads the configuration from JSON file in `path`."""
   raise NotImplementedError()  # {{🍄 load config}}
 
@@ -52,6 +52,11 @@ class CompositeFileAccessPolicy(FileAccessPolicy):
 
   def allow_access(self, path: str) -> bool:
     return all(policy.allow_access(path) for policy in self.policies)
+
+
+class PermissiveFileAccessPolicy(FileAccessPolicy):
+  """Allows all requests."""
+  raise NotImplementedError()  # {{🍄 permissive file access policy}}
 
 
 def create_file_access_policy(
