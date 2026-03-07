@@ -5,16 +5,16 @@ import re
 import sys
 from typing import Any, Callable, NamedTuple, Pattern, Tuple
 
+from agent_command import CommandOutput
 from agent_loop import AgentLoopFactory
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
-from confirmation import ConfirmationState, ConfirmationManager
-from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
-from list_files import list_all_files
 from command_registry import CommandRegistry
 from command_registry_factory import CommandRegistryConfig, create_command_registry, create_ask_command_registry
+from confirmation import ConfirmationState, ConfirmationManager
+from file_access_policy import create_file_access_policy, FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
+from list_files import list_all_files
 from validation import CreateValidationManager, ValidationManager
-from agent_command import CommandOutput
 from workflow_registry import StandardWorkflowFactoryContainer
 from chatgpt import ChatGPT
 from conversation import Conversation, ConversationFactory, ConversationFactoryOptions
@@ -79,19 +79,11 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default='gpt-4o',
       help="The model name to use for OpenAI API requests.")
   parser.add_argument(
-      '--file-access-regex',
-      dest='file_access_regex',
+      'file-access-policy',
+      dest='file_access_policy',
       type=str,
-      help="Regex to match allowed file paths. Defaults to allowing all paths. Match is based on relative path to current directory."
-  )
-  parser.add_argument(
-      '--file-access-regex-path',
-      dest='file_access_regex_path',
-      type=str,
-      default=TrackedFlagStr('agent/file-access-regex.txt', False),
-      action=TrackFlagStrAction,
-      help="File path to a regex to match allowed file paths. Ignored if --file-access-regex is given."
-  )
+      default="agent/file-access-policy.json",
+      help="Path to the configuration containing the file access policy.")
   parser.add_argument(
       '--test-file-access',
       dest='test_file_access',
@@ -173,8 +165,7 @@ def GetConversationalAI(args: argparse.Namespace,
 async def CreateAgentWorkflowOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory: ConversationFactory) -> AgentWorkflowOptions:
-  file_access_policy = CreateFileAccessPolicy(args.file_access_regex,
-                                              args.file_access_regex_path)
+  file_access_policy = create_file_access_policy(args.file_access_policy)
 
   matched_files = [f async for f in list_all_files('.', file_access_policy)]
   logging.info(f"File matched by access policy: {len(matched_files)}")
@@ -366,40 +357,6 @@ async def CreateAgentWorkflowOptions(
       confirm_done=args.confirm,
       do_review=args.review,
       review_first=args.review_first)
-
-
-def CreateFileAccessPolicy(
-    file_access_regex: str | None,
-    file_access_regex_path: TrackedFlagStr) -> FileAccessPolicy:
-  policies: list[FileAccessPolicy] = [CurrentDirectoryFileAccessPolicy()]
-
-  if file_access_regex:
-    if file_access_regex_path.set_explicitly:
-      print(
-          "Error: Invalid usage: "
-          "At most one of `--file-access-regex` and `--file-access-regex-path` can be used.",
-          file=sys.stderr)
-      sys.exit(1)
-  elif file_access_regex_path.value:
-    try:
-      with open(file_access_regex_path.value, 'r') as f:
-        file_access_regex = f.read().strip()
-      if not file_access_regex:
-        print(
-            f"Error: Invalid usage: --file-access-regex-path: "
-            f"{file_access_regex_path.value}: File is empty.",
-            file=sys.stderr)
-        sys.exit(1)
-    except FileNotFoundError as e:
-      if file_access_regex_path.set_explicitly:
-        print(
-            f"Error: --file-access-regex-path: {file_access_regex_path.value}: {e}",
-            file=sys.stderr)
-        sys.exit(1)
-
-  if file_access_regex:
-    policies.append(RegexFileAccessPolicy(file_access_regex))
-  return CompositeFileAccessPolicy(policies)
 
 
 async def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
