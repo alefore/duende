@@ -41,6 +41,9 @@ def _get_config(registry: CommandRegistry) -> genai.types.GenerateContentConfig:
   return genai.types.GenerateContentConfig(
       automatic_function_calling=genai.types.AutomaticFunctionCallingConfig(
           disable=True),
+      tool_config=genai.types.ToolConfig(
+          function_calling_config=genai.types.FunctionCallingConfig(
+              mode=genai.types.FunctionCallingConfigMode.ANY)),
       tools=[
           genai.types.Tool(function_declarations=[
               _parse_syntax(c.Syntax()) for c in registry.GetCommands()
