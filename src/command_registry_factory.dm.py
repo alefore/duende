@@ -55,9 +55,20 @@ class CommandRegistryConfig:
   allow_shell: bool
 
 
+def create_command_registry_config(
+    data: dict[str, Any]) -> CommandRegistryConfig:
+  """Receives a JSON dictionary and turns it into a config.
+
+  Raises ValueError exception if data contains unexpected keys (or if anything
+  can't be parsed successfully)."""
+  raise NotImplementedError()  # {{🍄 create config}}
+
+
 async def load_command_registry_config(
     path: pathlib.Path) -> CommandRegistryConfig:
-  """Loads the configuration from JSON file in `path`."""
+  """Loads the configuration from JSON file in `path`.
+
+  Raises a ValueError exception if """
   raise NotImplementedError()  # {{🍄 load config}}
 
 
