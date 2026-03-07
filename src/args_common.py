@@ -79,7 +79,7 @@ def CreateCommonParser() -> argparse.ArgumentParser:
       default='gpt-4o',
       help="The model name to use for OpenAI API requests.")
   parser.add_argument(
-      'file-access-policy',
+      '--file-access-policy',
       dest='file_access_policy',
       type=str,
       default="agent/file-access-policy.json",
