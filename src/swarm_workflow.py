@@ -16,7 +16,7 @@ from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
 from conversation import ConversationId, Conversation
 from done_command import DoneCommand
-from file_access_policy import RegexFileAccessPolicy
+from file_access_policy import create_file_access_policy, FileAccessPolicyConfig
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
@@ -92,7 +92,6 @@ class SwarmWorkflow(AgentWorkflow):
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
     """
-
     # ✨ process message
     await self._message_bus.mark_as_processed(message.id)
 
@@ -100,47 +99,41 @@ class SwarmWorkflow(AgentWorkflow):
       # If the message is from another agent, always start a new agent loop.
       await self._start_agent_loop(message)
     elif message.telegram_reply_to_id is None:
-      # If the message is from the end user and not a reply, start a new agent loop.
+      # If the message is from the end user and is not a reply, start a new agent loop.
       await self._start_agent_loop(message)
     else:
       # The message is from the end user and is a reply.
-      effective_conversation_id = None
+      # Try to find the original message that the user is replying to.
+      replied_to_bus_message: BusMessage | None = None
       try:
-        replied_to_message = await self._message_bus.find_message_by_telegram_id(
+        replied_to_bus_message = await self._message_bus.find_message_by_telegram_id(
             message.telegram_chat_id, message.telegram_reply_to_id)
-        if replied_to_message.conversation_id is not None:
-          effective_conversation_id = replied_to_message.conversation_id
       except ValueError:
-        # Replied-to message not found in the bus. effective_conversation_id remains None.
+        # The replied-to message was not found in the bus.
+        # This implies the session might be gone or never existed in this bus.
         pass
 
-      session = None
-      if effective_conversation_id is not None:
-        session = self._sessions.get(effective_conversation_id)
-
-      if session:
-        await session.message_queue.push(message.content)
+      if replied_to_bus_message and replied_to_bus_message.conversation_id in self._sessions:
+        # If the replied-to message has a conversation_id and that session exists,
+        # add the new message content to the session's message queue.
+        session = self._sessions[replied_to_bus_message.conversation_id]
+        await session.message_queue.push(message.content)  # Corrected to push
       else:
-        # Session no longer exists, inform the user.
-        conversation_id_for_error = effective_conversation_id if effective_conversation_id is not None else message.conversation_id
-
-        content_message = ""
-        if conversation_id_for_error is not None:
-          content_message = f"The conversation session {conversation_id_for_error} no longer exists."
-        else:
-          # Fallback if neither replied-to message nor current message has a conversation_id
-          content_message = "The conversation session could not be found for your reply."
-
+        # If the session no longer exists or the replied-to message was not found,
+        # inform the user that the session no longer exists.
         outgoing_message = BusMessage(
             id=message_bus.MessageId(
-                0),  # Will be overwritten by write_new_message
-            source_agent=message.target_agent,
-            target_agent=AgentName(message_bus.END_USER_AGENT),
-            conversation_id=conversation_id_for_error,  # Use the most relevant conversation_id we could find
+                0),  # This will be overwritten by write_new_message
+            source_agent=message
+            .target_agent,  # The agent that received the original message
+            target_agent=AgentName(
+                message_bus.END_USER_AGENT),  # Cast to AgentName
+            conversation_id=None,  # No active conversation for this response
             telegram_chat_id=message.telegram_chat_id,
-            telegram_message_id=None,
-            telegram_reply_to_id=message.telegram_reply_to_id,
-            content=content_message,
+            telegram_message_id=None,  # This message is not yet sent to Telegram
+            telegram_reply_to_id=message
+            .telegram_message_id,  # Reply to the user's current message
+            content="This conversation session no longer exists. Please start a new conversation.",
             queued_at=datetime.datetime.now(datetime.timezone.utc),
             processed_at=None,
         )
@@ -170,21 +163,27 @@ class SwarmWorkflow(AgentWorkflow):
         conversation=conversation,
         start_message=await self._new_start_message(message),
         command_registry=command_registry,
-        file_access_policy=RegexFileAccessPolicy(
-            self._config.agents[message.target_agent].file_access_policy_regex),
+        file_access_policy=create_file_access_policy(self._config.agents[
+            message.target_agent].command_registry.file_access_policy or
+                                                     FileAccessPolicyConfig()),
         confirmation_state=ConfirmationState(confirmation_manager, 30))
     # ✨ create and start agent loop
-    loop = self._options.agent_loop_factory.new(agent_loop_options)
-    session = AgentSession(conversation, loop, agent_message_queue)
+    agent_loop = self._options.agent_loop_factory.new(agent_loop_options)
+    session = AgentSession(
+        conversation=conversation,
+        loop=agent_loop,
+        message_queue=agent_message_queue,
+    )
     self._sessions[conversation.GetId()] = session
+
     await self._message_bus.set_conversation_id(message.id,
                                                 conversation.GetId())
 
-    async def _run_agent_loop_task(agent_loop: BaseAgentLoop) -> None:
-      await agent_loop.run()
+    async def _run_agent_loop_task(loop: BaseAgentLoop) -> None:
+      await loop.run()
 
     self._background_tasks.append(
-        asyncio.create_task(_run_agent_loop_task(loop)))
+        asyncio.create_task(_run_agent_loop_task(agent_loop)))
     # ✨
 
   async def _new_start_message(self, message: BusMessage) -> Message:
@@ -194,17 +193,16 @@ class SwarmWorkflow(AgentWorkflow):
     of the message to it.
     """
     assert message.target_agent
-    head_path = self._config.agents[message.target_agent].prompt_path
+    head = self._config.agents[message.target_agent].prompt_content
     tail = "<user_request>" + message.content + "</user_request>"
     # ✨ new start message
-    async with aiofiles.open(
-        head_path, mode="r") as f:
-      head_content = await f.read()
-
+    assert message.target_agent
+    head = self._config.agents[message.target_agent].prompt_content
+    tail = "<user_request>" + message.content + "</user_request>"
     return Message(
-        role="user",
+        role='user',
         content_sections=[
-            ContentSection(content=head_content),
+            ContentSection(content=head),
             ContentSection(content=tail)
         ])
     # ✨
@@ -225,37 +223,25 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     # ✨ create command registry
-    file_access_policy = RegexFileAccessPolicy(config.file_access_policy_regex)
+    file_access_policy_config = config.command_registry.file_access_policy or FileAccessPolicyConfig(
+    )
+    file_access_policy = create_file_access_policy(file_access_policy_config)
 
+    command_registry.Register(DoneCommand([]))
+    command_registry.Register(ReadFileCommand(file_access_policy))
+    command_registry.Register(ListFilesCommand(file_access_policy))
+    command_registry.Register(SearchFileCommand(file_access_policy))
     command_registry.Register(
-        ReadFileCommand(file_access_policy=file_access_policy))
+        DisplayInfoCommand(self._message_bus, conversation_id, telegram_chat_id,
+                           telegram_reply_to_id, agent_name))
     command_registry.Register(
-        ListFilesCommand(file_access_policy=file_access_policy))
+        PublishMessageCommand(self._message_bus, telegram_chat_id,
+                              telegram_reply_to_id, agent_name))
     command_registry.Register(
-        SearchFileCommand(file_access_policy=file_access_policy))
-    command_registry.Register(DoneCommand(arguments=[]))
-    command_registry.Register(
-        DisplayInfoCommand(
-            message_bus=self._message_bus,
-            conversation_id=conversation_id,
-            telegram_chat_id=telegram_chat_id,
-            telegram_reply_to_id=telegram_reply_to_id,
-            source_agent=agent_name))
-    command_registry.Register(
-        PublishMessageCommand(
-            message_bus=self._message_bus,
-            telegram_chat_id=telegram_chat_id,
-            telegram_reply_to_id=telegram_reply_to_id,
-            source_agent=agent_name))
-    command_registry.Register(
-        AskUserCommand(
-            message_bus=self._message_bus,
-            queue=queue,
-            conversation_id=conversation_id,
-            telegram_chat_id=telegram_chat_id,
-            telegram_reply_to_id=telegram_reply_to_id,
-            source_agent=agent_name))
-    if "shell" in config.capability:
+        AskUserCommand(self._message_bus, queue, conversation_id,
+                       telegram_chat_id, telegram_reply_to_id, agent_name))
+
+    if config.command_registry.allow_shell:
       command_registry.Register(ShellCommandCommand())
     # ✨
 

@@ -5,9 +5,10 @@ import json
 import pathlib
 from typing import NewType
 
-TelegramId = NewType("TelegramId", int)
-
+from command_registry_factory import create_command_registry_config, CommandRegistryConfig
 from swarm_types import AgentName
+
+TelegramId = NewType("TelegramId", int)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -15,11 +16,9 @@ class AgentIdentityConfig:
   # Unique name of this agent
   name: AgentName
 
-  capability: list[str]
+  command_registry: CommandRegistryConfig
 
-  prompt_path: pathlib.Path
-
-  file_access_policy_regex: str
+  prompt_content: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -42,6 +41,65 @@ class SwarmConfig:
   telegram: SwarmTelegramConfig | None
 
 
+async def _load_agent_identity_config(
+    path: pathlib.Path) -> AgentIdentityConfig:
+  """Loads an AgentIdentityConfig for the agent at a given path (directory).
+
+  `name` is the path's base-name.
+
+  `command_registry` is loaded from a JSON file `config.json`. This file
+  contains a directory with a `command_registry` key (in the future will contain
+  other things).
+
+  `prompt` is loaded (asynchronously) from file `prompt.md`.
+
+  If `config.json` contains unexpected data or something that can't be parsed
+  (or the prompt can't be loaded), raises an exception.
+  """
+  # ✨ load agent config
+  agent_name = AgentName(path.name)
+
+  config_json_path = path / "config.json"
+  prompt_md_path = path / "prompt.md"
+
+  try:
+    async with aiofiles.open(config_json_path, mode="r") as f:
+      config_content = await f.read()
+  except FileNotFoundError:
+    raise ValueError(f"Agent configuration file not found for agent '{agent_name}': '{config_json_path}'.")
+
+  try:
+    raw_agent_config = json.loads(config_content)
+  except json.JSONDecodeError as e:
+    raise ValueError(f"Invalid JSON in '{config_json_path}' for agent '{agent_name}': {e}") from e
+
+  if not isinstance(raw_agent_config, dict):
+    raise ValueError(f"Invalid configuration in '{config_json_path}' for agent '{agent_name}': Expected a dictionary.")
+
+  allowed_keys = {'command_registry'}
+  for key in raw_agent_config:
+    if key not in allowed_keys:
+      raise ValueError(f"Unknown configuration key '{key}' in '{config_json_path}' for agent '{agent_name}'.")
+
+  command_registry_data = raw_agent_config.get("command_registry", {})
+  if not isinstance(command_registry_data, dict):
+    raise ValueError(f"Invalid 'command_registry' configuration in '{config_json_path}' for agent '{agent_name}': Expected a dictionary.")
+  command_registry_config = create_command_registry_config(command_registry_data)
+
+  try:
+    async with aiofiles.open(prompt_md_path, mode="r") as f:
+      prompt_content = await f.read()
+  except FileNotFoundError:
+    raise ValueError(f"Agent prompt file not found for agent '{agent_name}': '{prompt_md_path}'.")
+
+  return AgentIdentityConfig(
+      name=agent_name,
+      command_registry=command_registry_config,
+      prompt_content=prompt_content,
+  )
+  # ✨
+
+
 async def load_config(path: pathlib.Path) -> SwarmConfig:
   """Loads the configuration from JSON file in `path`.
 
@@ -51,59 +109,122 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
   * `telegram.authorized_users` MUST NOT be empty.
   * `telegram.consumer_agent` MUST be set to a key in `agents`.
   * `telegram.end_user_identity` MUST NOT be a key in `agents`.
+
+  The file in `path` does not contain the agent identity configuration, only an
+  "agents" key with a list[str]. The entries in the list are names of agents
+  (e.g., "coding" or "receptionist"). We use `_load_agent_identity_config` on
+  those directories.
+
+  If any configuration contains unexpected keys (or any data that can't be
+  parsed successfully, raises a ValueError with a good description of the
+  problem (including the location).
   """
   # ✨ load config
-  async with aiofiles.open(
-      path, mode="r") as f:
-    content = await f.read()
-  data = json.loads(content)
+  try:
+    async with aiofiles.open(path, mode="r") as f:
+      config_content = await f.read()
+  except FileNotFoundError:
+    raise ValueError(f"Configuration file not found: '{path}'.")
 
-  agents = {}
-  for agent_name, agent_data in data["agents"].items():
-    agents[AgentName(agent_name)] = AgentIdentityConfig(
-        name=AgentName(agent_name),
-        capability=agent_data["capability"],
-        prompt_path=pathlib.Path(agent_data["prompt_path"]),
-        file_access_policy_regex=agent_data["file_access_policy_regex"],
-    )
+  try:
+    raw_config = json.loads(config_content)
+  except json.JSONDecodeError as e:
+    raise ValueError(f"Invalid JSON in '{path}': {e}") from e
 
-  telegram_data = data.get("telegram")
+  if not isinstance(raw_config, dict):
+    raise ValueError(f"Invalid configuration in '{path}': Expected a dictionary.")
+
+  allowed_keys = {'agents', 'message_bus_path', 'telegram'}
+  for key in raw_config:
+    if key not in allowed_keys:
+      raise ValueError(f"Unknown configuration key '{key}' in '{path}'.")
+
+  message_bus_path_str = raw_config.get("message_bus_path")
+  if not message_bus_path_str:
+    raise ValueError(f"Missing 'message_bus_path' in '{path}'.")
+  if not isinstance(message_bus_path_str, str):
+    raise ValueError(f"Invalid 'message_bus_path' in '{path}': Expected a string.")
+  message_bus_path = pathlib.Path(message_bus_path_str)
+
+  raw_agents = raw_config.get("agents")
+  if not raw_agents:
+    raise ValueError(f"Missing 'agents' in '{path}'.")
+  if not isinstance(raw_agents, list):
+    raise ValueError(f"Invalid 'agents' in '{path}': Expected a list of agent names.")
+
+  agents: dict[AgentName, AgentIdentityConfig] = {}
+  config_dir = path.parent
+  for agent_name_str in raw_agents:
+    if not isinstance(agent_name_str, str):
+      raise ValueError(f"Invalid agent name in '{path}': Expected a string, got {type(agent_name_str)}.")
+    agent_path = config_dir / "agents" / agent_name_str
+    agent_identity_config = await _load_agent_identity_config(agent_path)
+    if AgentName(agent_name_str) in agents:
+        raise ValueError(f"Duplicate agent name '{agent_name_str}' in '{path}'.")
+    agents[AgentName(agent_name_str)] = agent_identity_config
+
   telegram_config: SwarmTelegramConfig | None = None
+  raw_telegram_config = raw_config.get("telegram")
+  if raw_telegram_config:
+    if not isinstance(raw_telegram_config, dict):
+      raise ValueError(f"Invalid 'telegram' configuration in '{path}': Expected a dictionary.")
 
-  if telegram_data:
-    token = telegram_data.get("token")
-    if not token:
-      raise ValueError("If 'telegram' is present, 'telegram.token' must be set.")
+    telegram_allowed_keys = {'token', 'consumer_agent', 'end_user_identity', 'authorized_users'}
+    for key in raw_telegram_config:
+      if key not in telegram_allowed_keys:
+        raise ValueError(f"Unknown configuration key 'telegram.{key}' in '{path}'.")
 
-    authorized_users_raw = telegram_data.get("authorized_users", [])
-    if not authorized_users_raw:
-      raise ValueError("If 'telegram.token' is set, 'telegram.authorized_users' must not be empty.")
-    authorized_users = [TelegramId(uid) for uid in authorized_users_raw]
+    telegram_token = raw_telegram_config.get("token")
+    if not telegram_token:
+      raise ValueError(f"Missing 'telegram.token' in '{path}'.")
+    if not isinstance(telegram_token, str):
+      raise ValueError(f"Invalid 'telegram.token' in '{path}': Expected a string.")
 
-    consumer_agent_name = telegram_data.get("consumer_agent")
-    if not consumer_agent_name:
-      raise ValueError("If 'telegram.token' is set, 'telegram.consumer_agent' must be set.")
-    consumer_agent = AgentName(consumer_agent_name)
-    if consumer_agent not in agents:
-      raise ValueError(f"telegram.consumer_agent '{consumer_agent_name}' is not defined in agents.")
+    telegram_consumer_agent_str = raw_telegram_config.get("consumer_agent")
+    if not telegram_consumer_agent_str:
+      raise ValueError(f"Missing 'telegram.consumer_agent' in '{path}'.")
+    if not isinstance(telegram_consumer_agent_str, str):
+      raise ValueError(f"Invalid 'telegram.consumer_agent' in '{path}': Expected a string.")
+    telegram_consumer_agent = AgentName(telegram_consumer_agent_str)
 
-    end_user_identity_name = telegram_data.get("end_user_identity")
-    if not end_user_identity_name:
-      raise ValueError("If 'telegram.token' is set, 'telegram.end_user_identity' must be set.")
-    end_user_identity = AgentName(end_user_identity_name)
-    if end_user_identity in agents:
-      raise ValueError(f"telegram.end_user_identity '{end_user_identity_name}' MUST NOT be a key in agents.")
+    if telegram_consumer_agent not in agents:
+      raise ValueError(f"Telegram consumer agent '{telegram_consumer_agent_str}' not found in defined agents in '{path}'.")
+
+    telegram_end_user_identity_str = raw_telegram_config.get("end_user_identity")
+    if not telegram_end_user_identity_str:
+      raise ValueError(f"Missing 'telegram.end_user_identity' in '{path}'.")
+    if not isinstance(telegram_end_user_identity_str, str):
+      raise ValueError(f"Invalid 'telegram.end_user_identity' in '{path}': Expected a string.")
+    telegram_end_user_identity = AgentName(telegram_end_user_identity_str)
+
+    if telegram_end_user_identity in agents:
+      raise ValueError(f"Telegram end user identity '{telegram_end_user_identity_str}' cannot be an existing agent in '{path}'.")
+
+    raw_authorized_users = raw_telegram_config.get("authorized_users")
+    if not raw_authorized_users:
+      raise ValueError(f"Missing 'telegram.authorized_users' in '{path}'.")
+    if not isinstance(raw_authorized_users, list):
+      raise ValueError(f"Invalid 'telegram.authorized_users' in '{path}': Expected a list of integers.")
+
+    telegram_authorized_users: list[TelegramId] = []
+    for user_id in raw_authorized_users:
+      if not isinstance(user_id, int):
+        raise ValueError(f"Invalid user ID '{user_id}' in 'telegram.authorized_users' in '{path}': Expected an integer.")
+      telegram_authorized_users.append(TelegramId(user_id))
+
+    if not telegram_authorized_users:
+      raise ValueError(f"Missing 'telegram.authorized_users' in '{path}': List cannot be empty.")
 
     telegram_config = SwarmTelegramConfig(
-        token=token,
-        consumer_agent=consumer_agent,
-        end_user_identity=end_user_identity,
-        authorized_users=authorized_users,
+        token=telegram_token,
+        consumer_agent=telegram_consumer_agent,
+        end_user_identity=telegram_end_user_identity,
+        authorized_users=telegram_authorized_users,
     )
 
   return SwarmConfig(
       agents=agents,
-      message_bus_path=pathlib.Path(data["message_bus_path"]),
+      message_bus_path=message_bus_path,
       telegram=telegram_config,
   )
   # ✨

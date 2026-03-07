@@ -4,13 +4,13 @@ import aiofiles
 import dataclasses
 import json
 import pathlib
-from typing import Callable
+from typing import Any, Callable
 import sys
 
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
 from command_registry import CommandRegistry
-from file_access_policy import create_file_access_policy, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
+from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
 from validation import ValidationManager
 from validate_command import ValidateCommand
 from read_file_command import ReadFileCommand
@@ -56,26 +56,40 @@ class CommandRegistryConfig:
   allow_shell: bool
 
 
-async def load_config(path: pathlib.Path) -> CommandRegistryConfig:
-  """Loads the configuration from JSON file in `path`."""
-  # ✨ load config
-  async with aiofiles.open(
-      path, mode="r") as f:
-    content = await f.read()
-  data = json.loads(content)
+def create_command_registry_config(
+    data: dict[str, Any]) -> CommandRegistryConfig:
+  """Receives a JSON dictionary and turns it into a config.
 
-  file_access_policy_data = data.get("file_access_policy")
-  file_access_policy_config: FileAccessPolicyConfig | None = None
-  if file_access_policy_data:
-    file_access_policy_config = FileAccessPolicyConfig(**file_access_policy_data)
+  Raises ValueError exception if data contains unexpected keys (or if anything
+  can't be parsed successfully)."""
+  # ✨ create config
+  allowed_keys = {'file_access_policy', 'allow_shell'}
+  for key in data:
+    if key not in allowed_keys:
+      raise ValueError(f"Unknown configuration key: {key}")
 
-  allow_shell = data.get("allow_shell", False)
+  file_access_policy_data = data.get('file_access_policy')
+  if file_access_policy_data is not None:
+    file_access_policy = create_file_access_policy_config(file_access_policy_data)
+  else:
+    file_access_policy = None
+
+  allow_shell = data.get('allow_shell', False)
+  if not isinstance(allow_shell, bool):
+    raise ValueError(f"Expected boolean for 'allow_shell', but got {type(allow_shell)}")
 
   return CommandRegistryConfig(
-      file_access_policy=file_access_policy_config,
-      allow_shell=allow_shell,
-  )
+      file_access_policy=file_access_policy,
+      allow_shell=allow_shell)
   # ✨
+
+
+async def load_command_registry_config(
+    path: pathlib.Path) -> CommandRegistryConfig:
+  """Loads the configuration from JSON file in `path`.
+
+  Raises a ValueError exception if """
+  raise NotImplementedError()  # {{🍄 load config}}
 
 
 async def create_command_registry(
