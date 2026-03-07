@@ -10,6 +10,8 @@ from typing import Callable, NewType, ParamSpec, TypeVar, cast
 from conversation import ConversationId
 from swarm_types import AgentName
 
+# MessageId is meant for the IDs of messages in the SQL database. It is NOT
+# meant for the IDs of Telegram messages (use TelegramMessageId for those).
 MessageId = NewType('MessageId', int)  # Unique ID across the bus.
 TelegramChatId = NewType('TelegramChatId', int)
 TelegramMessageId = NewType('TelegramMessageId', int)
