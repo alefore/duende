@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import pathlib
 import re
 import sys
 from typing import Any, Callable, NamedTuple, Pattern, Tuple
@@ -166,7 +167,7 @@ async def CreateAgentWorkflowOptions(
     args: argparse.Namespace, confirmation_manager: ConfirmationManager,
     conversation_factory: ConversationFactory) -> AgentWorkflowOptions:
   file_access_policy = create_file_access_policy(await load_file_access_policy(
-      args.file_access_policy))
+      pathlib.Path(args.file_access_policy)))
 
   matched_files = [f async for f in list_all_files('.', file_access_policy)]
   logging.info(f"File matched by access policy: {len(matched_files)}")
