@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from agent_command import CommandInput
-from command_registry_factory import create_command_registry
+from command_registry_factory import CommandRegistryConfig, create_command_registry
 from file_access_policy import RegexFileAccessPolicy
 
 
@@ -11,12 +11,12 @@ class TestHelpCommand(unittest.TestCase):
   async def setUp(self):
     self.registry = await create_command_registry(
         file_access_policy=RegexFileAccessPolicy('.*'),
+        CommandRegistryConfig(allow_shell=False),
         validation_manager=None,
         start_new_task=MagicMock(),
         can_write=True,
         can_start_tasks=True,
-        git_dirty_accept=True,
-        shell_command_execution=False)
+        git_dirty_accept=True)
     self.help_command = self.registry.Get("help")
     self.assertIsNotNone(self.help_command)
 

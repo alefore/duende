@@ -107,8 +107,7 @@ class SwarmWorkflow(AgentWorkflow):
       effective_conversation_id = None
       try:
         replied_to_message = await self._message_bus.find_message_by_telegram_id(
-            message.telegram_chat_id, message.telegram_reply_to_id
-        )
+            message.telegram_chat_id, message.telegram_reply_to_id)
         if replied_to_message.conversation_id is not None:
           effective_conversation_id = replied_to_message.conversation_id
       except ValueError:
@@ -117,7 +116,7 @@ class SwarmWorkflow(AgentWorkflow):
 
       session = None
       if effective_conversation_id is not None:
-          session = self._sessions.get(effective_conversation_id)
+        session = self._sessions.get(effective_conversation_id)
 
       if session:
         await session.message_queue.push(message.content)
@@ -127,17 +126,17 @@ class SwarmWorkflow(AgentWorkflow):
 
         content_message = ""
         if conversation_id_for_error is not None:
-            content_message = f"The conversation session {conversation_id_for_error} no longer exists."
+          content_message = f"The conversation session {conversation_id_for_error} no longer exists."
         else:
-            # Fallback if neither replied-to message nor current message has a conversation_id
-            content_message = "The conversation session could not be found for your reply."
-
+          # Fallback if neither replied-to message nor current message has a conversation_id
+          content_message = "The conversation session could not be found for your reply."
 
         outgoing_message = BusMessage(
-            id=message_bus.MessageId(0),  # Will be overwritten by write_new_message
+            id=message_bus.MessageId(
+                0),  # Will be overwritten by write_new_message
             source_agent=message.target_agent,
             target_agent=AgentName(message_bus.END_USER_AGENT),
-            conversation_id=conversation_id_for_error, # Use the most relevant conversation_id we could find
+            conversation_id=conversation_id_for_error,  # Use the most relevant conversation_id we could find
             telegram_chat_id=message.telegram_chat_id,
             telegram_message_id=None,
             telegram_reply_to_id=message.telegram_reply_to_id,
@@ -178,10 +177,14 @@ class SwarmWorkflow(AgentWorkflow):
     loop = self._options.agent_loop_factory.new(agent_loop_options)
     session = AgentSession(conversation, loop, agent_message_queue)
     self._sessions[conversation.GetId()] = session
-    await self._message_bus.set_conversation_id(message.id, conversation.GetId())
-    async def _run_agent_loop_task(agent_loop: BaseAgentLoop):
-        await agent_loop.run()
-    self._background_tasks.append(asyncio.create_task(_run_agent_loop_task(loop)))
+    await self._message_bus.set_conversation_id(message.id,
+                                                conversation.GetId())
+
+    async def _run_agent_loop_task(agent_loop: BaseAgentLoop) -> None:
+      await agent_loop.run()
+
+    self._background_tasks.append(
+        asyncio.create_task(_run_agent_loop_task(loop)))
     # ✨
 
   async def _new_start_message(self, message: BusMessage) -> Message:
@@ -194,7 +197,8 @@ class SwarmWorkflow(AgentWorkflow):
     head_path = self._config.agents[message.target_agent].prompt_path
     tail = "<user_request>" + message.content + "</user_request>"
     # ✨ new start message
-    async with aiofiles.open(head_path, mode="r") as f:
+    async with aiofiles.open(
+        head_path, mode="r") as f:
       head_content = await f.read()
 
     return Message(
@@ -202,8 +206,7 @@ class SwarmWorkflow(AgentWorkflow):
         content_sections=[
             ContentSection(content=head_content),
             ContentSection(content=tail)
-        ]
-    )
+        ])
     # ✨
 
   def _init_command_registry(self, conversation_id: ConversationId,
@@ -224,31 +227,34 @@ class SwarmWorkflow(AgentWorkflow):
     # ✨ create command registry
     file_access_policy = RegexFileAccessPolicy(config.file_access_policy_regex)
 
-    command_registry.Register(ReadFileCommand(file_access_policy=file_access_policy))
-    command_registry.Register(ListFilesCommand(file_access_policy=file_access_policy))
-    command_registry.Register(SearchFileCommand(file_access_policy=file_access_policy))
+    command_registry.Register(
+        ReadFileCommand(file_access_policy=file_access_policy))
+    command_registry.Register(
+        ListFilesCommand(file_access_policy=file_access_policy))
+    command_registry.Register(
+        SearchFileCommand(file_access_policy=file_access_policy))
     command_registry.Register(DoneCommand(arguments=[]))
-    command_registry.Register(DisplayInfoCommand(
-        message_bus=self._message_bus,
-        conversation_id=conversation_id,
-        telegram_chat_id=telegram_chat_id,
-        telegram_reply_to_id=telegram_reply_to_id,
-        source_agent=agent_name
-    ))
-    command_registry.Register(PublishMessageCommand(
-        message_bus=self._message_bus,
-        telegram_chat_id=telegram_chat_id,
-        telegram_reply_to_id=telegram_reply_to_id,
-        source_agent=agent_name
-    ))
-    command_registry.Register(AskUserCommand(
-        message_bus=self._message_bus,
-        queue=queue,
-        conversation_id=conversation_id,
-        telegram_chat_id=telegram_chat_id,
-        telegram_reply_to_id=telegram_reply_to_id,
-        source_agent=agent_name
-    ))
+    command_registry.Register(
+        DisplayInfoCommand(
+            message_bus=self._message_bus,
+            conversation_id=conversation_id,
+            telegram_chat_id=telegram_chat_id,
+            telegram_reply_to_id=telegram_reply_to_id,
+            source_agent=agent_name))
+    command_registry.Register(
+        PublishMessageCommand(
+            message_bus=self._message_bus,
+            telegram_chat_id=telegram_chat_id,
+            telegram_reply_to_id=telegram_reply_to_id,
+            source_agent=agent_name))
+    command_registry.Register(
+        AskUserCommand(
+            message_bus=self._message_bus,
+            queue=queue,
+            conversation_id=conversation_id,
+            telegram_chat_id=telegram_chat_id,
+            telegram_reply_to_id=telegram_reply_to_id,
+            source_agent=agent_name))
     if "shell" in config.capability:
       command_registry.Register(ShellCommandCommand())
     # ✨

@@ -12,7 +12,7 @@ from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
 from command_registry import CommandRegistry
-from command_registry_factory import create_command_registry, create_ask_command_registry
+from command_registry_factory import CommandRegistryConfig, create_command_registry, create_ask_command_registry
 from validation import CreateValidationManager, ValidationManager
 from agent_command import CommandOutput
 from workflow_registry import StandardWorkflowFactoryContainer
@@ -204,11 +204,11 @@ async def CreateAgentWorkflowOptions(
 
   registry = await create_command_registry(
       file_access_policy,
+      CommandRegistryConfig(allow_shell=args.shell_command_execution),
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
           command_name="task", output="", errors="", summary="Not implemented"),
-      git_dirty_accept=args.git_dirty_accept,
-      shell_command_execution=args.shell_command_execution)
+      git_dirty_accept=args.git_dirty_accept)
 
   if args.plugins:
     try:
