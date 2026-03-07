@@ -1,19 +1,43 @@
 import abc
+import aiofiles
 import dataclasses
+from enum import Enum, auto
 import json
 import os
 import pathlib
 import re
+from typing import Any
+
+
+class FileAccessScope(Enum):
+  # Don't give file access (default).
+  NONE = auto()
+
+  # Allow local directory access.
+  LOCAL = auto()
+
+  # Allow access to the entire file system.
+  ALL = auto()
 
 
 @dataclasses.dataclass(frozen=True)
 class FileAccessPolicyConfig:
   regex: str | None
 
-  only_current_directory: bool
+  scope: FileAccessScope = FileAccessScope.NONE
 
 
-async def load_fle_access_policy(path: pathlib.Path) -> FileAccessPolicyConfig:
+def create_file_access_policy_config(
+    data: dict[str, Any]) -> FileAccessPolicyConfig:
+  """Receives a JSON dictionary and turns it into a config.
+
+  Raises a ValueError exception if it finds any invalid key (or data it can't
+  parse).
+  """
+  raise NotImplementedError()  # {{🍄 create config}}
+
+
+async def load_file_access_policy(path: pathlib.Path) -> FileAccessPolicyConfig:
   """Loads the configuration from JSON file in `path`."""
   raise NotImplementedError()  # {{🍄 load config}}
 

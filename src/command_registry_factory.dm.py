@@ -3,13 +3,13 @@ import aiofiles
 import dataclasses
 import json
 import pathlib
-from typing import Callable
+from typing import Any, Callable
 import sys
 
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
 from command_registry import CommandRegistry
-from file_access_policy import create_file_access_policy, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
+from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
 from validation import ValidationManager
 from validate_command import ValidateCommand
 from read_file_command import ReadFileCommand
@@ -49,10 +49,10 @@ def create_ask_command_registry(
 
 @dataclasses.dataclass(frozen=True)
 class CommandRegistryConfig:
-  # If `None`, no restrictions are placed.
+  # If `None`, no file access is given.
   file_access_policy: FileAccessPolicyConfig | None
 
-  allow_shell: bool
+  allow_shell: bool = False
 
 
 def create_command_registry_config(
@@ -66,9 +66,7 @@ def create_command_registry_config(
 
 async def load_command_registry_config(
     path: pathlib.Path) -> CommandRegistryConfig:
-  """Loads the configuration from JSON file in `path`.
-
-  Raises a ValueError exception if """
+  """Loads the configuration from JSON file in `path`."""
   raise NotImplementedError()  # {{🍄 load config}}
 
 
