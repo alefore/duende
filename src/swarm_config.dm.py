@@ -50,10 +50,15 @@ async def _load_agent_identity_config(
   contains a directory with a `command_registry` key (in the future will contain
   other things).
 
-  `prompt` is loaded (asynchronously) from file `prompt.md`.
+  `prompt` is generated from the following contents (in order):
 
-  If `config.json` contains unexpected data or something that can't be parsed
-  (or the prompt can't be loaded), raises an exception.
+  * Read (asynch) file `prompt.md` (inside `path`) if it exists.
+
+  * Iterate on values under `prompts` (list[str]) in `config.json`. Each value
+    given is a path (relative to `path`) and read (asynch).
+
+  If `config.json` contains unexpected data or something that can't be parsed,
+  or if `prompt_content` is empty, raises an exception.
   """
   raise NotImplementedError()  # {{🍄 load agent config}}
 
