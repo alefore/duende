@@ -49,11 +49,21 @@ def create_ask_command_registry(
 
 
 @dataclasses.dataclass(frozen=True)
-class CommandRegistryConfig:
-  # If `None`, no restrictions are placed.
+class CommandRegistryWriteConfig:
+  # If `None`, defaults to top-level config. Otherwise, both configs must allow
+  # access.
   file_access_policy: FileAccessPolicyConfig | None
 
-  allow_shell: bool
+
+@dataclasses.dataclass(frozen=True)
+class CommandRegistryConfig:
+  # If `None`, no file access is given.
+  file_access_policy: FileAccessPolicyConfig | None
+
+  # If present, signifies that write access is allowed.
+  writes: CommandRegistryWriteConfig | None = None
+
+  allow_shell: bool = False
 
 
 def create_command_registry_config(
@@ -63,7 +73,7 @@ def create_command_registry_config(
   Raises ValueError exception if data contains unexpected keys (or if anything
   can't be parsed successfully)."""
   # ✨ create config
-  allowed_keys = {'file_access_policy', 'allow_shell'}
+  allowed_keys = {'file_access_policy', 'allow_shell', 'writes'}
   for key in data:
     if key not in allowed_keys:
       raise ValueError(f"Unknown configuration key: {key}")
@@ -78,18 +88,52 @@ def create_command_registry_config(
   if not isinstance(allow_shell, bool):
     raise ValueError(f"Expected boolean for 'allow_shell', but got {type(allow_shell)}")
 
+  writes_data = data.get('writes')
+  if writes_data is not None:
+    if not isinstance(writes_data, dict):
+      raise ValueError(f"Expected dictionary for 'writes', but got {type(writes_data)}")
+
+    allowed_writes_keys = {'file_access_policy'}
+    for key in writes_data:
+      if key not in allowed_writes_keys:
+        raise ValueError(f"Unknown configuration key in 'writes': {key}")
+
+    write_file_access_policy_data = writes_data.get('file_access_policy')
+    if write_file_access_policy_data is not None:
+      write_file_access_policy = create_file_access_policy_config(write_file_access_policy_data)
+    else:
+      write_file_access_policy = None
+    writes = CommandRegistryWriteConfig(file_access_policy=write_file_access_policy)
+  else:
+    writes = None
+
   return CommandRegistryConfig(
       file_access_policy=file_access_policy,
-      allow_shell=allow_shell)
+      allow_shell=allow_shell,
+      writes=writes)
   # ✨
 
 
 async def load_command_registry_config(
     path: pathlib.Path) -> CommandRegistryConfig:
-  """Loads the configuration from JSON file in `path`.
+  """Loads the configuration from JSON file in `path`."""
+  # ✨ load config
+  try:
+    async with aiofiles.open(path, mode="r") as f:
+      config_content = await f.read()
+  except FileNotFoundError:
+    raise ValueError(f"Configuration file not found: '{path}'.")
 
-  Raises a ValueError exception if """
-  raise NotImplementedError()  # {{🍄 load config}}
+  try:
+    raw_config = json.loads(config_content)
+  except json.JSONDecodeError as e:
+    raise ValueError(f"Invalid JSON in '{path}': {e}") from e
+
+  if not isinstance(raw_config, dict):
+    raise ValueError(f"Invalid configuration in '{path}': Expected a dictionary, but got {type(raw_config)}.")
+
+  return create_command_registry_config(raw_config)
+  # ✨
 
 
 async def create_command_registry(
@@ -97,7 +141,6 @@ async def create_command_registry(
     validation_manager: ValidationManager | None,
     start_new_task: Callable[[TaskInformation], CommandOutput],
     git_dirty_accept: bool = False,
-    can_write: bool = True,
     can_start_tasks: bool = True) -> CommandRegistry:
 
   assert config.file_access_policy
@@ -127,7 +170,8 @@ async def create_command_registry(
   enable_select = False
 
   selection_manager = SelectionManager()
-  if can_write:
+  if config.writes:
+    # TODO: Figure out how to pass the file access policy.
     registry.Register(
         WriteFileCommand(validation_manager, selection_manager, None))
 
@@ -136,13 +180,13 @@ async def create_command_registry(
       registry.Register(
           SelectCommand(file_access_policy, selection_manager, use_regex))
 
-    if can_write:
+    if config.writes:
       registry.Register(
           SelectOverwriteCommand(selection_manager, validation_manager))
 
     registry.Register(
         SelectPythonCommand(file_access_policy, selection_manager))
-    if can_write:
+    if config.writes:
       registry.Register(
           ReplacePythonCommand(file_access_policy, validation_manager))
 
