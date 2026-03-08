@@ -48,9 +48,19 @@ def create_ask_command_registry(
 
 
 @dataclasses.dataclass(frozen=True)
+class CommandRegistryWriteConfig:
+  # If `None`, defaults to top-level config. Otherwise, both configs must allow
+  # access.
+  file_access_policy: FileAccessPolicyConfig | None
+
+
+@dataclasses.dataclass(frozen=True)
 class CommandRegistryConfig:
   # If `None`, no file access is given.
   file_access_policy: FileAccessPolicyConfig | None
+
+  # If present, signifies that write access is allowed.
+  writes: CommandRegistryWriteConfig | None = None
 
   allow_shell: bool = False
 
@@ -75,7 +85,6 @@ async def create_command_registry(
     validation_manager: ValidationManager | None,
     start_new_task: Callable[[TaskInformation], CommandOutput],
     git_dirty_accept: bool = False,
-    can_write: bool = True,
     can_start_tasks: bool = True) -> CommandRegistry:
 
   assert config.file_access_policy
@@ -105,7 +114,8 @@ async def create_command_registry(
   enable_select = False
 
   selection_manager = SelectionManager()
-  if can_write:
+  if config.writes:
+    # TODO: Figure out how to pass the file access policy.
     registry.Register(
         WriteFileCommand(validation_manager, selection_manager, None))
 
@@ -114,13 +124,13 @@ async def create_command_registry(
       registry.Register(
           SelectCommand(file_access_policy, selection_manager, use_regex))
 
-    if can_write:
+    if config.writes:
       registry.Register(
           SelectOverwriteCommand(selection_manager, validation_manager))
 
     registry.Register(
         SelectPythonCommand(file_access_policy, selection_manager))
-    if can_write:
+    if config.writes:
       registry.Register(
           ReplacePythonCommand(file_access_policy, validation_manager))
 
