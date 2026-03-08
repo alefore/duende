@@ -182,7 +182,7 @@ class AgentLoop(BaseAgentLoop):
               content=f"Error: {command_output.errors}",
               command_output=command_output,
               summary=f"Errors for command '{command_name}'"))
-    if not command_output.output and not command_output.errors and command_output.task_done:
+    if not command_output.output and not command_output.errors:
       outputs.append(
           ContentSection(
               content="",
