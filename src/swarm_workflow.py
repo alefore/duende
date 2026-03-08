@@ -213,16 +213,22 @@ class SwarmWorkflow(AgentWorkflow):
                              agent_name: AgentName, config: AgentIdentityConfig,
                              queue: AgentMessageQueue,
                              command_registry: CommandRegistry) -> None:
-    """Creates and returns a valid registry for a specific agent identity.
+    """Initializes a valid registry for a specific agent identity.
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
          DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
-    {{🦔 If `config.capability` includes the string `shell`, the registry
-         contains `ShellCommandCommand`.}}
+    {{🦔 If `config.command_registry.allow_shell', the registry contains
+         `ShellCommandCommand`.}}
+    {{🦔 If `config.command_registry.writes', the registry contains
+         `WriteFileCommand`.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
-    # ✨ create command registry
+    # TODO: Figure out how to honor
+    # config.command_registry.writes.file_access_policy. With the current
+    # implementation of WriteFileCommand, it isn't feasible.
+
+    # ✨ init command registry
     file_access_policy_config = config.command_registry.file_access_policy or FileAccessPolicyConfig(
     )
     file_access_policy = create_file_access_policy(file_access_policy_config)
@@ -243,6 +249,11 @@ class SwarmWorkflow(AgentWorkflow):
 
     if config.command_registry.allow_shell:
       command_registry.Register(ShellCommandCommand())
+
+    if config.command_registry.writes:
+      command_registry.Register(
+          WriteFileCommand(self._options.agent_loop_options.validation_manager,
+                           self._options.selection_manager, None))
     # ✨
 
 
