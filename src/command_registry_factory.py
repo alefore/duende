@@ -10,7 +10,7 @@ import sys
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
 from command_registry import CommandRegistry
-from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
+from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy
 from validation import ValidationManager
 from validate_command import ValidateCommand
 from read_file_command import ReadFileCommand
@@ -80,18 +80,21 @@ def create_command_registry_config(
 
   file_access_policy_data = data.get('file_access_policy')
   if file_access_policy_data is not None:
-    file_access_policy = create_file_access_policy_config(file_access_policy_data)
+    file_access_policy = create_file_access_policy_config(
+        file_access_policy_data)
   else:
     file_access_policy = None
 
   allow_shell = data.get('allow_shell', False)
   if not isinstance(allow_shell, bool):
-    raise ValueError(f"Expected boolean for 'allow_shell', but got {type(allow_shell)}")
+    raise ValueError(
+        f"Expected boolean for 'allow_shell', but got {type(allow_shell)}")
 
   writes_data = data.get('writes')
   if writes_data is not None:
     if not isinstance(writes_data, dict):
-      raise ValueError(f"Expected dictionary for 'writes', but got {type(writes_data)}")
+      raise ValueError(
+          f"Expected dictionary for 'writes', but got {type(writes_data)}")
 
     allowed_writes_keys = {'file_access_policy'}
     for key in writes_data:
@@ -100,10 +103,12 @@ def create_command_registry_config(
 
     write_file_access_policy_data = writes_data.get('file_access_policy')
     if write_file_access_policy_data is not None:
-      write_file_access_policy = create_file_access_policy_config(write_file_access_policy_data)
+      write_file_access_policy = create_file_access_policy_config(
+          write_file_access_policy_data)
     else:
       write_file_access_policy = None
-    writes = CommandRegistryWriteConfig(file_access_policy=write_file_access_policy)
+    writes = CommandRegistryWriteConfig(
+        file_access_policy=write_file_access_policy)
   else:
     writes = None
 
@@ -130,7 +135,9 @@ async def load_command_registry_config(
     raise ValueError(f"Invalid JSON in '{path}': {e}") from e
 
   if not isinstance(raw_config, dict):
-    raise ValueError(f"Invalid configuration in '{path}': Expected a dictionary, but got {type(raw_config)}.")
+    raise ValueError(
+        f"Invalid configuration in '{path}': Expected a dictionary, but got {type(raw_config)}."
+    )
 
   return create_command_registry_config(raw_config)
   # ✨

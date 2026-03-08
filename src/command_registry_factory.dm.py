@@ -9,7 +9,7 @@ import sys
 from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
 from command_registry import CommandRegistry
-from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy  # , PermissiveFileAccessPolicy
+from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy
 from validation import ValidationManager
 from validate_command import ValidateCommand
 from read_file_command import ReadFileCommand
