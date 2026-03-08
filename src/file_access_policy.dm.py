@@ -20,11 +20,18 @@ class FileAccessScope(Enum):
   ALL = auto()
 
 
+class FileAccessHiddenFiles(Enum):
+  DENY = auto()
+  ALLOW = auto()
+
+
 @dataclasses.dataclass(frozen=True)
 class FileAccessPolicyConfig:
   regex: str | None = None
 
   scope: FileAccessScope = FileAccessScope.NONE
+
+  hidden: FileAccessHiddenFiles = FileAccessHiddenFiles.DENY
 
 
 def create_file_access_policy_config(
@@ -38,7 +45,11 @@ def create_file_access_policy_config(
 
 
 async def load_file_access_policy(path: pathlib.Path) -> FileAccessPolicyConfig:
-  """Loads the configuration from JSON file in `path`."""
+  """Loads the configuration from JSON file in `path`.
+
+  Errors from `create_file_access_policy` are augmented with the path and
+  re-thrown (to make error reports more useful).
+  """
   raise NotImplementedError()  # {{🍄 load config}}
 
 
@@ -78,9 +89,19 @@ class CompositeFileAccessPolicy(FileAccessPolicy):
     return all(policy.allow_access(path) for policy in self.policies)
 
 
-class PermissiveFileAccessPolicy(FileAccessPolicy):
+class _PermissiveFileAccessPolicy(FileAccessPolicy):
   """Allows all requests."""
-  raise NotImplementedError()  # {{🍄 permissive file access policy}}
+  raise NotImplementedError()  # {{🍄 permissive}}
+
+
+class _DenyAllFileAccessPolicy(FileAccessPolicy):
+  """Denies all requests."""
+  raise NotImplementedError()  # {{🍄 deny all}}
+
+
+class _DenyHiddenFiles(FileAccessPolicy):
+  """Denies requests for hidden files/directories."""
+  raise NotImplementedError()  # {{🍄 deny hidden}}
 
 
 def create_file_access_policy(
