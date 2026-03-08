@@ -69,7 +69,8 @@ class RegexFileAccessPolicy(FileAccessPolicy):
   def allow_access(self, path: str) -> bool:
     """Check if a path matches the regex pattern for access"""
     relative_path = os.path.relpath(path, os.getcwd())
-    return bool(self.pattern.fullmatch(relative_path))
+    return bool(self.pattern.fullmatch(relative_path)) or bool(
+        self.pattern.fullmatch(os.path.abspath(path)))
 
 
 class CurrentDirectoryFileAccessPolicy(FileAccessPolicy):
