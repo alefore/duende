@@ -144,10 +144,16 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
          DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
-    {{🦔 If `config.capability` includes the string `shell`, the registry
-         contains `ShellCommandCommand`.}}
+    {{🦔 If `config.command_registry.allow_shell', the registry contains
+         `ShellCommandCommand`.}}
+    {{🦔 If `config.command_registry.writes', the registry contains
+         `WriteFileCommand`.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
+    # TODO: Figure out how to honor
+    # config.command_registry.writes.file_access_policy. With the current
+    # implementation of WriteFileCommand, it isn't feasible.
+
     raise NotImplementedError()  # {{🍄 init command registry}}
 
 
