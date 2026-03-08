@@ -21,11 +21,18 @@ class FileAccessScope(Enum):
   ALL = auto()
 
 
+class FileAccessHiddenFiles(Enum):
+  DENY = auto()
+  ALLOW = auto()
+
+
 @dataclasses.dataclass(frozen=True)
 class FileAccessPolicyConfig:
   regex: str | None = None
 
   scope: FileAccessScope = FileAccessScope.NONE
+
+  hidden: FileAccessHiddenFiles = FileAccessHiddenFiles.DENY
 
 
 def create_file_access_policy_config(
@@ -36,49 +43,59 @@ def create_file_access_policy_config(
   parse).
   """
   # ✨ create config
-  allowed_keys = {'regex', 'scope'}
-  for key in data:
-    if key not in allowed_keys:
-      raise ValueError(f"Unknown configuration key: {key}")
+  regex = None
+  scope = FileAccessScope.NONE
+  hidden = FileAccessHiddenFiles.DENY
 
-  regex = data.get('regex')
+  for key, value in data.items():
+    if key == "regex":
+      if not isinstance(value, (str, type(None))):
+        raise ValueError(f"Invalid type for regex: {type(value)}")
+      regex = value
+    elif key == "scope":
+      try:
+        scope = FileAccessScope[value.upper()]
+      except KeyError as e:
+        raise ValueError(f"Invalid FileAccessScope: {value}") from e
+    elif key == "hidden":
+      try:
+        hidden = FileAccessHiddenFiles[value.upper()]
+      except KeyError as e:
+        raise ValueError(f"Invalid FileAccessHiddenFiles: {value}") from e
+    else:
+      raise ValueError(f"Unknown key in config: {key}")
 
-  scope_str = data.get('scope')
-  if scope_str is None:
-    scope = FileAccessScope.NONE
-  else:
-    try:
-      scope = FileAccessScope[scope_str.upper()]
-    except KeyError as e:
-      raise ValueError(f"Invalid file access scope: {scope_str}") from e
-
-  return FileAccessPolicyConfig(regex=regex, scope=scope)
+  return FileAccessPolicyConfig(regex=regex, scope=scope, hidden=hidden)
   # ✨
 
 
 async def load_file_access_policy(path: pathlib.Path) -> FileAccessPolicyConfig:
-  """Loads the configuration from JSON file in `path`."""
+  """Loads the configuration from JSON file in `path`.
+
+  Errors from `create_file_access_policy` are augmented with the path and
+  re-thrown (to make error reports more useful).
+  """
   # ✨ load config
   try:
     async with aiofiles.open(path, mode="r") as f:
       config_content = await f.read()
   except FileNotFoundError:
-    raise ValueError(
-        f"File access policy configuration file not found at '{path}'.")
+    raise ValueError(f"Configuration file not found: '{path}'.")
 
   try:
     raw_config = json.loads(config_content)
   except json.JSONDecodeError as e:
-    raise ValueError(
-        f"Invalid JSON in file access policy configuration at '{path}': {e}"
-    ) from e
+    raise ValueError(f"Invalid JSON in '{path}': {e}") from e
 
   if not isinstance(raw_config, dict):
     raise ValueError(
-        f"Invalid configuration in file access policy at '{path}': Expected a dictionary."
+        f"Invalid configuration in '{path}': Expected a dictionary, but got {type(raw_config)}."
     )
 
-  return create_file_access_policy_config(raw_config)
+  try:
+    return create_file_access_policy_config(raw_config)
+  except ValueError as e:
+    raise ValueError(f"Failed to parse config at {path}") from e
   # ✨
 
 
@@ -119,12 +136,34 @@ class CompositeFileAccessPolicy(FileAccessPolicy):
     return all(policy.allow_access(path) for policy in self.policies)
 
 
-class PermissiveFileAccessPolicy(FileAccessPolicy):
+class _PermissiveFileAccessPolicy(FileAccessPolicy):
   """Allows all requests."""
 
-  # ✨ permissive file access policy
+  # ✨ permissive
   def allow_access(self, path: str) -> bool:
+    del path  # Unused.
     return True
+
+  # ✨
+
+
+class _DenyAllFileAccessPolicy(FileAccessPolicy):
+  """Denies all requests."""
+
+  # ✨ deny all
+  def allow_access(self, path: str) -> bool:
+    del path  # Unused.
+    return False
+
+  # ✨
+
+
+class _DenyHiddenFiles(FileAccessPolicy):
+  """Denies requests for hidden files/directories."""
+
+  # ✨ deny hidden
+  def allow_access(self, path: str) -> bool:
+    return not any(part.startswith(".") for part in pathlib.Path(path).parts)
 
   # ✨
 
@@ -134,19 +173,21 @@ def create_file_access_policy(
   # ✨ create policy
   policies: list[FileAccessPolicy] = []
 
-  class _DenyAllFileAccessPolicy(FileAccessPolicy):
+  if config.scope == FileAccessScope.NONE:
+    return _DenyAllFileAccessPolicy()
 
-    def allow_access(self, path: str) -> bool:
-      return False
+  if config.hidden == FileAccessHiddenFiles.DENY:
+    policies.append(_DenyHiddenFiles())
 
   match config.scope:
-    case FileAccessScope.NONE:
-      return _DenyAllFileAccessPolicy()
     case FileAccessScope.ALL:
-      policies.append(PermissiveFileAccessPolicy())
+      policies.append(_PermissiveFileAccessPolicy())
     case FileAccessScope.LOCAL:
       policies.append(CurrentDirectoryFileAccessPolicy())
     case _:
+      # This case should ideally not be reached if FileAccessScope.NONE is handled above.
+      # However, for robustness and to match the previous structure's error handling,
+      # keeping a similar catch-all for unknown scopes not explicitly handled.
       raise ValueError(f"Unknown file access scope: {config.scope}")
 
   # Apply regex on top of the base scope policy, if present.
