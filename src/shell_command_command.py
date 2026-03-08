@@ -1,7 +1,8 @@
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 import logging
 import asyncio
 from typing import Any
+
+from agent_command import REASON_VARIABLE, AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 
 
 class ShellCommandCommand(AgentCommand):
@@ -15,22 +16,31 @@ class ShellCommandCommand(AgentCommand):
         name="shell_command",
         description="Executes a shell command and returns its stdout, stderr, and exit status.",
         arguments=[
+            REASON_VARIABLE,
             Argument(
                 name=VariableName("command"),
                 arg_type=ArgumentContentType.STRING,
                 description="The shell command to execute.",
-                required=True)
+                required=True),
+            Argument(
+                name=VariableName("cwd"),
+                arg_type=ArgumentContentType.STRING,
+                description="An optional directory to change into before running this command.",
+                required=False)
         ])
 
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     command = inputs[VariableName("command")]
     logging.info(f"Executing shell command: {command}")
 
+    cwd = inputs.get(VariableName('cwd'))
+    assert cwd is None or isinstance(cwd, str)
     try:
       process = await asyncio.create_subprocess_shell(
           command,
           stdout=asyncio.subprocess.PIPE,
-          stderr=asyncio.subprocess.PIPE)
+          stderr=asyncio.subprocess.PIPE,
+          cwd=cwd)
 
       stdout, stderr = await process.communicate()
 
