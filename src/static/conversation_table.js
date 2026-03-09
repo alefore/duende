@@ -146,4 +146,8 @@ function sortAndRenderConversationsTable(conversationsById) {
 }
 
 // Export the new main rendering function
-export {sortAndRenderConversationsTable as renderConversationsTable};
+export {
+  sortAndRenderConversationsTable as renderConversationsTable,
+  ConversationTableSorter,
+  sortConversations
+};
