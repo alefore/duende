@@ -8,6 +8,18 @@ from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, Messa
 from message_queue import AgentMessageQueue
 from swarm_types import AgentName
 
+_TARGET_AGENT_ARGUMENT = Argument(
+    name=VariableName("target_agent"),
+    arg_type=ArgumentContentType.STRING,
+    description="The name of the agent that should consume the message.",
+    required=True)
+
+_CONTENT_ARGUMENT = Argument(
+    name=VariableName("content"),
+    arg_type=ArgumentContentType.STRING,
+    description="The content to send to the user.",
+    required=True)
+
 
 class DisplayInfoCommand(AgentCommand):
 
@@ -26,19 +38,11 @@ class DisplayInfoCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  @classmethod
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="display_info",
         description="Displays information to the user.",
-        arguments=[
-            REASON_VARIABLE,
-            Argument(
-                name=VariableName("content"),
-                arg_type=ArgumentContentType.STRING,
-                description="The content to send to the user.",
-                required=True),
-        ])
+        arguments=[REASON_VARIABLE, _CONTENT_ARGUMENT])
 
   async def run(self, inputs: VariableMap) -> CommandOutput:
     """Call write_new_message with a new message.
@@ -85,30 +89,17 @@ class PublishMessageCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  @classmethod
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="publish_message",
         description="Publishes a new message into the message bus. "
         "The message will be consumed by an agent.",
-        arguments=[
-            REASON_VARIABLE,
-            Argument(
-                name=VariableName("content"),
-                arg_type=ArgumentContentType.STRING,
-                description="The content of the message to publish.",
-                required=True),
-            Argument(
-                name=VariableName("target_agent"),
-                arg_type=ArgumentContentType.STRING,
-                description="The name of the agent that should consume the message."
-            )
-        ])
+        arguments=[REASON_VARIABLE, _TARGET_AGENT_ARGUMENT, _CONTENT_ARGUMENT])
 
   async def run(self, inputs: VariableMap) -> CommandOutput:
     """Call write_new_message with a new message.
 
-    {{🦔 The message's recipient is always set.}}
+    {{🦔 The message's target_agent is always set.}}
     """
     # ✨ publish message run
     content_val = inputs[VariableName("content")]
@@ -157,7 +148,6 @@ class AskUserCommand(AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  @classmethod
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="ask_user",
@@ -205,5 +195,60 @@ class AskUserCommand(AgentCommand):
         output=response_content,
         errors="",
         summary=f"Asked user: {question[:50]}... Received response: {response_content[:50]}...",
+    )
+    # ✨
+
+
+class DelegateRequestCommand(AgentCommand):
+
+  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+               telegram_reply_to_id: TelegramMessageId, source_agent: AgentName,
+               user_request: MessageContent) -> None:
+    # ✨ delegate request store private fields
+    self._message_bus = message_bus
+    self._telegram_chat_id = telegram_chat_id
+    self._telegram_reply_to_id = telegram_reply_to_id
+    self._source_agent = source_agent
+    self._user_request = user_request
+    # ✨
+
+  def Name(self) -> str:
+    return self.Syntax().name
+
+  def Syntax(self) -> CommandSyntax:
+    return CommandSyntax(
+        name="delegate_request",
+        description="Forwards the user request to another agent and terminates the session.",
+        arguments=[REASON_VARIABLE, _TARGET_AGENT_ARGUMENT])
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    """Call write_new_message with a new message with self._user_request.
+
+    {{🦔 The message's `target_agent` is always set.}}
+    {{🦔 The returned value has `task_done = True`.}}
+    """
+    # ✨ delegate request run
+    target_agent_val = inputs[VariableName("target_agent")]
+    target_agent = AgentName(str(target_agent_val))
+
+    message = BusMessage(
+        message_id=MessageId(0),  # Will be overwritten by the message bus.
+        source_agent=self._source_agent,
+        target_agent=target_agent,
+        conversation_id=None,  # This command is for delegating requests between agents.
+        telegram_chat_id=self._telegram_chat_id,
+        telegram_message_id=None,  # This is an internal message, not a Telegram message yet.
+        telegram_reply_to_id=self._telegram_reply_to_id,
+        content=self._user_request,
+        queued_at=datetime.datetime.now(),
+        processed_at=None,
+    )
+    written_message = await self._message_bus.write_new_message(message)
+    return CommandOutput(
+        command_name=self.Name(),
+        output=f"User request delegated to {target_agent} with ID: {written_message.message_id}",
+        errors="",
+        summary=f"Delegated user request to {target_agent}.",
+        task_done=True,
     )
     # ✨
