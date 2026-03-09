@@ -140,20 +140,20 @@ table tr:nth-child(even) {
   background-color: #e6e6e6; /* Slightly darker gray for even rows */
 }
 
-/* Rounded borders for the first and last cells in a row to match the table's rounded corners */
-table tr:first-child td:first-child {
+/* Rounded borders for the first and last cells in the thead and tbody to match the table's overall rounded corners */
+table thead th:first-child {
     border-top-left-radius: 8px;
 }
 
-table tr:first-child td:last-child {
+table thead th:last-child {
     border-top-right-radius: 8px;
 }
 
-table tr:last-child td:first-child {
+table tbody tr:last-child td:first-child {
     border-bottom-left-radius: 8px;
 }
 
-table tr:last-child td:last-child {
+table tbody tr:last-child td:last-child {
     border-bottom-right-radius: 8px;
 }
 
@@ -192,7 +192,6 @@ table tr:last-child td:last-child {
     color: #f0f0f0;
     border: 1px solid #555;
   }
-
   #confirmation_input.disabled {
     background-color: #1a1a1a;
     border: 1px dashed #333;
@@ -209,21 +208,21 @@ table tr:last-child td:last-child {
     background-color: #363636; /* Even darker shade for even rows in dark mode */
   }
 
-  /* Dark mode rounded borders for the first and last cells in a row to match the table's rounded corners */
+  /* Dark mode rounded borders for the first and last cells in the thead and tbody to match the table's overall rounded corners */
   @media (prefers-color-scheme: dark) {
-    table tr:first-child td:first-child {
+    table thead th:first-child {
         border-top-left-radius: 8px;
     }
 
-    table tr:first-child td:last-child {
+    table thead th:last-child {
         border-top-right-radius: 8px;
     }
 
-    table tr:last-child td:first-child {
+    table tbody tr:last-child td:first-child {
         border-bottom-left-radius: 8px;
     }
 
-    table tr:last-child td:last-child {
+    table tbody tr:last-child td:last-child {
         border-bottom-right-radius: 8px;
     }
   }
