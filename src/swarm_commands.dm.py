@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
@@ -104,9 +105,15 @@ class AskUserCommand(AgentCommand):
     raise NotImplementedError()  # {{🍄 ask user run}}
 
 
+@dataclasses.dataclass(frozen=True)
+class DelegateRequestConfig:
+  allow_list: frozenset[AgentName]
+
+
 class DelegateRequestCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+  def __init__(self, config: DelegateRequestConfig, message_bus: MessageBus,
+               telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId, source_agent: AgentName,
                user_request: MessageContent) -> None:
     raise NotImplementedError()  # {{🍄 delegate request store private fields}}
@@ -123,6 +130,8 @@ class DelegateRequestCommand(AgentCommand):
   async def run(self, inputs: VariableMap) -> CommandOutput:
     """Call write_new_message with a new message with self._user_request.
 
+    {{🦔 Returns an error `CommandOutput` if the target agent is missing from
+         `config.allow_list`.}}
     {{🦔 The message's `target_agent` is always set.}}
     {{🦔 The returned value has `task_done = True`.}}
     """
