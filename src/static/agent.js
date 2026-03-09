@@ -1,4 +1,5 @@
 import {ConversationData, shownConversationId} from './conversation.js';
+import {renderConversationsTable} from './conversation_table.js';
 
 let currentSessionKey = null;
 const conversationsById = {};
