@@ -20,6 +20,7 @@ from search_file_command import SearchFileCommand
 from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
+from swarm_types import AgentName
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskInformation
@@ -56,12 +57,21 @@ class CommandRegistryWriteConfig:
 
 
 @dataclasses.dataclass(frozen=True)
+class DelegateRequestConfig:
+  allow_list: frozenset[AgentName]
+
+
+@dataclasses.dataclass(frozen=True)
 class CommandRegistryConfig:
   # If `None`, no file access is given.
   file_access_policy: FileAccessPolicyConfig | None
 
   # If present, signifies that write access is allowed.
   writes: CommandRegistryWriteConfig | None = None
+
+  # If present and its `allow_list` is non-empty, signifies that
+  # `delegate_request` should be enabled.
+  delegate_request: DelegateRequestConfig | None = None
 
   allow_shell: bool = False
 
@@ -73,23 +83,25 @@ def create_command_registry_config(
   Raises ValueError exception if data contains unexpected keys (or if anything
   can't be parsed successfully)."""
   # ✨ create config
-  allowed_keys = {'file_access_policy', 'allow_shell', 'writes'}
+  allowed_keys = {
+      'file_access_policy', 'allow_shell', 'writes', 'delegate_request'
+  }
   for key in data:
     if key not in allowed_keys:
       raise ValueError(f"Unknown configuration key: {key}")
 
+  file_access_policy = None
   file_access_policy_data = data.get('file_access_policy')
   if file_access_policy_data is not None:
     file_access_policy = create_file_access_policy_config(
         file_access_policy_data)
-  else:
-    file_access_policy = None
 
   allow_shell = data.get('allow_shell', False)
   if not isinstance(allow_shell, bool):
     raise ValueError(
         f"Expected boolean for 'allow_shell', but got {type(allow_shell)}")
 
+  writes = None
   writes_data = data.get('writes')
   if writes_data is not None:
     if not isinstance(writes_data, dict):
@@ -101,21 +113,48 @@ def create_command_registry_config(
       if key not in allowed_writes_keys:
         raise ValueError(f"Unknown configuration key in 'writes': {key}")
 
+    write_file_access_policy = None
     write_file_access_policy_data = writes_data.get('file_access_policy')
     if write_file_access_policy_data is not None:
       write_file_access_policy = create_file_access_policy_config(
           write_file_access_policy_data)
-    else:
-      write_file_access_policy = None
     writes = CommandRegistryWriteConfig(
         file_access_policy=write_file_access_policy)
-  else:
-    writes = None
+
+  delegate_request = None
+  delegate_request_data = data.get('delegate_request')
+  if delegate_request_data is not None:
+    if not isinstance(delegate_request_data, dict):
+      raise ValueError(
+          f"Expected dictionary for 'delegate_request', but got {type(delegate_request_data)}"
+      )
+
+    allowed_delegate_request_keys = {'allow_list'}
+    for key in delegate_request_data:
+      if key not in allowed_delegate_request_keys:
+        raise ValueError(
+            f"Unknown configuration key in 'delegate_request': {key}")
+
+    allow_list = []
+    allow_list_data = delegate_request_data.get('allow_list')
+    if allow_list_data is not None:
+      if not isinstance(allow_list_data, list):
+        raise ValueError(
+            f"Expected list for 'delegate_request.allow_list', but got {type(allow_list_data)}"
+        )
+      for item in allow_list_data:
+        if not isinstance(item, str):
+          raise ValueError(
+              f"Expected string in 'delegate_request.allow_list', but got {type(item)}"
+          )
+      allow_list = allow_list_data
+    delegate_request = DelegateRequestConfig(allow_list=frozenset(allow_list))
 
   return CommandRegistryConfig(
       file_access_policy=file_access_policy,
       allow_shell=allow_shell,
-      writes=writes)
+      writes=writes,
+      delegate_request=delegate_request)
   # ✨
 
 
