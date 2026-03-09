@@ -177,6 +177,18 @@ function updatePageTitle() {
   }
 }
 
+function hideConversationsTableView() {
+  $('#conversations_table_view').hide();
+  $('#create_workflow_form_container').hide();
+  $('#conversation_view').show();
+}
+
+function showConversationsTableView() {
+  $('#conversation_view').hide();
+  $('#create_workflow_form_container').hide();
+  $('#conversations_table_view').show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const socket = io();
   socket.on('update', (data) => handleUpdate(socket, data));
@@ -230,6 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const id = parseInt($(this).val());
     if (conversationsById[id]) conversationsById[id].show();
     updatePageTitle();
+    hideConversationsTableView();
   });
 
   function updateConfirmationButtonVisibility() {

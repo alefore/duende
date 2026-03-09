@@ -23,6 +23,7 @@
         <button id="confirm_button">✅</button>
       </div>
       <button id="new_workflow_button" onclick="showCreateWorkflowForm()">New</button>
+      <button id="conversations_table_view_button" onclick="showConversationsTableView()">Conversations</button>
     </div>
     <h1>Agent Server Interface</h1>
 
@@ -43,6 +44,10 @@
         <button type="submit">Create Workflow</button>
         <button type="button" onclick="cancelCreateWorkflow()">Cancel</button>
       </form>
+    </div>
+    <div id="conversations_table_view" style="display: none;">
+      <h2>All Conversations</h2>
+      <p>Loading…</p>
     </div>
   </body>
 </html>
