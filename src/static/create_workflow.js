@@ -1,14 +1,12 @@
 const socket = io();
 
 function showCreateWorkflowForm() {
-  $('#conversation_view').hide();
-  $('#conversations_table_view').hide();
+  $('#content_panes').children().hide();
   $('#create_workflow_form_container').show();
 }
 
 function resetAndHideCreateWorkflowForm() {
-  $('#create_workflow_form_container').hide();
-  $('#conversation_view').hide();
+  $('#content_panes').children().hide();
   $('#conversations_table_view').show();
   $('#original_task_prompt_content').val('');  // Clear the textarea content.
 }
