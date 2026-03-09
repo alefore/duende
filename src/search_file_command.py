@@ -11,6 +11,21 @@ from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
 
+def _collect_errors(errors: list[str]) -> str:
+  """Returns a string with the first 10 errors.
+
+  {{🦔 If more than 10 errors are found, includes a string like:
+       "(348 errors omitted)".}}
+  """
+  # ✨ collect errors
+  output_errors = errors[:10]
+  if len(errors) > 10:
+    omitted_errors_count = len(errors) - 10
+    output_errors.append(f"({omitted_errors_count} errors omitted)")
+  return "\n".join(output_errors)
+  # ✨
+
+
 class SearchFileCommand(AgentCommand):
 
   def __init__(self, file_access_policy: FileAccessPolicy):
@@ -79,7 +94,7 @@ class SearchFileCommand(AgentCommand):
 
     files_data: list[str] = []
 
-    match_limit = 200
+    match_limit = 100
     async for file_path_str in paths_to_search:
       file_path = pathlib.Path(file_path_str)
 
@@ -122,13 +137,11 @@ class SearchFileCommand(AgentCommand):
       output_str = "\n".join(output_lines +
                              [f"No matches found for '{search_term}'."])
 
-    errors_str = "\n".join(errors)
-
     summary = f"Searched {global_file_count} files, found {global_match_count} matches."
     if errors:
       summary += f" Errors: {len(errors)}"
     return CommandOutput(
         output=output_str,
-        errors=errors_str,
+        errors=_collect_errors(errors),
         summary=summary,
         command_name=self.Syntax().name)
