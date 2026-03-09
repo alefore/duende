@@ -22,7 +22,7 @@ import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
 from shell_command_command import ShellCommandCommand
-from swarm_commands import AskUserCommand, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
+from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
