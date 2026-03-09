@@ -4,7 +4,7 @@ import datetime
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
 from conversation import ConversationId
 from file_access_policy import FileAccessPolicy
-from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageId, TelegramChatId, TelegramMessageId
+from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageContent, MessageId, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
 from swarm_types import AgentName
 
@@ -46,25 +46,26 @@ class DisplayInfoCommand(AgentCommand):
     {{🦔 target_agent is set to the value in `END_USER_AGENT`.}}
     """
     # ✨ display info run
+    content_val = inputs[VariableName("content")]
+    content = str(content_val)
     message = BusMessage(
-        id=MessageId(0),  # Will be overwritten by write_new_message
+        message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
-        target_agent=AgentName(END_USER_AGENT),
+        target_agent=END_USER_AGENT,
         conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
-        telegram_message_id=None,
+        telegram_message_id=None, # This is an outgoing message from agent to user, no Telegram ID yet
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=str(inputs[VariableName("content")]),
+        content=MessageContent(content),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )
-    await self._message_bus.write_new_message(message)
+    written_message = await self._message_bus.write_new_message(message)
     return CommandOutput(
         command_name=self.Name(),
-        output="Message sent.",
+        output=f"Message sent with ID: {written_message.message_id}",
         errors="",
-        summary="",
-        task_done=False,
+        summary=f"Displayed info to user: {content[:50]}...",
     )
     # ✨
 
@@ -110,25 +111,29 @@ class PublishMessageCommand(AgentCommand):
     {{🦔 The message's recipient is always set.}}
     """
     # ✨ publish message run
+    content_val = inputs[VariableName("content")]
+    content = str(content_val)
+    target_agent_val = inputs[VariableName("target_agent")]
+    target_agent = AgentName(str(target_agent_val))
+
     message = BusMessage(
-        id=MessageId(0),  # Will be overwritten by write_new_message
+        message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
-        target_agent=AgentName(str(inputs[VariableName("target_agent")])),
-        conversation_id=None,
+        target_agent=target_agent,
+        conversation_id=None, # This command is for publishing messages between agents, not for direct user conversations.
         telegram_chat_id=self._telegram_chat_id,
-        telegram_message_id=None,
+        telegram_message_id=None, # This is an internal message, not a Telegram message yet.
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=str(inputs[VariableName("content")]),
+        content=MessageContent(content),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )
-    await self._message_bus.write_new_message(message)
+    written_message = await self._message_bus.write_new_message(message)
     return CommandOutput(
         command_name=self.Name(),
-        output=f"Message published to {inputs[VariableName('target_agent')]}.",
+        output=f"Message published to {target_agent} with ID: {written_message.message_id}",
         errors="",
-        summary="",
-        task_done=False,
+        summary=f"Published message to {target_agent}: {content[:50]}...",
     )
     # ✨
 
@@ -173,26 +178,32 @@ class AskUserCommand(AgentCommand):
          read from the queue.}}
     """
     # ✨ ask user run
+    question_val = inputs[VariableName("question")]
+    question = str(question_val)
+
+    # Send the question to the user
     message = BusMessage(
-        id=MessageId(0),  # Will be overwritten by write_new_message
+        message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
-        target_agent=AgentName(END_USER_AGENT),
+        target_agent=END_USER_AGENT,
         conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
-        telegram_message_id=None,
+        telegram_message_id=None, # This is an outgoing message from agent to user, no Telegram ID yet
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=str(inputs[VariableName("question")]),
+        content=MessageContent(question),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )
     await self._message_bus.write_new_message(message)
-    user_messages = await self._queue.read()
-    output_content = "\n".join(user_messages)
+
+    # Wait for the user's response
+    user_responses = await self._queue.read()
+    response_content = "\n".join(user_responses)
+
     return CommandOutput(
         command_name=self.Name(),
-        output=output_content,
+        output=response_content,
         errors="",
-        summary="",
-        task_done=False,
+        summary=f"Asked user: {question[:50]}... Received response: {response_content[:50]}...",
     )
     # ✨

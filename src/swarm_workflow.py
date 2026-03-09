@@ -93,7 +93,7 @@ class SwarmWorkflow(AgentWorkflow):
       no longer exists.
     """
     # ✨ process message
-    await self._message_bus.mark_as_processed(message.id)
+    await self._message_bus.mark_as_processed(message.message_id)
 
     if message.source_agent != message_bus.END_USER_AGENT:
       # If the message is from another agent, always start a new agent loop.
@@ -117,12 +117,12 @@ class SwarmWorkflow(AgentWorkflow):
         # If the replied-to message has a conversation_id and that session exists,
         # add the new message content to the session's message queue.
         session = self._sessions[replied_to_bus_message.conversation_id]
-        await session.message_queue.push(message.content)  # Corrected to push
+        await session.message_queue.push(message.content)
       else:
         # If the session no longer exists or the replied-to message was not found,
         # inform the user that the session no longer exists.
         outgoing_message = BusMessage(
-            id=message_bus.MessageId(
+            message_id=message_bus.MessageId(
                 0),  # This will be overwritten by write_new_message
             source_agent=message
             .target_agent,  # The agent that received the original message
@@ -133,7 +133,7 @@ class SwarmWorkflow(AgentWorkflow):
             telegram_message_id=None,  # This message is not yet sent to Telegram
             telegram_reply_to_id=message
             .telegram_message_id,  # Reply to the user's current message
-            content="This conversation session no longer exists. Please start a new conversation.",
+            content=message_bus.MessageContent("This conversation session no longer exists. Please start a new conversation."),
             queued_at=datetime.datetime.now(datetime.timezone.utc),
             processed_at=None,
         )
@@ -152,8 +152,7 @@ class SwarmWorkflow(AgentWorkflow):
     command_registry = CommandRegistry()
     conversation = self._options.conversation_factory.New(
         f"{message.target_agent}: {message.content[:50]}", command_registry)
-    self._init_command_registry(conversation.GetId(), message.telegram_chat_id,
-                                telegram_id, message.target_agent,
+    self._init_command_registry(conversation.GetId(), telegram_id, message,
                                 self._config.agents[message.target_agent],
                                 agent_message_queue, command_registry)
     confirmation_manager = SwarmConfirmationManager(
@@ -176,7 +175,7 @@ class SwarmWorkflow(AgentWorkflow):
     )
     self._sessions[conversation.GetId()] = session
 
-    await self._message_bus.set_conversation_id(message.id,
+    await self._message_bus.set_conversation_id(message.message_id,
                                                 conversation.GetId())
 
     async def _run_agent_loop_task(loop: BaseAgentLoop) -> None:
@@ -208,9 +207,8 @@ class SwarmWorkflow(AgentWorkflow):
     # ✨
 
   def _init_command_registry(self, conversation_id: ConversationId,
-                             telegram_chat_id: TelegramChatId,
                              telegram_reply_to_id: TelegramMessageId,
-                             agent_name: AgentName, config: AgentIdentityConfig,
+                             message: BusMessage, config: AgentIdentityConfig,
                              queue: AgentMessageQueue,
                              command_registry: CommandRegistry) -> None:
     """Initializes a valid registry for a specific agent identity.
@@ -238,14 +236,16 @@ class SwarmWorkflow(AgentWorkflow):
     command_registry.Register(ListFilesCommand(file_access_policy))
     command_registry.Register(SearchFileCommand(file_access_policy))
     command_registry.Register(
-        DisplayInfoCommand(self._message_bus, conversation_id, telegram_chat_id,
-                           telegram_reply_to_id, agent_name))
+        DisplayInfoCommand(self._message_bus, conversation_id,
+                           message.telegram_chat_id, telegram_reply_to_id,
+                           message.target_agent))
     command_registry.Register(
-        PublishMessageCommand(self._message_bus, telegram_chat_id,
-                              telegram_reply_to_id, agent_name))
+        PublishMessageCommand(self._message_bus, message.telegram_chat_id,
+                              telegram_reply_to_id, message.target_agent))
     command_registry.Register(
         AskUserCommand(self._message_bus, queue, conversation_id,
-                       telegram_chat_id, telegram_reply_to_id, agent_name))
+                       message.telegram_chat_id, telegram_reply_to_id,
+                       message.target_agent))
 
     if config.command_registry.allow_shell:
       command_registry.Register(ShellCommandCommand())

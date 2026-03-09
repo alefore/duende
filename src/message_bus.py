@@ -11,26 +11,31 @@ from typing import Callable, NewType, ParamSpec, TypeVar, cast
 from conversation import ConversationId
 from swarm_types import AgentName
 
-MessageId = NewType('MessageId', int)  # Unique ID across the bus.
-TelegramChatId = NewType('TelegramChatId', int)
-TelegramMessageId = NewType('TelegramMessageId', int)
+# MessageId is meant for the IDs of messages in the SQL database. It is NOT
+# meant for the IDs of Telegram messages (use TelegramMessageId for those).
+MessageId = NewType("MessageId", int)  # Unique ID across the bus.
+TelegramChatId = NewType("TelegramChatId", int)
+TelegramMessageId = NewType("TelegramMessageId", int)
+
+# Wrapper for the `content` fields in the message bus.
+MessageContent = NewType("MessageContent", str)
 
 # Fake agent name reserved to represent the end user.
-END_USER_AGENT = "duende-internal:end-user"
+END_USER_AGENT = AgentName("duende-internal:end-user")
 
 
 @dataclasses.dataclass(frozen=True)
 class Message:
   # The fields map directly to the rows of the `message_bus` SQL table.
   # ✨ message fields
-  id: MessageId
+  message_id: MessageId
   source_agent: AgentName
   target_agent: AgentName
   conversation_id: ConversationId | None
   telegram_chat_id: TelegramChatId
   telegram_message_id: TelegramMessageId | None
   telegram_reply_to_id: TelegramMessageId | None
-  content: str
+  content: MessageContent
   queued_at: datetime.datetime
   processed_at: datetime.datetime | None
   # ✨
@@ -153,14 +158,14 @@ class MessageBus:
       for row in new_messages_rows:
         messages.append(
             Message(
-                id=MessageId(row['message_id']),
+                message_id=MessageId(row['message_id']),
                 source_agent=AgentName(row['source_agent']),
                 target_agent=AgentName(row['target_agent']),
                 conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
                 telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
                 telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
                 telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
-                content=row['content'],
+                content=MessageContent(row['content']),
                 queued_at=datetime.datetime.fromisoformat(row['queued_at']),
                 processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
             ))
@@ -206,14 +211,14 @@ class MessageBus:
       for row in new_messages_rows:
         messages.append(
             Message(
-                id=MessageId(row['message_id']),
+                message_id=MessageId(row['message_id']),
                 source_agent=AgentName(row['source_agent']),
                 target_agent=AgentName(row['target_agent']),
                 conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
                 telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
                 telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
                 telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
-                content=row['content'],
+                content=MessageContent(row['content']),
                 queued_at=datetime.datetime.fromisoformat(row['queued_at']),
                 processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
             ))
@@ -254,7 +259,7 @@ class MessageBus:
     resulting message returned.
     """
     # ✨ write new message
-    def _insert_message_and_commit(msg: Message) -> int:
+    def _insert_message_and_commit(msg: Message) -> Message:
       """Synchronous database operation to insert a new message."""
       if self._connection is None:
         raise ValueError("Database connection is not open.")
@@ -303,14 +308,12 @@ class MessageBus:
         raise RuntimeError(
             "Failed to retrieve the ID of the newly inserted message.")
       logging.info('Wrote message with ID: %s', new_id)
-      return new_id
+      return dataclasses.replace(msg, message_id=MessageId(new_id))
 
-    new_message_id = await self._run_in_thread(
+    return await self._run_in_thread(
         _insert_message_and_commit,
         message,
     )
-
-    return dataclasses.replace(message, id=MessageId(new_message_id))
     # ✨
 
   async def mark_as_processed(self, message_id: MessageId) -> None:
@@ -406,14 +409,14 @@ class MessageBus:
         raise ValueError(f"Message with ID {msg_id} not found.")
 
       message = Message(
-          id=MessageId(row['message_id']),
+          message_id=MessageId(row['message_id']),
           source_agent=AgentName(row['source_agent']),
           target_agent=AgentName(row['target_agent']),
           conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
           telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
           telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
           telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
-          content=row['content'],
+          content=MessageContent(row['content']),
           queued_at=datetime.datetime.fromisoformat(row['queued_at']),
           processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
       )
@@ -464,7 +467,7 @@ class MessageBus:
         )
 
       message = Message(
-          id=MessageId(row['message_id']),
+          message_id=MessageId(row['message_id']),
           source_agent=AgentName(row['source_agent']),
           target_agent=AgentName(row['target_agent']),
           conversation_id=ConversationId(row['conversation_id'])
@@ -477,13 +480,13 @@ class MessageBus:
           telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id'])
           if row['telegram_reply_to_id']
           else None,
-          content=row['content'],
+          content=MessageContent(row['content']),
           queued_at=datetime.datetime.fromisoformat(row['queued_at']),
           processed_at=datetime.datetime.fromisoformat(row['processed_at'])
           if row['processed_at']
           else None,
       )
-      logging.info('Found message with ID: %s', message.id)
+      logging.info('Found message with ID: %s', message.message_id)
       return message
 
     return await self._run_in_thread(
