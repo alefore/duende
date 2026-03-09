@@ -20,6 +20,8 @@ class ConversationTableSorter {
   }
 }
 
+const conversationTableSorter = new ConversationTableSorter();
+
 function renderConversationsTable(conversationsById) {
   const $div = $('#conversations_table_view');
   $div.empty();
@@ -31,11 +33,27 @@ function renderConversationsTable(conversationsById) {
   // Create table header
   const $tableHead = $('<thead>');
   const $headerRow = $('<tr>');
-  $headerRow.append($('<th>').text('Title'));
-  $headerRow.append($('<th>').text('Messages'));
-  $headerRow.append($('<th>').text('State'));
-  $headerRow.append($('<th>').text('Last Message'));
-  $headerRow.append($('<th>').text('Last Update'));
+
+  const headers = [
+    {text: 'Title', columnId: 'title'},
+    {text: 'Messages', columnId: 'messages'},
+    {text: 'State', columnId: 'state'},
+    {text: 'Last Message', columnId: 'last_message'},
+    {text: 'Last Update', columnId: 'last_update'}
+  ];
+
+  headers.forEach(header => {
+    const $th =
+        $('<th>').text(header.text).attr('data-sort-column', header.columnId);
+    $th.on('click', function() {
+      const columnId = $(this).data('sort-sort-column');
+      conversationTableSorter.updateSortState(columnId);
+      // TODO: Call sorting function here to re-render/reorder table
+      console.log('Sort State:', conversationTableSorter.getSortState());
+    });
+    $headerRow.append($th);
+  });
+
   $tableHead.append($headerRow);
   $table.prepend($tableHead);
 
