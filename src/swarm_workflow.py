@@ -23,7 +23,7 @@ import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
 from shell_command_command import ShellCommandCommand
-from swarm_commands import AskUserCommand, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
+from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
@@ -133,7 +133,9 @@ class SwarmWorkflow(AgentWorkflow):
             telegram_message_id=None,  # This message is not yet sent to Telegram
             telegram_reply_to_id=message
             .telegram_message_id,  # Reply to the user's current message
-            content=message_bus.MessageContent("This conversation session no longer exists. Please start a new conversation."),
+            content=message_bus.MessageContent(
+                "This conversation session no longer exists. Please start a new conversation."
+            ),
             queued_at=datetime.datetime.now(datetime.timezone.utc),
             processed_at=None,
         )
@@ -260,9 +262,14 @@ class SwarmWorkflow(AgentWorkflow):
     if (config.command_registry.delegate_request and
         config.command_registry.delegate_request.allow_list):
       command_registry.Register(
-          DelegateRequestCommand(self._message_bus, message.telegram_chat_id,
-                                 telegram_reply_to_id, message.target_agent,
-                                 message.content))
+          DelegateRequestCommand(
+              config.command_registry.delegate_request,
+              self._message_bus,
+              message.telegram_chat_id,
+              telegram_reply_to_id,
+              message.target_agent,
+              message.content,
+          ))
     # ✨
 
 
