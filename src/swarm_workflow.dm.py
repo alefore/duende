@@ -22,7 +22,7 @@ import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
 from shell_command_command import ShellCommandCommand
-from swarm_commands import AskUserCommand, DisplayInfoCommand, PublishMessageCommand
+from swarm_commands import AskUserCommand, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
@@ -144,6 +144,8 @@ class SwarmWorkflow(AgentWorkflow):
          DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
     {{🦔 If `config.command_registry.allow_shell', the registry contains
          `ShellCommandCommand`.}}
+    {{🦔 If `config.command_registry.delegate_request.allow_list' exists and
+         is non-empty, the registry contains DelegateRequestCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
