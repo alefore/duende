@@ -5,7 +5,7 @@ import difflib
 import aiofiles
 import asyncio
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValue, VariableValueStr
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableName, VariableValue, VariableValueStr, VariableMap
 from validation import ValidationManager
 from selection_manager import SelectionManager
 
@@ -94,6 +94,9 @@ class WriteFileCommand(AgentCommand):
     new_content = inputs[_content_variable]
     logging.info(f"Write: {path}")
 
+    if not new_content.endswith("\n"):
+      new_content += "\n"
+
     selection_invalidated = False
     current_selection = self.selection_manager.get_selection()
     if current_selection and current_selection.path == path:
@@ -130,9 +133,9 @@ class WriteFileCommand(AgentCommand):
         output_messages.append("```")
       elif len(diff) >= 25:
         added = sum(1 for line in diff
-                    if line.startswith('+') and not line.startswith('++'))
+                    if line.startswith("+") and not line.startswith("++"))
         removed = sum(1 for line in diff
-                      if line.startswith('-') and not line.startswith('--'))
+                      if line.startswith("-") and not line.startswith("--"))
         output_messages.append(
             f"Diff is too large. Summary: {added} lines added, {removed} lines removed."
         )
