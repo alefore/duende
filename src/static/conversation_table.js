@@ -22,7 +22,58 @@ class ConversationTableSorter {
 
 const conversationTableSorter = new ConversationTableSorter();
 
-function renderConversationsTable(conversationsById) {
+function sortConversations(conversationsById, sortState) {
+  const conversationsArray = Object.values(conversationsById);
+  const {column, direction} = sortState;
+
+  if (!column) {
+    return conversationsArray;
+  }
+
+  conversationsArray.sort((a, b) => {
+    let valA, valB;
+
+    switch (column) {
+      case 'title':
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+        break;
+      case 'messages':
+        valA = a.countMessages();
+        valB = b.countMessages();
+        break;
+      case 'state':
+        valA = a.state.toLowerCase();
+        valB = b.state.toLowerCase();
+        break;
+      case 'last_message':
+        valA = a.getLastMessageOverview().toLowerCase();
+        valB = b.getLastMessageOverview().toLowerCase();
+        break;
+      case 'last_update':
+        valA = a.lastStateChangeTime;
+        valB = b.lastStateChangeTime;
+        break;
+      default:
+        return 0;
+    }
+
+    if (valA < valB) {
+      return direction === 'asc' ? -1 : 1;
+    } else if (valA > valB) {
+      return direction === 'asc' ? 1 : -1;
+    } else {
+      return 0;
+    }
+  });
+
+  return conversationsArray;
+}
+
+function sortAndRenderConversationsTable(conversationsById) {
+  const sortedConversations = sortConversations(
+      conversationsById, conversationTableSorter.getSortState());
+
   const $div = $('#conversations_table_view');
   $div.empty();
 
@@ -43,13 +94,10 @@ function renderConversationsTable(conversationsById) {
   ];
 
   headers.forEach(header => {
-    const $th =
-        $('<th>').text(header.text).attr('data-sort-column', header.columnId);
-    $th.on('click', function() {
-      const columnId = $(this).data('sort-sort-column');
-      conversationTableSorter.updateSortState(columnId);
-      // TODO: Call sorting function here to re-render/reorder table
-      console.log('Sort State:', conversationTableSorter.getSortState());
+    const $th = $('<th>').text(header.text);
+    $th.on('click', () => {
+      conversationTableSorter.updateSortState(header.columnId);
+      sortAndRenderConversationsTable(conversationsById);
     });
     $headerRow.append($th);
   });
@@ -59,8 +107,7 @@ function renderConversationsTable(conversationsById) {
 
   $div.append($table);
 
-  for (const id in conversationsById) {
-    const conversation = conversationsById[id];
+  sortedConversations.forEach(conversation => {
     const $row = $('<tr>');
 
     // Title
@@ -89,5 +136,8 @@ function renderConversationsTable(conversationsById) {
       $('#conversation_view').show();
     });
     $tableBody.append($row);
-  }
+  });
 }
+
+// Export the new main rendering function
+export {sortAndRenderConversationsTable as renderConversationsTable};
