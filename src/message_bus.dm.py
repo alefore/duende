@@ -12,12 +12,15 @@ from swarm_types import AgentName
 
 # MessageId is meant for the IDs of messages in the SQL database. It is NOT
 # meant for the IDs of Telegram messages (use TelegramMessageId for those).
-MessageId = NewType('MessageId', int)  # Unique ID across the bus.
-TelegramChatId = NewType('TelegramChatId', int)
-TelegramMessageId = NewType('TelegramMessageId', int)
+MessageId = NewType("MessageId", int)  # Unique ID across the bus.
+TelegramChatId = NewType("TelegramChatId", int)
+TelegramMessageId = NewType("TelegramMessageId", int)
+
+# Wrapper for the `content` fields in the message bus.
+MessageContent = NewType("MessageContent", str)
 
 # Fake agent name reserved to represent the end user.
-END_USER_AGENT = "duende-internal:end-user"
+END_USER_AGENT = AgentName("duende-internal:end-user")
 
 
 @dataclasses.dataclass(frozen=True)
