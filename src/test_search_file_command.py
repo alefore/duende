@@ -1,5 +1,6 @@
 import unittest
 import asyncio
+import logging
 import os
 import tempfile
 import shutil
@@ -229,7 +230,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     })
     output: CommandOutput = await command.run(inputs)
 
-    self.assertIn(f"Too many matches to display ({num_matches}, limit is 200).",
+    self.assertIn(f"Too many matches to display ({num_matches}, limit is 100).",
                   output.output)
     self.assertIn(
         f"Files with matches:\npath,lines_match,file_line_count\n{file_name}, {num_matches}, {num_matches}",
