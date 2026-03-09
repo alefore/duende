@@ -181,15 +181,8 @@ function updatePageTitle() {
   }
 }
 
-function hideConversationsTableView() {
-  $('#conversations_table_view').hide();
-  $('#create_workflow_form_container').hide();
-  $('#conversation_view').show();
-}
-
 function showConversationsTableView() {
-  $('#conversation_view').hide();
-  $('#create_workflow_form_container').hide();
+  $('#content_panes').children().hide();
   $('#conversations_table_view').show();
   renderConversationsTable(conversationsById);
 }
@@ -247,7 +240,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const id = parseInt($(this).val());
     if (conversationsById[id]) conversationsById[id].show();
     updatePageTitle();
-    hideConversationsTableView();
+    $('#content_panes').children().hide();
+    $('#conversation_view').show();
   });
 
   function updateConfirmationButtonVisibility() {
