@@ -1,5 +1,25 @@
 import {createTimestampView} from './timestamps.js';
 
+class ConversationTableSorter {
+  constructor() {
+    this._currentSortColumn = null;
+    this._sortDirection = 'asc';  // 'asc' or 'desc'
+  }
+
+  getSortState() {
+    return {column: this._currentSortColumn, direction: this._sortDirection};
+  }
+
+  updateSortState(columnId) {
+    if (this._currentSortColumn === columnId) {
+      this._sortDirection = (this._sortDirection === 'asc') ? 'desc' : 'asc';
+    } else {
+      this._currentSortColumn = columnId;
+      this._sortDirection = 'asc';
+    }
+  }
+}
+
 function renderConversationsTable(conversationsById) {
   const $div = $('#conversations_table_view');
   $div.empty();
@@ -32,14 +52,16 @@ function renderConversationsTable(conversationsById) {
     $row.append($('<td>').text(conversation.countMessages()));
 
     // State
-    $row.append($('<td>').text(`${conversation.stateEmoji} ${conversation.state.replace(/_/g, ' ').toLowerCase()}`));
+    $row.append($('<td>').text(`${conversation.stateEmoji} ${
+        conversation.state.replace(/_/g, ' ').toLowerCase()}`));
 
     // Last Message Overview
     $row.append($('<td>').text(conversation.getLastMessageOverview()));
 
     // Time Since Last Update
     const $timeSinceLastUpdateTd = $('<td>');
-    $timeSinceLastUpdateTd.append(createTimestampView(conversation.lastStateChangeTime));
+    $timeSinceLastUpdateTd.append(
+        createTimestampView(conversation.lastStateChangeTime));
     $row.append($timeSinceLastUpdateTd);
 
     $row.on('click', function() {
