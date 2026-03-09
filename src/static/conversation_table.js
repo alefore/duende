@@ -1,8 +1,26 @@
+import {createTimestampView} from './timestamps.js';
+
 function renderConversationsTable(conversationsById) {
   const $div = $('#conversations_table_view');
   $div.empty();
 
-  const $tableBody = $div.append($('<table>')).append($('<tbody>'));
+  const $table = $('<table>');
+  const $tableBody = $('<tbody>');
+  $table.append($tableBody);
+
+  // Create table header
+  const $tableHead = $('<thead>');
+  const $headerRow = $('<tr>');
+  $headerRow.append($('<th>').text('Title'));
+  $headerRow.append($('<th>').text('Messages'));
+  $headerRow.append($('<th>').text('State'));
+  $headerRow.append($('<th>').text('Last Message'));
+  $headerRow.append($('<th>').text('Last Update'));
+  $tableHead.append($headerRow);
+  $table.prepend($tableHead);
+
+  $div.append($table);
+
   for (const id in conversationsById) {
     const conversation = conversationsById[id];
     const $row = $('<tr>');
@@ -14,11 +32,15 @@ function renderConversationsTable(conversationsById) {
     $row.append($('<td>').text(conversation.countMessages()));
 
     // State
-    $row.append($('<td>').text(`${conversation.stateEmoji} ${
-        conversation.state.replace(/_/g, ' ').toLowerCase()}`));
+    $row.append($('<td>').text(`${conversation.stateEmoji} ${conversation.state.replace(/_/g, ' ').toLowerCase()}`));
 
     // Last Message Overview
     $row.append($('<td>').text(conversation.getLastMessageOverview()));
+
+    // Time Since Last Update
+    const $timeSinceLastUpdateTd = $('<td>');
+    $timeSinceLastUpdateTd.append(createTimestampView(conversation.lastStateChangeTime));
+    $row.append($timeSinceLastUpdateTd);
 
     $row.on('click', function() {
       conversation.show();
