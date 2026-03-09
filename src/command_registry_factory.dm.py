@@ -19,6 +19,7 @@ from search_file_command import SearchFileCommand
 from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
+from swarm_types import AgentName
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskInformation
@@ -55,12 +56,21 @@ class CommandRegistryWriteConfig:
 
 
 @dataclasses.dataclass(frozen=True)
+class DelegateRequestConfig:
+  allow_list: frozenset[AgentName]
+
+
+@dataclasses.dataclass(frozen=True)
 class CommandRegistryConfig:
   # If `None`, no file access is given.
   file_access_policy: FileAccessPolicyConfig | None
 
   # If present, signifies that write access is allowed.
   writes: CommandRegistryWriteConfig | None = None
+
+  # If present and its `allow_list` is non-empty, signifies that
+  # `delegate_request` should be enabled.
+  delegate_request: DelegateRequestConfig | None = None
 
   allow_shell: bool = False
 
