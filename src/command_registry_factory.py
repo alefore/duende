@@ -21,6 +21,7 @@ from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
 from swarm_types import AgentName
+from swarm_commands import DelegateRequestConfig
 from replace_python_command import ReplacePythonCommand
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from task_command import TaskInformation
@@ -54,11 +55,6 @@ class CommandRegistryWriteConfig:
   # If `None`, defaults to top-level config. Otherwise, both configs must allow
   # access.
   file_access_policy: FileAccessPolicyConfig | None
-
-
-@dataclasses.dataclass(frozen=True)
-class DelegateRequestConfig:
-  allow_list: frozenset[AgentName]
 
 
 @dataclasses.dataclass(frozen=True)
