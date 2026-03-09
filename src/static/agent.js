@@ -278,6 +278,8 @@ document.addEventListener('DOMContentLoaded', function() {
     switchSelectedConversationIndex(1);
   });
 
+  $('#conversations_table_view_button')
+      .on('click', () => showConversationsTableView());
   console.log('Requesting conversation list.');
   emitListConversations(socket);
 });

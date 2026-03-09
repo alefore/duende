@@ -19,12 +19,12 @@
       </div>
       <div id="conversation_navigation">
         <button id="prev_conversation_button">⬅️</button>
-        <select id="conversation_selector"></select>
         <button id="next_conversation_button">➡️</button>
         <button id="confirm_button">✅</button>
+        <select id="conversation_selector"></select>
       </div>
       <button id="new_workflow_button" onclick="showCreateWorkflowForm()">New</button>
-      <button id="conversations_table_view_button" onclick="showConversationsTableView()">Conversations</button>
+      <button id="conversations_table_view_button">Conversations</button>
     </div>
     <h1>Agent Server Interface</h1>
 
@@ -43,7 +43,7 @@
         <label for="original_task_prompt_content">Task Prompt:</label><br>
         <textarea id="original_task_prompt_content" name="original_task_prompt_content" rows="10" cols="80"></textarea><br>
         <button type="submit">Create Workflow</button>
-        <button type="button" onclick="cancelCreateWorkflow()">Cancel</button>
+        <button type="button">Cancel</button>
       </form>
     </div>
     <div id="conversations_table_view" style="display: none;">

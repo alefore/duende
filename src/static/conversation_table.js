@@ -1,7 +1,8 @@
 function renderConversationsTable(conversationsById) {
-  const $tableBody = $('#conversations_table_body');
-  $tableBody.empty();
+  const $div = $('#conversations_table_view');
+  $div.empty();
 
+  const $tableBody = $div.append($('<table>')).append($('<tbody>'));
   for (const id in conversationsById) {
     const conversation = conversationsById[id];
     const $row = $('<tr>');
@@ -21,7 +22,9 @@ function renderConversationsTable(conversationsById) {
 
     $row.on('click', function() {
       conversation.show();
-      hideConversationsTableView();
+      $('#conversations_table_view').hide();
+      $('#create_workflow_form_container').hide();
+      $('#conversation_view').show();
     });
     $tableBody.append($row);
   }
