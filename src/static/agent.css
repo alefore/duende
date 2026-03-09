@@ -129,6 +129,15 @@ pre {
   color: #666; /* Lighter text color */
 }
 
+/* Alternating row background colors for conversations table */
+table tr:nth-child(odd) {
+  background-color: #f2f2f2; /* Light gray for odd rows */
+}
+
+table tr:nth-child(even) {
+  background-color: #e6e6e6; /* Slightly darker gray for even rows */
+}
+
 /* Dark mode styles */
 @media (prefers-color-scheme: dark) {
   body {
@@ -170,5 +179,14 @@ pre {
     border: 1px dashed #333;
     outline: none;
     color: #e0e0e0;
+  }
+
+  /* Dark mode alternating row background colors for conversations table */
+  table tr:nth-child(odd) {
+    background-color: #2c2c2c; /* Darker shade for odd rows in dark mode */
+  }
+
+  table tr:nth-child(even) {
+    background-color: #363636; /* Even darker shade for even rows in dark mode */
   }
 }
