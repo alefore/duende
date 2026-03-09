@@ -93,8 +93,14 @@ function sortAndRenderConversationsTable(conversationsById) {
     {text: 'Last Update', columnId: 'last_update'}
   ];
 
+  const currentSortState = conversationTableSorter.getSortState();
+
   headers.forEach(header => {
     const $th = $('<th>').text(header.text);
+    if (currentSortState.column === header.columnId) {
+      $th.addClass('sort-active');
+      $th.addClass(`sort-${currentSortState.direction}`);
+    }
     $th.on('click', () => {
       conversationTableSorter.updateSortState(header.columnId);
       sortAndRenderConversationsTable(conversationsById);

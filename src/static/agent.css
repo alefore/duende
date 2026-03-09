@@ -227,3 +227,38 @@ table tbody tr:last-child td:last-child {
     }
   }
 }
+
+/* Styles for sortable table headers */
+table th {
+  cursor: pointer;
+  position: relative; /* Needed for absolute positioning of ::after pseudo-element */
+  padding-right: 20px; /* Make space for the sort indicator */
+}
+
+table th.sort-active {
+  background-color: #d0d0d0; /* Highlight color for active sort column */
+}
+
+/* Dark mode specific highlight */
+@media (prefers-color-scheme: dark) {
+  table th.sort-active {
+    background-color: #444; /* Darker highlight for dark mode */
+  }
+}
+
+table th.sort-asc::after,
+table th.sort-desc::after {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8em;
+}
+
+table th.sort-asc::after {
+  content: " ▲"; /* Up arrow for ascending */
+}
+
+table th.sort-desc::after {
+  content: " ▼"; /* Down arrow for descending */
+}
