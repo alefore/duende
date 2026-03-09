@@ -74,10 +74,9 @@ function sortAndRenderConversationsTable(conversationsById) {
   const sortedConversations = sortConversations(
       conversationsById, conversationTableSorter.getSortState());
 
-  const $div = $('#conversations_table_view');
-  $div.empty();
+  const $table = $('#conversations_table_view_table');
+  $table.empty();
 
-  const $table = $('<table>');
   const $tableBody = $('<tbody>');
   $table.append($tableBody);
 
@@ -110,8 +109,6 @@ function sortAndRenderConversationsTable(conversationsById) {
 
   $tableHead.append($headerRow);
   $table.prepend($tableHead);
-
-  $div.append($table);
 
   sortedConversations.forEach(conversation => {
     const $row = $('<tr>');
