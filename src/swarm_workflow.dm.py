@@ -105,8 +105,7 @@ class SwarmWorkflow(AgentWorkflow):
     command_registry = CommandRegistry()
     conversation = self._options.conversation_factory.New(
         f"{message.target_agent}: {message.content[:50]}", command_registry)
-    self._init_command_registry(conversation.GetId(), message.telegram_chat_id,
-                                telegram_id, message.target_agent,
+    self._init_command_registry(conversation.GetId(), telegram_id, message,
                                 self._config.agents[message.target_agent],
                                 agent_message_queue, command_registry)
     confirmation_manager = SwarmConfirmationManager(
@@ -134,9 +133,8 @@ class SwarmWorkflow(AgentWorkflow):
     raise NotImplementedError()  # {{🍄 new start message}}
 
   def _init_command_registry(self, conversation_id: ConversationId,
-                             telegram_chat_id: TelegramChatId,
                              telegram_reply_to_id: TelegramMessageId,
-                             agent_name: AgentName, config: AgentIdentityConfig,
+                             message: BusMessage, config: AgentIdentityConfig,
                              queue: AgentMessageQueue,
                              command_registry: CommandRegistry) -> None:
     """Initializes a valid registry for a specific agent identity.
