@@ -124,6 +124,7 @@ function handleUpdate(socket, data) {
   }
   maybeAutoConfirm(socket);
   maybeRequestMessages(socket, data.message_count, conversation);
+  renderConversationsTable(conversationsById);
 }
 
 function emitListConversations(socket) {
@@ -147,6 +148,8 @@ function handleListConversations(socket, response_data) {
   if (Object.keys(conversationsById).length === 0 ||
       response_data.max_conversation_id > getMaxConversationId()) {
     emitListConversations(socket);
+  } else {
+    renderConversationsTable(conversationsById);
   }
 }
 
@@ -187,6 +190,7 @@ function showConversationsTableView() {
   $('#conversation_view').hide();
   $('#create_workflow_form_container').hide();
   $('#conversations_table_view').show();
+  renderConversationsTable(conversationsById);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

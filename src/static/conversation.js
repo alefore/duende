@@ -9,12 +9,13 @@ export class ConversationData {
     this.name = name;
     this.state = state;
     this.stateEmoji = stateEmoji;
-    this.lastStateChangeTime = lastStateChangeTime;  // Fixed typo here
+    this.lastStateChangeTime = lastStateChangeTime;
     // This is not the time at which it was sent; rather, it is the value of
     // lastStateChangeTime when the confirmation was sent (which is good enough
     // to make sure we don't send multiple confirmations for the same request).
     this.lastConfirmationSentTime = null;
     this.scrollToBottom = scrollToBottom;
+    this.messages = [];
 
     console.log(`Creating container for conversation ${this.id}`);
     this.div = $('<div>')
@@ -66,11 +67,11 @@ export class ConversationData {
   }
 
   countMessages() {
-    return this.div.find('.message').length;
+    return this.messages.length;
   }
 
   addMessage(message) {
-    console.log(message);
+    this.messages.push(message);
     const $messageDiv = $('<div>').addClass('message');
     const $role = $('<p>').addClass('role').text(`${message.role}:`);
 
@@ -162,6 +163,25 @@ export class ConversationData {
     });
 
     this.div.append($messageDiv.append($messageHeader, $contentContainer));
+  }
+
+  getLastMessageOverview() {
+    if (this.messages.length === 0) {
+      return '';
+    }
+    const lastMessage = this.messages[this.messages.length - 1];
+    if (lastMessage.content_sections &&
+        lastMessage.content_sections.length > 0) {
+      const lastSection =
+          lastMessage.content_sections[lastMessage.content_sections.length - 1];
+      if (lastSection.summary) {
+        return lastSection.summary;
+      } else if (lastSection.content) {
+        return lastSection.content.substring(0, 100) +
+            (lastSection.content.length > 100 ? '...' : '');
+      }
+    }
+    return '';
   }
 
   _updateSelectorOption() {
