@@ -69,7 +69,6 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 Returns an empty list on a non-empty file that contains valid python
          code but no tests.}}
     """
-
     # ✨ list tests
     cmd = [PYTEST_BINARY, "--collect-only", "--quiet", str(input)]
     proc = await asyncio.create_subprocess_exec(
@@ -230,6 +229,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
       {{🦔 If validation fails, all information about the failures is given in
            the output (to help the AI understand what's missing).}}
       """
+
       # ✨ make tests pass validator
       failure_info = await self._run_tests(tests)
       if failure_info:
@@ -277,6 +277,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
 
     # Register WriteFileCommand to allow the agent to modify files.
     write_file_command = WriteFileCommand(
+        cwd=self._options.agent_loop_options.cwd,
         validation_manager=self._options.agent_loop_options.validation_manager,
         selection_manager=self._options.selection_manager,
         hard_coded_path=None)
@@ -312,7 +313,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     # Prepare the initial message for the agent loop, including relevant files.
     # The 'input' here is the path to the test file.
     initial_message = await prepare_initial_message(
-        start_message_content=start_message_content, relevant_files=set())
+        start_message_content=start_message_content, relevant_files={input})
 
     # Construct the conversation name based on the number of tests.
     conversation_name = f"make_tests_pass_{len(tests)}_{tests[-1]}"

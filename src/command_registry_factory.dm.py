@@ -124,7 +124,7 @@ async def create_command_registry(
   if config.writes:
     # TODO: Figure out how to pass the file access policy.
     registry.Register(
-        WriteFileCommand(validation_manager, selection_manager, None))
+        WriteFileCommand(cwd, validation_manager, selection_manager, None))
 
   if enable_select:
     for use_regex in [True, False]:

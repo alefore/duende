@@ -93,7 +93,6 @@ class SwarmWorkflow(AgentWorkflow):
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
     """
-
     # ✨ process message
     await self._message_bus.mark_as_processed(message.message_id)
 
@@ -264,8 +263,12 @@ class SwarmWorkflow(AgentWorkflow):
 
     if config.command_registry.writes:
       command_registry.Register(
-          WriteFileCommand(self._options.agent_loop_options.validation_manager,
-                           self._options.selection_manager, None))
+          WriteFileCommand(
+              cwd=agent_cwd,
+              validation_manager=self._options.agent_loop_options.validation_manager,
+              selection_manager=self._options.selection_manager,
+              hard_coded_path=None,
+          ))
 
     if (config.command_registry.delegate_request and
         config.command_registry.delegate_request.allow_list):

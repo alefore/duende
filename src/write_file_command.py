@@ -7,6 +7,7 @@ import pathlib
 from typing import Any
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, PATH_VARIABLE_NAME, REASON_VARIABLE, VariableName, VariableValue, VariableValueStr, VariableMap
+from pathbox import PathBox
 from validation import ValidationManager
 from selection_manager import SelectionManager
 
@@ -15,9 +16,10 @@ _content_variable = VariableName("content")
 
 class WriteFileCommand(AgentCommand):
 
-  def __init__(self, validation_manager: ValidationManager | None,
+  def __init__(self, cwd: PathBox, validation_manager: ValidationManager | None,
                selection_manager: SelectionManager,
                hard_coded_path: pathlib.Path | None):
+    self._cwd = cwd
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
     self._hard_coded_path = hard_coded_path
@@ -51,10 +53,10 @@ class WriteFileCommand(AgentCommand):
 
   def _get_path(self, inputs: VariableMap) -> pathlib.Path:
     if self._hard_coded_path:
-      return self._hard_coded_path
+      return self._cwd / self._hard_coded_path
     inputs_path = inputs[PATH_VARIABLE_NAME]
     assert isinstance(inputs_path, pathlib.Path)
-    return inputs_path
+    return self._cwd / inputs_path
 
   async def _get_full_diff(self, path: pathlib.Path,
                            new_content: str) -> list[str] | None:

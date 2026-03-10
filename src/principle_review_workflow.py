@@ -107,7 +107,8 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
         f"Starting AI conversation to fix {input_path} based on rejections.")
     command_registry = CommandRegistry()
     command_registry.Register(
-        WriteFileCommand(self._options.agent_loop_options.validation_manager,
+        WriteFileCommand(self._options.agent_loop_options.cwd,
+                         self._options.agent_loop_options.validation_manager,
                          self._options.selection_manager, input_path))
 
     conversation = self._options.conversation_factory.New(
