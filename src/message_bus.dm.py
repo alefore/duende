@@ -26,6 +26,8 @@ END_USER_AGENT = AgentName("duende-internal:end-user")
 @dataclasses.dataclass(frozen=True)
 class Message:
   # The fields map directly to the rows of the `message_bus` SQL table.
+  #
+  # Paths use `pathlib.Path`.
   pass  # {{🍄 message fields}}
 
 
