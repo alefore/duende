@@ -130,10 +130,10 @@ async def FindPythonDefinition(file_access_policy: FileAccessPolicy,
     file_list = [validated_path]
   else:
     file_list = []
-    async for file in list_all_files(".", file_access_policy):
-      if file.endswith(".py") and file_access_policy.allow_access(file):
-        # TODO: Remove the pathlib.Path wrapping here.
-        file_list.append(pathlib.Path(file))
+    async for file in list_all_files(pathlib.Path("."), file_access_policy):
+      if file.name.endswith(".py") and file_access_policy.allow_access(
+          str(file)):
+        file_list.append(file)
 
   selections = []
   identifier_parts = identifier.split('.')

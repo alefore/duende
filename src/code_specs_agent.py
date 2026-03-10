@@ -83,8 +83,8 @@ async def prepare_command_registry(
 
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(PathBox()))
-  registry.Register(ListFilesCommand(file_access_policy))
-  registry.Register(SearchFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(PathBox(), file_access_policy))
+  registry.Register(SearchFileCommand(PathBox(), file_access_policy))
   registry.Register(
       DoneCommand(
           arguments=done_command_arguments,

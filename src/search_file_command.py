@@ -6,9 +6,10 @@ import pathlib
 import os
 from typing import AsyncIterable, Iterable, Any
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableName, VariableValue
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, PATH_VARIABLE_NAME, REASON_VARIABLE, VariableName, VariableMap, VariableValue
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
+from pathbox import PathBox
 
 
 def _collect_errors(errors: list[str]) -> str:
@@ -18,17 +19,19 @@ def _collect_errors(errors: list[str]) -> str:
        "(348 errors omitted)".}}
   """
   # ✨ collect errors
-  output_errors = errors[:10]
-  if len(errors) > 10:
+  if len(errors) <= 10:
+    return "\n".join(errors)
+  else:
     omitted_errors_count = len(errors) - 10
-    output_errors.append(f"({omitted_errors_count} errors omitted)")
-  return "\n".join(output_errors)
+    first_10_errors = "\n".join(errors[:10])
+    return f"{first_10_errors}\n({omitted_errors_count} errors omitted)"
   # ✨
 
 
 class SearchFileCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy):
+  def __init__(self, cwd: PathBox, file_access_policy: FileAccessPolicy):
+    self._cwd = cwd
     self.file_access_policy = file_access_policy
 
   def Name(self) -> str:
@@ -47,23 +50,38 @@ class SearchFileCommand(AgentCommand):
                 description="The content to search for.",
                 required=True),
             Argument(
-                name=VariableName("path"),
+                name=PATH_VARIABLE_NAME,
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="File to search in. Skip it to find references in the entire repository.",
                 required=False)
         ])
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
-    search_term: str = inputs[VariableName("content")].strip()
+  def _get_paths_to_search(
+      self, input_path: pathlib.Path | None) -> AsyncIterable[pathlib.Path]:
+    if not input_path:
+      return list_all_files(self._cwd.path, self.file_access_policy)
+    elif pathlib.Path(input_path).is_dir():
+      return list_all_files(self._cwd / input_path, self.file_access_policy)
+    else:
+      # If a specific file path is provided,
+      # convert it to an async iterable for consistency
+      async def _single_file_iterator() -> AsyncIterable[pathlib.Path]:
+        yield input_path
+
+      return _single_file_iterator()
+
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    search_term: str = str(inputs[VariableName("content")]).strip()
     input_path: VariableValue | None = inputs.get(VariableName("path"))
     assert isinstance(input_path, pathlib.Path | None)
 
     if len(search_term.splitlines()) > 1:
       # ✨ return error pattern crosses lines
+      error_message = "Multi-line search patterns are not supported. Please provide a single-line search pattern."
       return CommandOutput(
           output="",
-          errors="Search patterns spanning multiple lines are not supported.",
-          summary="Search failed: Multi-line patterns.",
+          errors=_collect_errors([error_message]),
+          summary="Search failed: Multi-line pattern not supported.",
           command_name=self.Syntax().name)
       # ✨
 
@@ -78,26 +96,12 @@ class SearchFileCommand(AgentCommand):
     global_line_count = 0
     global_match_count = 0
 
-    paths_to_search: AsyncIterable[str]
-
-    if not input_path:
-      paths_to_search = list_all_files(".", self.file_access_policy)
-    elif pathlib.Path(input_path).is_dir():
-      paths_to_search = list_all_files(str(input_path), self.file_access_policy)
-    else:
-      # If a specific file path is provided,
-      # convert it to an async iterable for consistency
-      async def _single_file_iterator() -> AsyncIterable[str]:
-        yield str(input_path)
-
-      paths_to_search = _single_file_iterator()
+    paths_to_search = self._get_paths_to_search(input_path)
 
     files_data: list[str] = []
 
     match_limit = 100
-    async for file_path_str in paths_to_search:
-      file_path = pathlib.Path(file_path_str)
-
+    async for file_path in paths_to_search:
       try:
         global_file_count += 1
         async with aiofiles.open(file_path, mode='r', encoding='utf-8') as file:
@@ -111,14 +115,14 @@ class SearchFileCommand(AgentCommand):
             file_match_count += 1
             global_match_count += 1
             if global_match_count < match_limit:
-              matches.append(f"{file_path_str}:{i + 1}: {line.strip()}")
+              matches.append(f"{file_path}:{i + 1}: {line.strip()}")
 
         if file_match_count > 0:
           files_data.append(
-              f"{file_path_str}, {file_match_count}, {file_line_count}")
+              f"{file_path}, {file_match_count}, {file_line_count}")
 
       except Exception as e:
-        errors.append(f"{file_path_str}: {str(e)}")
+        errors.append(f"{file_path}: {str(e)}")
 
     output_lines: list[str] = [
         f"Files searched: {global_file_count}, Lines scanned: {global_line_count}, Matches found: {global_match_count}"

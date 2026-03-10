@@ -34,8 +34,8 @@ def _create_base_registry(
     cwd: PathBox, file_access_policy: FileAccessPolicy) -> CommandRegistry:
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(cwd))
-  registry.Register(ListFilesCommand(file_access_policy))
-  registry.Register(SearchFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(cwd, file_access_policy))
+  registry.Register(SearchFileCommand(cwd, file_access_policy))
   return registry
 
 
@@ -43,8 +43,8 @@ def create_ask_command_registry(
     cwd: PathBox, file_access_policy: FileAccessPolicy) -> CommandRegistry:
   registry = CommandRegistry()
   registry.Register(ReadFileCommand(cwd))
-  registry.Register(ListFilesCommand(file_access_policy))
-  registry.Register(SearchFileCommand(file_access_policy))
+  registry.Register(ListFilesCommand(cwd, file_access_policy))
+  registry.Register(SearchFileCommand(cwd, file_access_policy))
   registry.Register(AnswerCommand())
   return registry
 

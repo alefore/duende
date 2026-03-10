@@ -171,7 +171,9 @@ async def CreateAgentWorkflowOptions(
       pathlib.Path(args.file_access_policy))
   file_access_policy = create_file_access_policy(file_access_policy_config)
 
-  matched_files = [f async for f in list_all_files('.', file_access_policy)]
+  matched_files = [
+      f async for f in list_all_files(pathlib.Path('.'), file_access_policy)
+  ]
   logging.info(f"File matched by access policy: {len(matched_files)}")
   if not matched_files:
     print("No files match the given file access policy. Aborting execution.")
@@ -368,7 +370,7 @@ async def CreateAgentWorkflowOptions(
 
 
 async def TestFileAccess(file_access_policy: FileAccessPolicy) -> None:
-  async for file in list_all_files('.', file_access_policy):
+  async for file in list_all_files(pathlib.Path('.'), file_access_policy):
     print(file)
 
 

@@ -1,14 +1,17 @@
 import logging
 import os
 import aiofiles
+import pathlib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
+from pathbox import PathBox
 
 
 async def _ListFileDetails(
-    directory: str, file_access_policy: FileAccessPolicy) -> tuple[str, str]:
+    directory: pathlib.Path,
+    file_access_policy: FileAccessPolicy) -> tuple[str, str]:
   details: list[str] = []
   errors: list[str] = []
   async for file_path in list_all_files(directory, file_access_policy):
@@ -26,7 +29,8 @@ async def _ListFileDetails(
 
 class ListFilesCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy):
+  def __init__(self, cwd: PathBox, file_access_policy: FileAccessPolicy):
+    self._cwd = cwd
     self.file_access_policy = file_access_policy
 
   def Name(self) -> str:
@@ -47,8 +51,9 @@ class ListFilesCommand(AgentCommand):
         ])
 
   async def run(self, inputs: VariableMap) -> CommandOutput:
-    directory = inputs.get(VariableName("directory"), ".")
-    assert isinstance(directory, str)
+    directory_str = inputs.get(VariableName("directory"), ".")
+    assert isinstance(directory_str, str)
+    directory = self._cwd / pathlib.Path(directory_str)
 
     try:
       output, errors = await _ListFileDetails(directory,

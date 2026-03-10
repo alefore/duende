@@ -126,7 +126,7 @@ class SwarmWorkflow(AgentWorkflow):
             message_id=message_bus.MessageId(0),
             source_agent=message.target_agent,
             target_agent=AgentName(message_bus.END_USER_AGENT),
-            local_directory=None,  # Added local_directory
+            local_directory=None,
             conversation_id=None,
             telegram_chat_id=message.telegram_chat_id,
             telegram_message_id=None,
@@ -234,9 +234,10 @@ class SwarmWorkflow(AgentWorkflow):
     # implementation of WriteFileCommand, it isn't feasible.
 
     # ✨ init command registry
-    agent_cwd = self._options.agent_loop_options.cwd
     if message.local_directory:
-      agent_cwd = PathBox(agent_cwd / message.local_directory)
+      agent_cwd = PathBox(self._options.agent_loop_options.cwd / message.local_directory)
+    else:
+      agent_cwd = self._options.agent_loop_options.cwd
 
     file_access_policy_config = config.command_registry.file_access_policy or FileAccessPolicyConfig(
     )
@@ -244,8 +245,8 @@ class SwarmWorkflow(AgentWorkflow):
 
     command_registry.Register(DoneCommand([]))
     command_registry.Register(ReadFileCommand(agent_cwd))
-    command_registry.Register(ListFilesCommand(file_access_policy))
-    command_registry.Register(SearchFileCommand(file_access_policy))
+    command_registry.Register(ListFilesCommand(agent_cwd, file_access_policy))
+    command_registry.Register(SearchFileCommand(agent_cwd, file_access_policy))
     command_registry.Register(
         DisplayInfoCommand(self._message_bus, conversation_id,
                            message.telegram_chat_id, telegram_reply_to_id,
