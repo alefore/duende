@@ -29,6 +29,7 @@ from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
 from read_file_command import ReadFileCommand
+from working_directory_command import ChangeWorkingDirectoryCommand
 from write_file_command import WriteFileCommand
 
 
@@ -215,7 +216,8 @@ class SwarmWorkflow(AgentWorkflow):
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
-         DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
+         ChangeWorkingDirectoryCommand, DisplayInfoCommand,
+         PublishMessageCommand and AskUserCommand.}}
     {{🦔 If `config.command_registry.allow_shell', the registry contains
          `ShellCommandCommand`.}}
     {{🦔 If `config.command_registry.delegate_request.allow_list' exists and
@@ -247,12 +249,13 @@ class SwarmWorkflow(AgentWorkflow):
     command_registry.Register(ReadFileCommand(agent_cwd))
     command_registry.Register(ListFilesCommand(agent_cwd, file_access_policy))
     command_registry.Register(SearchFileCommand(agent_cwd, file_access_policy))
+    command_registry.Register(ChangeWorkingDirectoryCommand(agent_cwd))
     command_registry.Register(
         DisplayInfoCommand(self._message_bus, conversation_id,
                            message.telegram_chat_id, telegram_reply_to_id,
                            message.target_agent))
     command_registry.Register(
-        PublishMessageCommand(self._message_bus, message.telegram_chat_id,
+        PublishMessageCommand(self._message_bus, agent_cwd, message.telegram_chat_id,
                               telegram_reply_to_id, message.target_agent))
     command_registry.Register(
         AskUserCommand(self._message_bus, queue, conversation_id,
@@ -277,6 +280,7 @@ class SwarmWorkflow(AgentWorkflow):
           DelegateRequestCommand(
               config.command_registry.delegate_request,
               self._message_bus,
+              message.local_directory, # Use message.local_directory here, not agent_cwd.path
               message.telegram_chat_id,
               telegram_reply_to_id,
               message.target_agent,
