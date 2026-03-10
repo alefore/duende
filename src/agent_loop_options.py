@@ -8,6 +8,7 @@ from conversation import Conversation, ConversationFactory
 from conversational_ai import ConversationalAI
 from file_access_policy import FileAccessPolicy
 from message import Message
+from pathbox import PathBox
 from validation import ValidationManager
 
 
@@ -21,6 +22,7 @@ class AgentLoopOptions(NamedTuple):
   confirm_regex: Pattern[str] | None = None
   skip_implicit_validation: bool = False
   validation_manager: ValidationManager | None = None
+  cwd: PathBox = PathBox()
 
 
 class BaseAgentLoop(abc.ABC):
