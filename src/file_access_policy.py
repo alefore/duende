@@ -28,7 +28,7 @@ class FileAccessHiddenFiles(Enum):
 
 @dataclasses.dataclass(frozen=True)
 class FileAccessPolicyConfig:
-  regex: str | None = None
+  regex: re.Pattern[str] | None = None
 
   scope: FileAccessScope = FileAccessScope.NONE
 
@@ -49,9 +49,15 @@ def create_file_access_policy_config(
 
   for key, value in data.items():
     if key == "regex":
-      if not isinstance(value, (str, type(None))):
+      if value is None:
+        regex = None
+      elif isinstance(value, str):
+        try:
+          regex = re.compile(value)
+        except re.error as e:
+          raise ValueError(f"Invalid regex pattern: {value}") from e
+      else:
         raise ValueError(f"Invalid type for regex: {type(value)}")
-      regex = value
     elif key == "scope":
       try:
         scope = FileAccessScope[value.upper()]
@@ -109,8 +115,8 @@ class FileAccessPolicy(abc.ABC):
 
 class RegexFileAccessPolicy(FileAccessPolicy):
 
-  def __init__(self, regex_pattern: str):
-    self.pattern = re.compile(regex_pattern)
+  def __init__(self, pattern: re.Pattern[str]):
+    self.pattern = pattern
 
   def allow_access(self, path: str) -> bool:
     """Check if a path matches the regex pattern for access"""
@@ -138,7 +144,6 @@ class CompositeFileAccessPolicy(FileAccessPolicy):
 
 class _PermissiveFileAccessPolicy(FileAccessPolicy):
   """Allows all requests."""
-
   # ✨ permissive
   def allow_access(self, path: str) -> bool:
     del path  # Unused.
@@ -149,7 +154,6 @@ class _PermissiveFileAccessPolicy(FileAccessPolicy):
 
 class _DenyAllFileAccessPolicy(FileAccessPolicy):
   """Denies all requests."""
-
   # ✨ deny all
   def allow_access(self, path: str) -> bool:
     del path  # Unused.
@@ -160,7 +164,6 @@ class _DenyAllFileAccessPolicy(FileAccessPolicy):
 
 class _DenyHiddenFiles(FileAccessPolicy):
   """Denies requests for hidden files/directories."""
-
   # ✨ deny hidden
   def allow_access(self, path: str) -> bool:
     return not any(part.startswith(".") for part in pathlib.Path(path).parts)

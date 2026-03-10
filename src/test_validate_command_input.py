@@ -1,4 +1,5 @@
 import os
+import re
 import unittest
 
 from agent_command import AgentCommand, CommandSyntax, CommandInput, Argument, ArgumentContentType, VariableMap, VariableName, VariableValueStr
@@ -44,9 +45,9 @@ class TestValidateCommandInput(unittest.TestCase):
         arg_type=ArgumentContentType.PATH_OUTPUT,
         description="Output file path")
     self.file_access_policy = RegexFileAccessPolicy(
-        r".*")  # Allow all paths for most tests
+        re.compile(r".*"))  # Allow all paths for most tests
     self.restricted_policy = RegexFileAccessPolicy(
-        r"^allowed/.*")  # Only allow paths under 'allowed/'
+        re.compile(r"^allowed/.*"))  # Only allow paths under 'allowed/'
 
     # Create dummy paths for testing
     self.existing_allowed_path = 'allowed/existing_path'

@@ -259,7 +259,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_restricted, mode='w') as f:
       await f.write(f"This file is {search_term} but restricted.\n")
 
-    access_policy = RegexFileAccessPolicy(r"^allowed_file\.txt$")
+    access_policy = RegexFileAccessPolicy(re.compile(r"^allowed_file\.txt$"))
     command = SearchFileCommand(PathBox(), file_access_policy=access_policy)
     inputs = VariableMap(
         {VariableName('content'): VariableValueStr(search_term)})
