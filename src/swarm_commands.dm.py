@@ -1,11 +1,13 @@
 import dataclasses
 import datetime
+import pathlib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
 from conversation import ConversationId
 from file_access_policy import FileAccessPolicy
 from message_bus import Message as BusMessage, END_USER_AGENT, MessageBus, MessageContent, MessageId, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
+from pathbox import PathBox
 from swarm_types import AgentName
 
 _TARGET_AGENT_ARGUMENT = Argument(
@@ -46,9 +48,12 @@ class DisplayInfoCommand(AgentCommand):
     raise NotImplementedError()  # {{🍄 display info run}}
 
 
+# publish_message set's the children's agent `local_directory` to the cwd of the
+# parent.
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, telegram_chat_id: TelegramChatId,
+  def __init__(self, message_bus: MessageBus, cwd: PathBox,
+               telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 publish message store private fields}}
@@ -67,6 +72,8 @@ class PublishMessageCommand(AgentCommand):
     """Call write_new_message with a new message.
 
     {{🦔 The message's target_agent is always set.}}
+    {{🦔 If self._cwd is not '.', the message's local_directory is set
+         accordingly (otherwise is None).}}
     """
     raise NotImplementedError()  # {{🍄 publish message run}}
 
@@ -110,9 +117,12 @@ class DelegateRequestConfig:
   allow_list: frozenset[AgentName]
 
 
+# delegate_request does not allow the agent to change the `local_directory`.
+# Whatever value the parent had, the child will have.
 class DelegateRequestCommand(AgentCommand):
 
   def __init__(self, config: DelegateRequestConfig, message_bus: MessageBus,
+               local_directory: pathlib.Path | None,
                telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId, source_agent: AgentName,
                user_request: MessageContent) -> None:
@@ -134,5 +144,6 @@ class DelegateRequestCommand(AgentCommand):
          `config.allow_list`.}}
     {{🦔 The message's `target_agent` is always set.}}
     {{🦔 The returned value has `task_done = True`.}}
+    {{🦔 The message's local_directory is set to `self._local_directory`.}}
     """
     raise NotImplementedError()  # {{🍄 delegate request run}}
