@@ -25,6 +25,7 @@ from gemini import Gemini
 from agent_workflow_options import AgentWorkflowOptions
 from selection_manager import SelectionManager
 from ask_command import AskCommand
+from pathbox import PathBox
 
 from agent_plugin_loader import load_plugins, NoPluginFilesFoundError, NoPluginClassFoundError, InvalidPluginClassError
 
@@ -196,10 +197,13 @@ async def CreateAgentWorkflowOptions(
       raise RuntimeError(
           "Initial validation failed, aborting further operations.")
 
+  cwd = PathBox()
+
   registry = await create_command_registry(
       CommandRegistryConfig(
           file_access_policy=file_access_policy_config,
           allow_shell=args.shell_command_execution),
+      cwd,
       validation_manager,
       start_new_task=lambda task_info: CommandOutput(
           command_name="task", output="", errors="", summary="Not implemented"),
@@ -220,7 +224,7 @@ async def CreateAgentWorkflowOptions(
       confirmation_manager=confirmation_manager,
       confirm_every=args.confirm_every)
 
-  ask_registry = create_ask_command_registry(file_access_policy)
+  ask_registry = create_ask_command_registry(cwd, file_access_policy)
   registry.Register(
       AskCommand(
           conversation_factory=conversation_factory,

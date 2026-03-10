@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 from read_file_command import ReadFileCommand
 from file_access_policy import FileAccessPolicy
-from agent_command import CommandOutput
-from test_utils import FakeFileAccessPolicy
+from agent_command import CommandOutput, PATH_VARIABLE_NAME, VariableMap, VariableName, VariableValueInt
+from pathbox import PathBox
 
 
 class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
@@ -25,7 +25,7 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
     self.temp_file_path = pathlib.Path(self.temp_file.name)
 
     # Mock FileAccessPolicy for testing
-    self.read_file_command = ReadFileCommand(FakeFileAccessPolicy())
+    self.read_file_command = ReadFileCommand(PathBox())
 
   def tearDown(self) -> None:
     # Clean up the temporary file
@@ -33,7 +33,7 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_entirely(self) -> None:
     # Test reading the entire file (no start_line or end_line)
-    inputs = {'path': self.temp_file_path}
+    inputs = VariableMap({PATH_VARIABLE_NAME: self.temp_file_path})
     output = await self.read_file_command.run(inputs)
     self.assertIsInstance(output, CommandOutput)
     self.assertEqual(output.output, self.test_file_content)
@@ -44,7 +44,11 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_with_start_and_end_line(self) -> None:
     # Test reading with both start_line and end_line
-    inputs = {'path': self.temp_file_path, 'start_line': 2, 'end_line': 4}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('start_line'): VariableValueInt(2),
+        VariableName('end_line'): VariableValueInt(4)
+    })
     expected_content = ("Line 2 with some text\n"
                         "Line 3: Another line\n"
                         "Line 4 is here\n")
@@ -57,7 +61,10 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_with_only_start_line(self) -> None:
     # Test reading with only start_line
-    inputs = {'path': self.temp_file_path, 'start_line': 3}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('start_line'): VariableValueInt(3)
+    })
     expected_content = ("Line 3: Another line\n"
                         "Line 4 is here\n"
                         "Last Line: 5")
@@ -70,7 +77,10 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_with_only_end_line(self) -> None:
     # Test reading with only end_line
-    inputs = {'path': self.temp_file_path, 'end_line': 2}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('end_line'): VariableValueInt(2)
+    })
     expected_content = ("Line 1\n"
                         "Line 2 with some text\n")
     output = await self.read_file_command.run(inputs)
@@ -82,7 +92,11 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_start_line_equals_end_line(self) -> None:
     # Test reading a single line
-    inputs = {'path': self.temp_file_path, 'start_line': 3, 'end_line': 3}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('start_line'): VariableValueInt(3),
+        VariableName('end_line'): VariableValueInt(3)
+    })
     expected_content = "Line 3: Another line\n"
     output = await self.read_file_command.run(inputs)
     self.assertIsInstance(output, CommandOutput)
@@ -93,7 +107,10 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_start_line_out_of_bounds(self) -> None:
     # Test start_line beyond file length
-    inputs = {'path': self.temp_file_path, 'start_line': 10}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('start_line'): VariableValueInt(10)
+    })
     output = await self.read_file_command.run(inputs)
     self.assertIsInstance(output, CommandOutput)
     self.assertNotEqual(output.errors, "")
@@ -101,7 +118,11 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_start_line_greater_than_end_line(self) -> None:
     # Test start_line > end_line
-    inputs = {'path': self.temp_file_path, 'start_line': 3, 'end_line': 2}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('start_line'): VariableValueInt(3),
+        VariableName('end_line'): VariableValueInt(2)
+    })
     output = await self.read_file_command.run(inputs)
     self.assertIsInstance(output, CommandOutput)
     self.assertNotEqual(output.errors, "")
@@ -109,7 +130,11 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
   async def test_read_file_end_line_beyond_file_length(self) -> None:
     # Test end_line beyond file length (should read till end)
-    inputs = {'path': self.temp_file_path, 'start_line': 4, 'end_line': 10}
+    inputs = VariableMap({
+        PATH_VARIABLE_NAME: self.temp_file_path,
+        VariableName('start_line'): VariableValueInt(4),
+        VariableName('end_line'): VariableValueInt(10)
+    })
     expected_content = ("Line 4 is here\n"
                         "Last Line: 5")
     output = await self.read_file_command.run(inputs)
@@ -125,7 +150,8 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
     empty_temp_file.close()
     empty_temp_file_path = empty_temp_file.name
 
-    inputs = {'path': pathlib.Path(empty_temp_file_path)}
+    inputs = VariableMap(
+        {PATH_VARIABLE_NAME: pathlib.Path(empty_temp_file_path)})
     output = await self.read_file_command.run(inputs)
     self.assertIsInstance(output, CommandOutput)
     self.assertEqual(output.output, "")
@@ -137,7 +163,7 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
   async def test_read_file_non_existent_file(self) -> None:
     # Test reading a non-existent file
     non_existent_path = "/path/to/non_existent_file.txt"
-    inputs = {'path': pathlib.Path(non_existent_path)}
+    inputs = VariableMap({PATH_VARIABLE_NAME: pathlib.Path(non_existent_path)})
     output = await self.read_file_command.run(inputs)
     self.assertIsInstance(output, CommandOutput)
     self.assertNotEqual(output.errors, "")

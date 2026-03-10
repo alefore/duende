@@ -3,13 +3,13 @@ import logging
 import pathlib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName, VariableValueInt
-from file_access_policy import FileAccessPolicy
+from pathbox import PathBox
 
 
 class ReadFileCommand(AgentCommand):
 
-  def __init__(self, file_access_policy: FileAccessPolicy):
-    self.file_access_policy = file_access_policy
+  def __init__(self, cwd: PathBox):
+    self._cwd = cwd
 
   def Name(self) -> str:
     return self.Syntax().name
@@ -41,6 +41,7 @@ class ReadFileCommand(AgentCommand):
   async def run(self, inputs: VariableMap) -> CommandOutput:
     path = inputs[VariableName("path")]
     assert isinstance(path, pathlib.Path)
+    path = self._cwd / path
     start_line = inputs.get(VariableName("start_line"))
     assert isinstance(start_line, int | None)
     end_line = inputs.get(VariableName("end_line"))

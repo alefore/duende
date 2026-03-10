@@ -24,6 +24,7 @@ from done_command import DoneCommand, DoneValuesValidator
 from file_access_policy import FileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
+from pathbox import PathBox
 from read_file_command import ReadFileCommand
 from search_file_command import SearchFileCommand
 from selection_manager import SelectionManager
@@ -239,7 +240,7 @@ class TestCodeSpecsAgent(unittest.IsolatedAsyncioTestCase):
     # Verify that the registry contains exactly the expected types of commands.
     registered_command_types = {type(cmd) for cmd in registered_commands}
     expected_command_types = {
-        type(ReadFileCommand(file_access_policy)),
+        type(ReadFileCommand(PathBox())),
         type(ListFilesCommand(file_access_policy)),
         type(SearchFileCommand(file_access_policy)),
         DoneCommand,

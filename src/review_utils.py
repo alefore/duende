@@ -74,6 +74,7 @@ async def _run_single_review(review_id: str, review_prompt_content: str,
 
   if expose_read_commands:
     review_registry = CreateReviewCommandRegistry(
+        parent_options.cwd,
         file_access_policy=parent_options.file_access_policy)
   else:
     review_registry = CommandRegistry()

@@ -57,6 +57,7 @@ class DisplayInfoCommand(AgentCommand):
         message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
         target_agent=END_USER_AGENT,
+        local_directory=None,  # Added this field
         conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None, # This is an outgoing message from agent to user, no Telegram ID yet
@@ -112,6 +113,7 @@ class PublishMessageCommand(AgentCommand):
         message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
         target_agent=target_agent,
+        local_directory=None, # Added this field
         conversation_id=None, # This command is for publishing messages between agents, not for direct user conversations.
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None, # This is an internal message, not a Telegram message yet.
@@ -177,6 +179,7 @@ class AskUserCommand(AgentCommand):
         message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
         target_agent=END_USER_AGENT,
+        local_directory=None, # Added this field
         conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None, # This is an outgoing message from agent to user, no Telegram ID yet
@@ -187,7 +190,7 @@ class AskUserCommand(AgentCommand):
     )
     await self._message_bus.write_new_message(message)
 
-    # Wait for the user's response
+    # Wait for the user\'s response
     user_responses = await self._queue.read()
     response_content = "\n".join(user_responses)
 
@@ -254,11 +257,12 @@ class DelegateRequestCommand(AgentCommand):
         message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
         target_agent=target_agent,
+        local_directory=None, # Added this field
         conversation_id=None,  # This command is for delegating requests between agents.
         telegram_chat_id=self._telegram_chat_id,
         telegram_message_id=None,  # This is an internal message, not a Telegram message yet.
         telegram_reply_to_id=self._telegram_reply_to_id,
-        content=self._user_request,
+        content=MessageContent(self._user_request),
         queued_at=datetime.datetime.now(),
         processed_at=None,
     )

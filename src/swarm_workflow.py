@@ -122,17 +122,14 @@ class SwarmWorkflow(AgentWorkflow):
         # If the session no longer exists or the replied-to message was not found,
         # inform the user that the session no longer exists.
         outgoing_message = BusMessage(
-            message_id=message_bus.MessageId(
-                0),  # This will be overwritten by write_new_message
-            source_agent=message
-            .target_agent,  # The agent that received the original message
-            target_agent=AgentName(
-                message_bus.END_USER_AGENT),  # Cast to AgentName
-            conversation_id=None,  # No active conversation for this response
+            message_id=message_bus.MessageId(0),
+            source_agent=message.target_agent,
+            target_agent=AgentName(message_bus.END_USER_AGENT),
+            local_directory=None,  # Added local_directory
+            conversation_id=None,
             telegram_chat_id=message.telegram_chat_id,
-            telegram_message_id=None,  # This message is not yet sent to Telegram
-            telegram_reply_to_id=message
-            .telegram_message_id,  # Reply to the user's current message
+            telegram_message_id=None,
+            telegram_reply_to_id=message.telegram_message_id,
             content=message_bus.MessageContent(
                 "This conversation session no longer exists. Please start a new conversation."
             ),
@@ -236,7 +233,7 @@ class SwarmWorkflow(AgentWorkflow):
     file_access_policy = create_file_access_policy(file_access_policy_config)
 
     command_registry.Register(DoneCommand([]))
-    command_registry.Register(ReadFileCommand(file_access_policy))
+    command_registry.Register(ReadFileCommand(self._options.agent_loop_options.cwd))
     command_registry.Register(ListFilesCommand(file_access_policy))
     command_registry.Register(SearchFileCommand(file_access_policy))
     command_registry.Register(
