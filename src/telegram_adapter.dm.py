@@ -5,7 +5,7 @@ import pathlib
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-from message_bus import END_USER_AGENT, MessageBus, Message as BusMessage, MessageId, AgentName, TelegramChatId, TelegramMessageId
+import message_bus as mb
 from swarm_config import load_config, SwarmConfig
 
 logging.basicConfig(
@@ -15,7 +15,7 @@ logging.basicConfig(
 
 class Handler:
 
-  def __init__(self, config: SwarmConfig, message_bus: MessageBus) -> None:
+  def __init__(self, config: SwarmConfig, message_bus: mb.MessageBus) -> None:
     assert config.telegram
     self._config = config
     self._message_bus = message_bus
@@ -79,7 +79,7 @@ class Handler:
 async def main() -> None:
   config = await load_config(pathlib.Path('swarm/config.json'))
   assert config.telegram
-  await Handler(config, MessageBus(config.message_bus_path)).run()
+  await Handler(config, mb.MessageBus(config.message_bus_path)).run()
 
 
 if __name__ == '__main__':
