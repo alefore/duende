@@ -241,8 +241,8 @@ class TestCodeSpecsAgent(unittest.IsolatedAsyncioTestCase):
     registered_command_types = {type(cmd) for cmd in registered_commands}
     expected_command_types = {
         type(ReadFileCommand(PathBox())),
-        type(ListFilesCommand(file_access_policy)),
-        type(SearchFileCommand(file_access_policy)),
+        type(ListFilesCommand(PathBox(), file_access_policy)),
+        type(SearchFileCommand(PathBox(), file_access_policy)),
         DoneCommand,
     }
     self.assertEqual(registered_command_types, expected_command_types)
