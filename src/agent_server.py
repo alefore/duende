@@ -28,7 +28,8 @@ app.mount(
     name="static")
 
 
-def global_exception_handler(loop, context) -> None:
+def global_exception_handler(loop: asyncio.AbstractEventLoop,
+                             context: dict[str, Any]) -> None:
   exception = context.get("exception")
   if exception:
     logging.error(f"Async task failed: {exception}", exc_info=exception)
