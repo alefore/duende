@@ -3,6 +3,7 @@ import asyncio
 import dataclasses
 import datetime
 import json
+import logging
 import pathlib
 import sqlite3
 from typing import NewType
@@ -99,6 +100,9 @@ class SwarmWorkflow(AgentWorkflow):
     """Starts a new agent loop.
 
     Calls `MessageBus.set_conversation_id` to write the new conversation id.
+
+    {{🦔 The agent loop is run with an exception handler that will *immediately*
+         log any exceptions that it raises.
     """
     assert message.target_agent
     telegram_id = message.telegram_message_id or message.telegram_reply_to_id
