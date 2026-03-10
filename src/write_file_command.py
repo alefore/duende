@@ -100,8 +100,8 @@ class WriteFileCommand(AgentCommand):
     except Exception as e:
       return VariableValueStr(f"Could not compute diff: {e}")
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
-    path = self._hard_coded_path or inputs[VariableName("path")]
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    path = self._get_path(inputs)
     if not self._file_access_policy.allow_access(str(path)):
       return CommandOutput(
           output="",
@@ -109,7 +109,7 @@ class WriteFileCommand(AgentCommand):
           summary=f"{self.Name()} command encountered an error.",
           command_name=self.Name())
 
-    new_content = inputs[_content_variable]
+    new_content = str(inputs[_content_variable])
     logging.info(f"Write: {path}")
 
     if not new_content.endswith("\n"):
