@@ -78,15 +78,21 @@ class DisplayInfoCommand(AgentCommand):
     # ✨
 
 
+@dataclasses.dataclass(frozen=True)
+class PublishMessageConfig:
+  allow_list: frozenset[AgentName]
+
+
 # publish_message set's the children's agent `local_directory` to the cwd of the
 # parent.
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, cwd: PathBox,
-               telegram_chat_id: TelegramChatId,
+  def __init__(self, config: PublishMessageConfig, message_bus: MessageBus,
+               cwd: PathBox, telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     # ✨ publish message store private fields
+    self._config = config
     self._message_bus = message_bus
     self._cwd = cwd
     self._telegram_chat_id = telegram_chat_id
@@ -110,6 +116,8 @@ class PublishMessageCommand(AgentCommand):
     {{🦔 The message's target_agent is always set.}}
     {{🦔 If self._cwd is not '.', the message's local_directory is set
          accordingly (otherwise is None).}}
+    {{🦔 Returns an error `CommandOutput` if the target agent is missing from
+         `config.allow_list`.}}
     """
     # ✨ publish message run
     content_val = inputs[VariableName("content")]
@@ -117,18 +125,26 @@ class PublishMessageCommand(AgentCommand):
     target_agent_val = inputs[VariableName("target_agent")]
     target_agent = AgentName(str(target_agent_val))
 
+    if target_agent not in self._config.allow_list:
+      return CommandOutput(
+          command_name=self.Name(),
+          output="",
+          errors=f"Target agent '{target_agent}' is not in the allowed list for publishing messages.",
+          summary=f"Failed to publish message: target agent '{target_agent}' not allowed.",
+      )
+
     local_directory = None
     if self._cwd.path != pathlib.Path("."):
-        local_directory = self._cwd.path
+      local_directory = self._cwd.path
 
     message = BusMessage(
         message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
         target_agent=target_agent,
         local_directory=local_directory,
-        conversation_id=None, # This command is for publishing messages between agents, not for direct user conversations.
+        conversation_id=None,  # This command is for publishing messages between agents, not for direct user conversations.
         telegram_chat_id=self._telegram_chat_id,
-        telegram_message_id=None, # This is an internal message, not a Telegram message yet.
+        telegram_message_id=None,  # This is an internal message, not a Telegram message yet.
         telegram_reply_to_id=self._telegram_reply_to_id,
         content=MessageContent(content),
         queued_at=datetime.datetime.now(),
@@ -191,10 +207,10 @@ class AskUserCommand(AgentCommand):
         message_id=MessageId(0),  # Will be overwritten by the message bus.
         source_agent=self._source_agent,
         target_agent=END_USER_AGENT,
-        local_directory=None, # Added this field
+        local_directory=None,
         conversation_id=self._conversation_id,
         telegram_chat_id=self._telegram_chat_id,
-        telegram_message_id=None, # This is an outgoing message from agent to user, no Telegram ID yet
+        telegram_message_id=None,  # This is an outgoing message from agent to user, no Telegram ID yet
         telegram_reply_to_id=self._telegram_reply_to_id,
         content=MessageContent(question),
         queued_at=datetime.datetime.now(),
@@ -262,13 +278,13 @@ class DelegateRequestCommand(AgentCommand):
     target_agent = AgentName(str(target_agent_val))
 
     if target_agent not in self._config.allow_list:
-        return CommandOutput(
-            command_name=self.Name(),
-            output="",
-            errors=f'Target agent "{target_agent}" is not in the allow list.',
-            summary=f"Failed to delegate request to {target_agent}.",
-            task_done=True,
-        )
+      return CommandOutput(
+          command_name=self.Name(),
+          output="",
+          errors=f'Target agent "{target_agent}" is not in the allow list.',
+          summary=f"Failed to delegate request to {target_agent}.",
+          task_done=True,
+      )
 
     message = BusMessage(
         message_id=MessageId(0),  # Will be overwritten by the message bus.

@@ -24,7 +24,7 @@ from message_bus import Message as BusMessage, MessageBus, TelegramChatId, Teleg
 from message_queue import AgentMessageQueue
 from pathbox import PathBox
 from shell_command_command import ShellCommandCommand
-from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
+from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand, PublishMessageConfig
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
@@ -216,12 +216,13 @@ class SwarmWorkflow(AgentWorkflow):
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
-         ChangeWorkingDirectoryCommand, DisplayInfoCommand,
-         PublishMessageCommand and AskUserCommand.}}
+         ChangeWorkingDirectoryCommand, DisplayInfoCommand and AskUserCommand.}}
     {{🦔 If `config.command_registry.allow_shell', the registry contains
          `ShellCommandCommand`.}}
     {{🦔 If `config.command_registry.delegate_request.allow_list' exists and
          is non-empty, the registry contains DelegateRequestCommand.}}
+    {{🦔 If `config.command_registry.publish_message.allow_list' exists and
+         is non-empty, the registry contains PublishMessageCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
     {{🦔 If `message.local_directory` is None, the cwd passed to relevant
@@ -254,9 +255,14 @@ class SwarmWorkflow(AgentWorkflow):
         DisplayInfoCommand(self._message_bus, conversation_id,
                            message.telegram_chat_id, telegram_reply_to_id,
                            message.target_agent))
-    command_registry.Register(
-        PublishMessageCommand(self._message_bus, agent_cwd, message.telegram_chat_id,
-                              telegram_reply_to_id, message.target_agent))
+
+    if (config.command_registry.publish_message and
+        config.command_registry.publish_message.allow_list):
+      command_registry.Register(
+          PublishMessageCommand(
+              config.command_registry.publish_message, self._message_bus, agent_cwd,
+              message.telegram_chat_id, telegram_reply_to_id,
+              message.target_agent))
     command_registry.Register(
         AskUserCommand(self._message_bus, queue, conversation_id,
                        message.telegram_chat_id, telegram_reply_to_id,

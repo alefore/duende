@@ -22,7 +22,7 @@ from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
 from shell_command_command import ShellCommandCommand
-from swarm_commands import DelegateRequestConfig
+from swarm_commands import DelegateRequestConfig, PublishMessageConfig
 from swarm_types import AgentName
 from task_command import TaskInformation
 from validate_command import ValidateCommand
@@ -69,6 +69,8 @@ class CommandRegistryConfig:
   # `delegate_request` should be enabled.
   delegate_request: DelegateRequestConfig | None = None
 
+  publish_message: PublishMessageConfig | None = None
+
   allow_shell: bool = False
 
 
@@ -80,7 +82,8 @@ def create_command_registry_config(
   can't be parsed successfully)."""
   # ✨ create config
   allowed_keys = {
-      'file_access_policy', 'allow_shell', 'writes', 'delegate_request'
+      'file_access_policy', 'allow_shell', 'writes', 'delegate_request',
+      'publish_message'
   }
   for key in data:
     if key not in allowed_keys:
@@ -143,14 +146,45 @@ def create_command_registry_config(
           raise ValueError(
               f"Expected string in 'delegate_request.allow_list', but got {type(item)}"
           )
-      allow_list = allow_list_data
+        allow_list.append(AgentName(item))
     delegate_request = DelegateRequestConfig(allow_list=frozenset(allow_list))
+
+  publish_message = None
+  publish_message_data = data.get('publish_message')
+  if publish_message_data is not None:
+    if not isinstance(publish_message_data, dict):
+      raise ValueError(
+          f"Expected dictionary for 'publish_message', but got {type(publish_message_data)}"
+      )
+
+    allowed_publish_message_keys = {'allow_list'}
+    for key in publish_message_data:
+      if key not in allowed_publish_message_keys:
+        raise ValueError(
+            f"Unknown configuration key in 'publish_message': {key}")
+
+    publish_message_allow_list = []
+    publish_message_allow_list_data = publish_message_data.get('allow_list')
+    if publish_message_allow_list_data is not None:
+      if not isinstance(publish_message_allow_list_data, list):
+        raise ValueError(
+            f"Expected list for 'publish_message.allow_list', but got {type(publish_message_allow_list_data)}"
+        )
+      for item in publish_message_allow_list_data:
+        if not isinstance(item, str):
+          raise ValueError(
+              f"Expected string in 'publish_message.allow_list', but got {type(item)}"
+          )
+        publish_message_allow_list.append(AgentName(item))
+    publish_message = PublishMessageConfig(
+        allow_list=frozenset(publish_message_allow_list))
 
   return CommandRegistryConfig(
       file_access_policy=file_access_policy,
       allow_shell=allow_shell,
       writes=writes,
-      delegate_request=delegate_request)
+      delegate_request=delegate_request,
+      publish_message=publish_message)
   # ✨
 
 
