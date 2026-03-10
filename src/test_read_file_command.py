@@ -12,7 +12,7 @@ from test_utils import FakeFileAccessPolicy
 
 class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
 
-  def setUp(self):
+  def setUp(self) -> None:
     # Create a temporary file with known content for testing
     self.test_file_content = ("Line 1\n"
                               "Line 2 with some text\n"
@@ -27,7 +27,7 @@ class TestReadFileCommand(unittest.IsolatedAsyncioTestCase):
     # Mock FileAccessPolicy for testing
     self.read_file_command = ReadFileCommand(FakeFileAccessPolicy())
 
-  def tearDown(self):
+  def tearDown(self) -> None:
     # Clean up the temporary file
     os.unlink(self.temp_file_path)
 
