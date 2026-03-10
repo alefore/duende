@@ -27,10 +27,13 @@ END_USER_AGENT = AgentName("duende-internal:end-user")
 @dataclasses.dataclass(frozen=True)
 class Message:
   # The fields map directly to the rows of the `message_bus` SQL table.
+  #
+  # Paths use `pathlib.Path`.
   # ✨ message fields
   message_id: MessageId
   source_agent: AgentName
   target_agent: AgentName
+  local_directory: pathlib.Path | None
   conversation_id: ConversationId | None
   telegram_chat_id: TelegramChatId
   telegram_message_id: TelegramMessageId | None
@@ -98,6 +101,8 @@ class MessageBus:
             source_agent TEXT NOT NULL,
             target_agent TEXT NOT NULL,
 
+            local_directory TEXT,
+
             conversation_id INTEGER,
 
             telegram_chat_id INTEGER NOT NULL,
@@ -105,7 +110,7 @@ class MessageBus:
             telegram_message_id INTEGER,
             telegram_reply_to_id INTEGER,
 
-            content TEXT,
+            content TEXT NOT NULL,
 
             queued_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             processed_at DATETIME
@@ -136,6 +141,7 @@ class MessageBus:
               message_id,
               source_agent,
               target_agent,
+              local_directory,
               conversation_id,
               telegram_chat_id,
               telegram_message_id,
@@ -161,6 +167,7 @@ class MessageBus:
                 message_id=MessageId(row['message_id']),
                 source_agent=AgentName(row['source_agent']),
                 target_agent=AgentName(row['target_agent']),
+                local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
                 conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
                 telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
                 telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
@@ -192,6 +199,7 @@ class MessageBus:
               message_id,
               source_agent,
               target_agent,
+              local_directory,
               conversation_id,
               telegram_chat_id,
               telegram_message_id,
@@ -214,6 +222,7 @@ class MessageBus:
                 message_id=MessageId(row['message_id']),
                 source_agent=AgentName(row['source_agent']),
                 target_agent=AgentName(row['target_agent']),
+                local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
                 conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
                 telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
                 telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
@@ -258,6 +267,7 @@ class MessageBus:
     The MessageId will be overwritten (based on database state) and the
     resulting message returned.
     """
+
     # ✨ write new message
     def _insert_message_and_commit(msg: Message) -> Message:
       """Synchronous database operation to insert a new message."""
@@ -265,9 +275,10 @@ class MessageBus:
         raise ValueError("Database connection is not open.")
 
       logging.info(
-          'Writing message: source_agent=%s, target_agent=%s, conversation_id=%s, telegram_chat_id=%s, telegram_message_id=%s, telegram_reply_to_id=%s, content="%s", queued_at=%s',
+          'Writing message: source_agent=%s, target_agent=%s, local_directory=%s, conversation_id=%s, telegram_chat_id=%s, telegram_message_id=%s, telegram_reply_to_id=%s, content="%s", queued_at=%s',
           msg.source_agent,
           msg.target_agent,
+          msg.local_directory,
           msg.conversation_id,
           msg.telegram_chat_id,
           msg.telegram_message_id,
@@ -280,6 +291,7 @@ class MessageBus:
             INSERT INTO message_bus (
                 source_agent,
                 target_agent,
+                local_directory,
                 conversation_id,
                 telegram_chat_id,
                 telegram_message_id,
@@ -288,11 +300,12 @@ class MessageBus:
                 queued_at,
                 processed_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
           (
               msg.source_agent,
               msg.target_agent,
+              str(msg.local_directory) if msg.local_directory else None,
               msg.conversation_id if msg.conversation_id else None,
               msg.telegram_chat_id,
               msg.telegram_message_id if msg.telegram_message_id else None,
@@ -318,6 +331,7 @@ class MessageBus:
 
   async def mark_as_processed(self, message_id: MessageId) -> None:
     """Sets processed_at to the current time."""
+
     # ✨ set processed at
     def _mark_as_processed_db_op(msg_id: MessageId) -> None:
       """Synchronous database operation to set the processed_at timestamp."""
@@ -390,6 +404,7 @@ class MessageBus:
               message_id,
               source_agent,
               target_agent,
+              local_directory,
               conversation_id,
               telegram_chat_id,
               telegram_message_id,
@@ -412,6 +427,7 @@ class MessageBus:
           message_id=MessageId(row['message_id']),
           source_agent=AgentName(row['source_agent']),
           target_agent=AgentName(row['target_agent']),
+          local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
           conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
           telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
           telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
@@ -443,6 +459,7 @@ class MessageBus:
               message_id,
               source_agent,
               target_agent,
+              local_directory,
               conversation_id,
               telegram_chat_id,
               telegram_message_id,
@@ -470,6 +487,7 @@ class MessageBus:
           message_id=MessageId(row['message_id']),
           source_agent=AgentName(row['source_agent']),
           target_agent=AgentName(row['target_agent']),
+          local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
           conversation_id=ConversationId(row['conversation_id'])
           if row['conversation_id']
           else None,
