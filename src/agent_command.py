@@ -72,6 +72,8 @@ REASON_VARIABLE = Argument(
     description="Explanation of why you are running this function: "
     "What are you hoping to accomplish through this call?")
 
+PATH_VARIABLE_NAME = VariableName("path")
+
 
 class AgentCommand(ABC):
 
