@@ -4,6 +4,7 @@ import asyncio
 import dataclasses
 import datetime
 import json
+import logging
 import pathlib
 import sqlite3
 from typing import NewType
@@ -145,6 +146,9 @@ class SwarmWorkflow(AgentWorkflow):
     """Starts a new agent loop.
 
     Calls `MessageBus.set_conversation_id` to write the new conversation id.
+
+    {{🦔 The agent loop is run with an exception handler that will *immediately*
+         log any exceptions that it raises.
     """
     assert message.target_agent
     telegram_id = message.telegram_message_id or message.telegram_reply_to_id
@@ -180,7 +184,10 @@ class SwarmWorkflow(AgentWorkflow):
                                                 conversation.GetId())
 
     async def _run_agent_loop_task(loop: BaseAgentLoop) -> None:
-      await loop.run()
+      try:
+        await loop.run()
+      except Exception:
+        logging.exception("Background agent loop failed.")
 
     self._background_tasks.append(
         asyncio.create_task(_run_agent_loop_task(agent_loop)))
@@ -238,7 +245,8 @@ class SwarmWorkflow(AgentWorkflow):
 
     # ✨ init command registry
     if message.local_directory:
-      agent_cwd = PathBox(self._options.agent_loop_options.cwd / message.local_directory)
+      agent_cwd = PathBox(self._options.agent_loop_options.cwd /
+                          message.local_directory)
     else:
       agent_cwd = self._options.agent_loop_options.cwd
 
@@ -259,10 +267,10 @@ class SwarmWorkflow(AgentWorkflow):
     if (config.command_registry.publish_message and
         config.command_registry.publish_message.allow_list):
       command_registry.Register(
-          PublishMessageCommand(
-              config.command_registry.publish_message, self._message_bus, agent_cwd,
-              message.telegram_chat_id, telegram_reply_to_id,
-              message.target_agent))
+          PublishMessageCommand(config.command_registry.publish_message,
+                                self._message_bus, agent_cwd,
+                                message.telegram_chat_id, telegram_reply_to_id,
+                                message.target_agent))
     command_registry.Register(
         AskUserCommand(self._message_bus, queue, conversation_id,
                        message.telegram_chat_id, telegram_reply_to_id,
@@ -275,7 +283,8 @@ class SwarmWorkflow(AgentWorkflow):
       command_registry.Register(
           WriteFileCommand(
               cwd=agent_cwd,
-              validation_manager=self._options.agent_loop_options.validation_manager,
+              validation_manager=self._options.agent_loop_options
+              .validation_manager,
               selection_manager=self._options.selection_manager,
               hard_coded_path=None,
           ))
@@ -286,7 +295,8 @@ class SwarmWorkflow(AgentWorkflow):
           DelegateRequestCommand(
               config.command_registry.delegate_request,
               self._message_bus,
-              message.local_directory, # Use message.local_directory here, not agent_cwd.path
+              message.
+              local_directory,  # Use message.local_directory here, not agent_cwd.path
               message.telegram_chat_id,
               telegram_reply_to_id,
               message.target_agent,
