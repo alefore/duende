@@ -8,7 +8,7 @@ from pathbox import PathBox
 
 class ReadFileCommand(AgentCommand):
 
-  def __init__(self, cwd: PathBox):
+  def __init__(self, cwd: PathBox) -> None:
     self._cwd = cwd
 
   def Name(self) -> str:
