@@ -6,7 +6,7 @@ import pathlib
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-from message_bus import END_USER_AGENT, MessageBus, Message as BusMessage, MessageId, AgentName, TelegramChatId, TelegramMessageId
+import message_bus as mb
 from swarm_config import load_config, SwarmConfig
 
 logging.basicConfig(
@@ -16,7 +16,7 @@ logging.basicConfig(
 
 class Handler:
 
-  def __init__(self, config: SwarmConfig, message_bus: MessageBus) -> None:
+  def __init__(self, config: SwarmConfig, message_bus: mb.MessageBus) -> None:
     assert config.telegram
     self._config = config
     self._message_bus = message_bus
@@ -41,13 +41,13 @@ class Handler:
     # ✨ write message to bus and respond
     assert update.message
     assert self._config.telegram  # Ensure telegram config is not None
-    telegram_chat_id = TelegramChatId(update.effective_chat.id)
+    telegram_chat_id = mb.TelegramChatId(update.effective_chat.id)
     content = update.message.text or ""  # Ensure content is a string
-    telegram_message_id = TelegramMessageId(update.message.message_id)
+    telegram_message_id = mb.TelegramMessageId(update.message.message_id)
 
-    telegram_reply_to_id: TelegramMessageId | None = None
+    telegram_reply_to_id: mb.TelegramMessageId | None = None
     if update.message.reply_to_message:
-      telegram_reply_to_id = TelegramMessageId(
+      telegram_reply_to_id = mb.TelegramMessageId(
           update.message.reply_to_message.message_id)
 
     target_agent = self._config.telegram.consumer_agent
@@ -65,22 +65,23 @@ class Handler:
             f"in chat {telegram_chat_id} not found in message bus. "
             "Proceeding with default target_agent and no conversation_id.")
 
-    message_to_bus = BusMessage(
-        id=MessageId(0),  # Will be overwritten by write_new_message
-        source_agent=AgentName(END_USER_AGENT),
+    message_to_bus = mb.Message(
+        message_id=mb.MessageId(0),  # Will be overwritten by write_new_message
+        source_agent=mb.AgentName(mb.END_USER_AGENT),
         target_agent=target_agent,
         conversation_id=conversation_id,
         telegram_chat_id=telegram_chat_id,
         telegram_message_id=telegram_message_id,
         telegram_reply_to_id=telegram_reply_to_id,
-        content=content,
+        content=mb.MessageContent(content),
         queued_at=datetime.datetime.now(datetime.timezone.utc),
         processed_at=None,
+        local_directory=None,
     )
 
     written_message = await self._message_bus.write_new_message(message_to_bus)
 
-    response_text = f"Message received (id={written_message.id})"
+    response_text = f"Message received (id={written_message.message_id})"
     await update.message.reply_text(response_text)
     logging.info(response_text)
     # ✨
@@ -112,7 +113,7 @@ class Handler:
               reply_to_message_id=message.telegram_reply_to_id)
           await self._message_bus.set_telegram_message_id(
               message_id=message.id,
-              telegram_message_id=TelegramMessageId(sent_message.message_id))
+              telegram_message_id=mb.TelegramMessageId(sent_message.message_id))
           logging.info(
               'Message sent and telegram_message_id updated for bus message_id=%s, telegram_message_id=%s',
               message.id, sent_message.message_id)
@@ -151,7 +152,7 @@ class Handler:
 async def main() -> None:
   config = await load_config(pathlib.Path('swarm/config.json'))
   assert config.telegram
-  await Handler(config, MessageBus(config.message_bus_path)).run()
+  await Handler(config, mb.MessageBus(config.message_bus_path)).run()
 
 
 if __name__ == '__main__':
