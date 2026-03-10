@@ -28,6 +28,7 @@ from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
 from search_file_command import SearchFileCommand
 from read_file_command import ReadFileCommand
+from working_directory_command import ChangeWorkingDirectoryCommand
 from write_file_command import WriteFileCommand
 
 
@@ -142,7 +143,8 @@ class SwarmWorkflow(AgentWorkflow):
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
-         DisplayInfoCommand, PublishMessageCommand and AskUserCommand.}}
+         ChangeWorkingDirectoryCommand, DisplayInfoCommand,
+         PublishMessageCommand and AskUserCommand.}}
     {{🦔 If `config.command_registry.allow_shell', the registry contains
          `ShellCommandCommand`.}}
     {{🦔 If `config.command_registry.delegate_request.allow_list' exists and
