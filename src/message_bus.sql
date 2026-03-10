@@ -4,6 +4,9 @@ CREATE TABLE message_bus (
     source_agent     VARCHAR(50) NOT NULL,
     target_agent     VARCHAR(50) NOT NULL,
 
+    -- If NULL, the agent will be executed in this directory.
+    local_directory  TEXT,
+
     -- Starts NULL for messages that should trigger new conversations.
     conversation_id BIGINT,
 
