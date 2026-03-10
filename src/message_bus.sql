@@ -15,7 +15,7 @@ CREATE TABLE message_bus (
     telegram_message_id  BIGINT,
     telegram_reply_to_id BIGINT,
 
-    content TEXT,
+    content TEXT NOT NULL,
 
     -- State Tracking (Null-based)
     queued_at    TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
