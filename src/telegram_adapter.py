@@ -8,6 +8,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 import message_bus as mb
 from swarm_config import load_config, SwarmConfig
+from swarm_types import AgentName
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -69,7 +70,7 @@ class Handler:
 
     message_to_bus = mb.Message(
         message_id=mb.MessageId(0),  # Will be overwritten by write_new_message
-        source_agent=mb.AgentName(mb.END_USER_AGENT),
+        source_agent=AgentName(mb.END_USER_AGENT),
         target_agent=target_agent,
         conversation_id=conversation_id,
         telegram_chat_id=telegram_chat_id,
