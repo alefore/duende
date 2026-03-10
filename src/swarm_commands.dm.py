@@ -48,12 +48,17 @@ class DisplayInfoCommand(AgentCommand):
     raise NotImplementedError()  # {{🍄 display info run}}
 
 
+@dataclasses.dataclass(frozen=True)
+class PublishMessageConfig:
+  allow_list: frozenset[AgentName]
+
+
 # publish_message set's the children's agent `local_directory` to the cwd of the
 # parent.
 class PublishMessageCommand(AgentCommand):
 
-  def __init__(self, message_bus: MessageBus, cwd: PathBox,
-               telegram_chat_id: TelegramChatId,
+  def __init__(self, config: PublishMessageConfig, message_bus: MessageBus,
+               cwd: PathBox, telegram_chat_id: TelegramChatId,
                telegram_reply_to_id: TelegramMessageId,
                source_agent: AgentName) -> None:
     raise NotImplementedError()  # {{🍄 publish message store private fields}}
@@ -74,6 +79,8 @@ class PublishMessageCommand(AgentCommand):
     {{🦔 The message's target_agent is always set.}}
     {{🦔 If self._cwd is not '.', the message's local_directory is set
          accordingly (otherwise is None).}}
+    {{🦔 Returns an error `CommandOutput` if the target agent is missing from
+         `config.allow_list`.}}
     """
     raise NotImplementedError()  # {{🍄 publish message run}}
 
