@@ -11,6 +11,7 @@ import re
 from search_file_command import SearchFileCommand
 from file_access_policy import CurrentDirectoryFileAccessPolicy, RegexFileAccessPolicy
 from agent_command import CommandOutput, VariableMap, VariableName, VariableValueStr
+from pathbox import PathBox
 
 
 class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
@@ -31,7 +32,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write("Line 1 with unique content.\n")
       await f.write("Line 2 without the search term.\n")
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     search_term = 'nonexistent_word'
     inputs = VariableMap(
         {VariableName('content'): VariableValueStr(search_term)})
@@ -49,7 +51,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write(file_content)
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap({
         VariableName('content'): VariableValueStr(search_term),
         VariableName('path'): file_name
@@ -72,7 +75,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write(file_content)
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap({
         VariableName('content'): VariableValueStr(search_term),
         VariableName('path'): file_name
@@ -104,7 +108,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_name2, mode='w') as f:
       await f.write(file_content2)
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap(
         {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
@@ -132,7 +137,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(other_file, mode='w') as f:
       await f.write(f"This file also has the {search_term}.\n")
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap({
         VariableName('content'): VariableValueStr(search_term),
         VariableName('path'): file_to_search
@@ -161,7 +167,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(
           f"This file also contains the {search_term} but is outside.\n")
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap({
         VariableName('content'): VariableValueStr(search_term),
         VariableName('path'): subdir
@@ -195,7 +202,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_subdir2, mode='w') as f:
       await f.write(f"{search_term} is also here in subdir2.\n")
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap(
         {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
@@ -223,7 +231,8 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
     async with aiofiles.open(file_name, mode='w') as f:
       await f.write(file_content)
 
-    command = SearchFileCommand(file_access_policy=self.file_access_policy)
+    command = SearchFileCommand(
+        PathBox(), file_access_policy=self.file_access_policy)
     inputs = VariableMap({
         VariableName('content'): VariableValueStr(search_term),
         VariableName('path'): file_name
@@ -251,7 +260,7 @@ class SearchFileCommandTest(unittest.IsolatedAsyncioTestCase):
       await f.write(f"This file is {search_term} but restricted.\n")
 
     access_policy = RegexFileAccessPolicy(r"^allowed_file\.txt$")
-    command = SearchFileCommand(file_access_policy=access_policy)
+    command = SearchFileCommand(PathBox(), file_access_policy=access_policy)
     inputs = VariableMap(
         {VariableName('content'): VariableValueStr(search_term)})
     output: CommandOutput = await command.run(inputs)
