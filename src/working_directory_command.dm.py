@@ -1,17 +1,8 @@
-from dataclasses import dataclass
-import logging
 import pathlib
 
 from agent_command import AgentCommand, CommandOutput, CommandSyntax, Argument, ArgumentContentType, PATH_VARIABLE_NAME, REASON_VARIABLE, VariableMap, VariableName
 from file_access_policy import FileAccessPolicy
-
-
-@dataclass
-class PathBox:
-  path = pathlib.Path('.')
-
-  def __truediv__(self, other: pathlib.Path | str) -> pathlib.Path:
-    return self.path / other
+from pathbox import PathBox
 
 
 class ChangeWorkingDirectoryCommand(AgentCommand):
