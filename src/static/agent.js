@@ -275,6 +275,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
   $('#conversations_table_view_button')
       .on('click', () => showConversationsTableView());
+
+  $('#conversation-filter-select').on('change', () => {
+    renderConversationsTable(conversationsById);
+  });
+
   console.log('Requesting conversation list.');
   emitListConversations(socket);
 });

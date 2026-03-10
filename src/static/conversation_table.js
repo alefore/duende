@@ -22,6 +22,25 @@ class ConversationTableSorter {
 
 const conversationTableSorter = new ConversationTableSorter();
 
+function filterConversations(conversationsById, filterState) {
+  if (filterState === 'active') {
+    console.log(conversationsById);
+    return Object.fromEntries(
+        Object.entries(conversationsById)
+            .filter(([id, conv]) => conv.state !== 'DONE'));
+  }
+  if (filterState === 'recent') {
+    const nowMs = new Date().getTime();
+    return Object.fromEntries(
+        Object.entries(conversationsById)
+            .filter(
+                ([id, conv]) => conv.state !== 'DONE' ||
+                    (conv.lastStateChangeTime &&
+                     ((nowMs - conv.lastStateChangeTime) / 1000) < 120)));
+  }
+  return conversationsById;
+}
+
 function sortConversations(conversationsById, sortState) {
   const conversationsArray = Object.values(conversationsById);
   const {column, direction} = sortState;
@@ -70,9 +89,15 @@ function sortConversations(conversationsById, sortState) {
   return conversationsArray;
 }
 
-function sortAndRenderConversationsTable(conversationsById) {
+function renderConversationsTable(conversationsById) {
+  const $filterSelect = $('#conversation-filter-select');
+  const currentFilterState = $filterSelect.val() || 'all';  // Default to 'all'
+
+  const filteredConversations =
+      filterConversations(conversationsById, currentFilterState);
+
   const sortedConversations = sortConversations(
-      conversationsById, conversationTableSorter.getSortState());
+      filteredConversations, conversationTableSorter.getSortState());
 
   const $table = $('#conversations_table_view_table');
   $table.empty();
@@ -102,7 +127,7 @@ function sortAndRenderConversationsTable(conversationsById) {
     }
     $th.on('click', () => {
       conversationTableSorter.updateSortState(header.columnId);
-      sortAndRenderConversationsTable(conversationsById);
+      renderConversationsTable(conversationsById);
     });
     $headerRow.append($th);
   });
@@ -143,8 +168,4 @@ function sortAndRenderConversationsTable(conversationsById) {
 }
 
 // Export the new main rendering function
-export {
-  sortAndRenderConversationsTable as renderConversationsTable,
-  ConversationTableSorter,
-  sortConversations
-};
+export {renderConversationsTable, ConversationTableSorter, sortConversations};
