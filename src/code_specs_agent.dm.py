@@ -25,6 +25,7 @@ from message import Message, ContentSection
 from read_file_command import ReadFileCommand
 from search_file_command import SearchFileCommand
 from validation import ValidationResult
+from working_directory_command import PathBox
 from write_file_command import WriteFileCommand
 
 
@@ -53,8 +54,9 @@ async def prepare_command_registry(
   """Creates a command registry suitable for run_agent_loop.
 
   {{🦔 The command registry given has exactly these agent commands:
-       ReadFileCommand(…), ListFilesCommand(…), SearchFileCommand(…),
+       ReadFileCommand, ListFilesCommand, SearchFileCommand,
        done_command}}
+  {{🦔 The cwd given is the default (`PathBox()`).}}
   """
   raise NotImplementedError()  # {{🍄 prepare command registry}}
 
