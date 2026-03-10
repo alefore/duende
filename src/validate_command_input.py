@@ -6,6 +6,7 @@ from typing import Generator
 from agent_command import CommandSyntax, CommandInput, ArgumentContentType, Argument, VariableMap, VariableName, VariableValue, VariableValueInt
 from command_registry import CommandRegistry
 from file_access_policy import FileAccessPolicy
+from pathbox import PathBox
 
 
 class CommandValidationError(Exception):
@@ -19,14 +20,15 @@ def _IsPath(arg_type: ArgumentContentType) -> bool:
   }
 
 
-def _InvalidPathError(arg: Argument, value: str, error: str) -> str:
+def _InvalidPathError(arg: Argument, value: pathlib.Path, error: str) -> str:
   return f"Argument {arg.name}: {error}: Value: {value}"
 
 
 def _ValidatePathArg(
-    arg: Argument, value: str,
+    cwd: PathBox, arg: Argument, value: pathlib.Path,
     file_access_policy: FileAccessPolicy) -> Generator[str, None, None]:
-  if not file_access_policy.allow_access(value):
+  adjusted_value = cwd / value
+  if not file_access_policy.allow_access(str(adjusted_value)):
     if arg.arg_type == ArgumentContentType.PATH_INPUT:
       yield _InvalidPathError(arg, value, "File not found (policy)")
     else:
@@ -38,7 +40,8 @@ def _ValidatePathArg(
 
 def validate_command_input(cmd_input: CommandInput,
                            command_registry: CommandRegistry,
-                           file_access_policy: FileAccessPolicy) -> VariableMap:
+                           file_access_policy: FileAccessPolicy,
+                           cwd: PathBox) -> VariableMap:
   command = command_registry.Get(cmd_input.command_name)
   if not command:
     error_msg = (f"Error: Unknown command: {cmd_input.command_name}. " +
@@ -55,7 +58,8 @@ def validate_command_input(cmd_input: CommandInput,
     if value is not None:
       if _IsPath(syntax_arg.arg_type):
         warnings.extend(
-            _ValidatePathArg(syntax_arg, str(value), file_access_policy))
+            _ValidatePathArg(cwd, syntax_arg, pathlib.Path(str(value)),
+                             file_access_policy))
     elif syntax_arg.required:
       warnings.append(f"Missing required argument: {syntax_arg.name}")
 

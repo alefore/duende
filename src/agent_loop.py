@@ -49,9 +49,9 @@ class AgentLoop(BaseAgentLoop):
         cmd_input = section.command
         try:
           cmd_input = cmd_input._replace(
-              args=validate_command_input(cmd_input,
-                                          self.options.command_registry,
-                                          self.options.file_access_policy))
+              args=validate_command_input(
+                  cmd_input, self.options.command_registry,
+                  self.options.file_access_policy, self.options.cwd))
         except CommandValidationError as e:
           non_command_lines.append(f"Invalid command invocation: {str(e)}")
           next_message.PushSection(

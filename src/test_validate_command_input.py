@@ -5,6 +5,7 @@ from agent_command import AgentCommand, CommandSyntax, CommandInput, Argument, A
 from command_registry import CommandRegistry
 from file_access_policy import RegexFileAccessPolicy
 from validate_command_input import CommandValidationError, validate_command_input
+from pathbox import PathBox
 
 
 class FakeCommand(AgentCommand):
@@ -69,7 +70,7 @@ class TestValidateCommandInput(unittest.TestCase):
     with self.assertRaisesRegex(CommandValidationError,
                                 r".*Missing required argument: input_path"):
       validate_command_input(input, fake_registry([self.input_path]),
-                             self.file_access_policy)
+                             self.file_access_policy, PathBox())
 
   def test_excess_arguments_with_no_repeatable_final(self) -> None:
     input = CommandInput(
@@ -86,7 +87,7 @@ class TestValidateCommandInput(unittest.TestCase):
                                 "Unexpected argument: extra_arg"):
       validate_command_input(input,
                              fake_registry([self.input_path, self.output_path]),
-                             self.file_access_policy)
+                             self.file_access_policy, PathBox())
 
   def test_perfect_argument_count(self) -> None:
     input = CommandInput(
@@ -99,7 +100,7 @@ class TestValidateCommandInput(unittest.TestCase):
         }))
     validate_command_input(input,
                            fake_registry([self.input_path, self.output_path]),
-                           self.file_access_policy)
+                           self.file_access_policy, PathBox())
 
   def test_non_existent_input_path(self) -> None:
     input = CommandInput(
@@ -111,7 +112,7 @@ class TestValidateCommandInput(unittest.TestCase):
         CommandValidationError,
         f"{self.input_path.name}.*File not found.*non_existent_path"):
       validate_command_input(input, fake_registry([self.input_path]),
-                             self.file_access_policy)
+                             self.file_access_policy, PathBox())
 
   def test_access_denied_input_path(self) -> None:
     input = CommandInput(
@@ -123,7 +124,7 @@ class TestValidateCommandInput(unittest.TestCase):
         CommandValidationError,
         r".*test_command.*input_path.*File not found.*not_allowed_path"):
       validate_command_input(input, fake_registry([self.input_path]),
-                             self.restricted_policy)
+                             self.restricted_policy, PathBox())
 
 
 if __name__ == '__main__':
