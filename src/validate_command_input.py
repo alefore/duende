@@ -33,8 +33,8 @@ def _ValidatePathArg(
       yield _InvalidPathError(arg, value, "File not found (policy)")
     else:
       yield _InvalidPathError(arg, value, "Permission denied")
-  elif arg.arg_type == ArgumentContentType.PATH_INPUT and not os.path.exists(
-      value):
+  elif arg.arg_type == ArgumentContentType.PATH_INPUT and not adjusted_value.exists(
+  ):
     yield _InvalidPathError(arg, value, "File not found (os.path.exists)")
 
 
