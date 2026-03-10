@@ -16,7 +16,7 @@ from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
 from conversation import ConversationId, Conversation
 from done_command import DoneCommand
-from file_access_policy import create_file_access_policy, FileAccessPolicyConfig
+from file_access_policy import create_file_access_policy, FileAccessPolicyConfig, CompositeFileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
@@ -156,17 +156,15 @@ class SwarmWorkflow(AgentWorkflow):
          is non-empty, the registry contains PublishMessageCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
+    {{🦔 If present, `config.command_registry.writes.file_access_policy`
+         merged with the policy at `config.command_registry`. The composite
+         policy is given to `WriteFileCommand`.}}
     {{🦔 If `message.local_directory` is None, the cwd passed to relevant
          agent commands comes from self._options.}}
     {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
          agent commands is:
          self._options.agent_loop_options.cwd / message.local_directory.}}
-    {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
-    # TODO: Figure out how to honor
-    # config.command_registry.writes.file_access_policy. With the current
-    # implementation of WriteFileCommand, it isn't feasible.
-
     raise NotImplementedError()  # {{🍄 init command registry}}
 
 

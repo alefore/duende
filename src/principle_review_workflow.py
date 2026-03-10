@@ -108,6 +108,7 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
     command_registry = CommandRegistry()
     command_registry.Register(
         WriteFileCommand(self._options.agent_loop_options.cwd,
+                         self._options.agent_loop_options.file_access_policy,
                          self._options.agent_loop_options.validation_manager,
                          self._options.selection_manager, input_path))
 

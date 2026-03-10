@@ -17,7 +17,7 @@ from command_registry import CommandRegistry
 from confirmation import ConfirmationManager, ConfirmationState
 from conversation import ConversationId, Conversation
 from done_command import DoneCommand
-from file_access_policy import create_file_access_policy, FileAccessPolicyConfig
+from file_access_policy import create_file_access_policy, FileAccessPolicyConfig, CompositeFileAccessPolicy
 from list_files_command import ListFilesCommand
 from message import ContentSection, Message
 import message_bus
@@ -232,17 +232,15 @@ class SwarmWorkflow(AgentWorkflow):
          is non-empty, the registry contains PublishMessageCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
+    {{🦔 If present, `config.command_registry.writes.file_access_policy`
+         merged with the policy at `config.command_registry`. The composite
+         policy is given to `WriteFileCommand`.}}
     {{🦔 If `message.local_directory` is None, the cwd passed to relevant
          agent commands comes from self._options.}}
     {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
          agent commands is:
          self._options.agent_loop_options.cwd / message.local_directory.}}
-    {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
-    # TODO: Figure out how to honor
-    # config.command_registry.writes.file_access_policy. With the current
-    # implementation of WriteFileCommand, it isn't feasible.
-
     # ✨ init command registry
     if message.local_directory:
       agent_cwd = PathBox(self._options.agent_loop_options.cwd /
@@ -280,9 +278,20 @@ class SwarmWorkflow(AgentWorkflow):
       command_registry.Register(ShellCommandCommand(agent_cwd))
 
     if config.command_registry.writes:
+      write_policies_to_compose = [file_access_policy]
+
+      if config.command_registry.writes.file_access_policy:
+        write_specific_policy = create_file_access_policy(
+            config.command_registry.writes.file_access_policy)
+        write_policies_to_compose.append(write_specific_policy)
+
+      composite_write_file_access_policy = CompositeFileAccessPolicy(
+          write_policies_to_compose)
+
       command_registry.Register(
           WriteFileCommand(
               cwd=agent_cwd,
+              file_access_policy=composite_write_file_access_policy,
               validation_manager=self._options.agent_loop_options
               .validation_manager,
               selection_manager=self._options.selection_manager,

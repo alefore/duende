@@ -12,7 +12,7 @@ from agent_command import AgentCommand, CommandOutput
 from answer_command import AnswerCommand
 from command_registry import CommandRegistry
 from done_command import DoneCommand
-from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy
+from file_access_policy import CompositeFileAccessPolicy, create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy
 from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from list_files_command import ListFilesCommand
 from read_file_command import ReadFileCommand
@@ -251,9 +251,13 @@ async def create_command_registry(
 
   selection_manager = SelectionManager()
   if config.writes:
-    # TODO: Figure out how to pass the file access policy.
+    policies: list[FileAccessPolicy] = [file_access_policy]
+    if config.writes.file_access_policy:
+      policies.append(
+          create_file_access_policy(config.writes.file_access_policy))
     registry.Register(
-        WriteFileCommand(cwd, validation_manager, selection_manager, None))
+        WriteFileCommand(cwd, CompositeFileAccessPolicy(policies),
+                         validation_manager, selection_manager, None))
 
   if enable_select:
     for use_regex in [True, False]:

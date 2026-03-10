@@ -7,6 +7,7 @@ import pathlib
 from typing import Any
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, PATH_VARIABLE_NAME, REASON_VARIABLE, VariableName, VariableValue, VariableValueStr, VariableMap
+from file_access_policy import FileAccessPolicy
 from pathbox import PathBox
 from validation import ValidationManager
 from selection_manager import SelectionManager
@@ -16,10 +17,12 @@ _content_variable = VariableName("content")
 
 class WriteFileCommand(AgentCommand):
 
-  def __init__(self, cwd: PathBox, validation_manager: ValidationManager | None,
+  def __init__(self, cwd: PathBox, file_access_policy: FileAccessPolicy,
+               validation_manager: ValidationManager | None,
                selection_manager: SelectionManager,
                hard_coded_path: pathlib.Path | None):
     self._cwd = cwd
+    self._file_access_policy = file_access_policy
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
     self._hard_coded_path = hard_coded_path
@@ -33,7 +36,7 @@ class WriteFileCommand(AgentCommand):
     return [
         Argument(
             name=PATH_VARIABLE_NAME,
-            arg_type=ArgumentContentType.PATH_OUTPUT,
+            arg_type=ArgumentContentType.PATH_UNVALIDATED,
             description="The file path to write the content to."),
         REASON_VARIABLE
     ]
@@ -54,9 +57,7 @@ class WriteFileCommand(AgentCommand):
   def _get_path(self, inputs: VariableMap) -> pathlib.Path:
     if self._hard_coded_path:
       return self._cwd / self._hard_coded_path
-    inputs_path = inputs[PATH_VARIABLE_NAME]
-    assert isinstance(inputs_path, pathlib.Path)
-    return self._cwd / inputs_path
+    return self._cwd / pathlib.Path(str(inputs[PATH_VARIABLE_NAME]))
 
   async def _get_full_diff(self, path: pathlib.Path,
                            new_content: str) -> list[str] | None:
@@ -80,7 +81,8 @@ class WriteFileCommand(AgentCommand):
     path = self._get_path(inputs)
     content = inputs[_content_variable]
     assert isinstance(content, str)
-    if path and inputs.get(_content_variable):
+    if path and self._file_access_policy.allow_access(
+        str(path)) and inputs.get(_content_variable):
       output[VariableName("content_diff")] = await self._derive_diff(
           path, content)
     return output
@@ -100,6 +102,13 @@ class WriteFileCommand(AgentCommand):
 
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     path = self._hard_coded_path or inputs[VariableName("path")]
+    if not self._file_access_policy.allow_access(str(path)):
+      return CommandOutput(
+          output="",
+          errors=f"Permission denied writing to {path}",
+          summary=f"{self.Name()} command encountered an error.",
+          command_name=self.Name())
+
     new_content = inputs[_content_variable]
     logging.info(f"Write: {path}")
 

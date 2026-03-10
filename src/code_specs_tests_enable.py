@@ -278,6 +278,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     # Register WriteFileCommand to allow the agent to modify files.
     write_file_command = WriteFileCommand(
         cwd=self._options.agent_loop_options.cwd,
+        file_access_policy=self._options.agent_loop_options.file_access_policy,
         validation_manager=self._options.agent_loop_options.validation_manager,
         selection_manager=self._options.selection_manager,
         hard_coded_path=None)
