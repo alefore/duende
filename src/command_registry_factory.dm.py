@@ -27,7 +27,6 @@ from task_command import TaskInformation
 from done_command import DoneCommand
 from answer_command import AnswerCommand
 from shell_command_command import ShellCommandCommand
-import sys
 
 
 def _create_base_registry(
