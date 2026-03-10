@@ -1,8 +1,8 @@
 CREATE TABLE message_bus (
     message_id      SERIAL PRIMARY KEY,
 
-    source_agent     VARCHAR(50) NOT NULL,
-    target_agent     VARCHAR(50) NOT NULL,
+    source_agent     TEXT NOT NULL,
+    target_agent     TEXT NOT NULL,
 
     -- If NULL, the agent will be executed in this directory.
     local_directory  TEXT,
