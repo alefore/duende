@@ -6,42 +6,43 @@ import pathlib
 from typing import Any, Callable
 import sys
 
-from agent_command import AgentCommand, CommandOutput
 from agent_command_helpers import FormatHelp
+from agent_command import AgentCommand, CommandOutput
+from answer_command import AnswerCommand
 from command_registry import CommandRegistry
+from done_command import DoneCommand
 from file_access_policy import create_file_access_policy, create_file_access_policy_config, load_file_access_policy, FileAccessPolicyConfig, FileAccessPolicy
-from validation import ValidationManager
-from validate_command import ValidateCommand
-from read_file_command import ReadFileCommand
+from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
 from list_files_command import ListFilesCommand
-from write_file_command import WriteFileCommand
+from read_file_command import ReadFileCommand
+from replace_python_command import ReplacePythonCommand
 from search_file_command import SearchFileCommand
 from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
-from swarm_types import AgentName
-from swarm_commands import DelegateRequestConfig
-from replace_python_command import ReplacePythonCommand
-from git_commands import ResetFileCommand, CheckGitRepositoryState, GitRepositoryState
-from task_command import TaskInformation
-from done_command import DoneCommand
-from answer_command import AnswerCommand
 from shell_command_command import ShellCommandCommand
+from swarm_commands import DelegateRequestConfig
+from swarm_types import AgentName
+from task_command import TaskInformation
+from validate_command import ValidateCommand
+from validation import ValidationManager
+from pathbox import PathBox
+from write_file_command import WriteFileCommand
 
 
 def _create_base_registry(
-    file_access_policy: FileAccessPolicy) -> CommandRegistry:
+    cwd: PathBox, file_access_policy: FileAccessPolicy) -> CommandRegistry:
   registry = CommandRegistry()
-  registry.Register(ReadFileCommand(file_access_policy))
+  registry.Register(ReadFileCommand(cwd))
   registry.Register(ListFilesCommand(file_access_policy))
   registry.Register(SearchFileCommand(file_access_policy))
   return registry
 
 
 def create_ask_command_registry(
-    file_access_policy: FileAccessPolicy) -> CommandRegistry:
+    cwd: PathBox, file_access_policy: FileAccessPolicy) -> CommandRegistry:
   registry = CommandRegistry()
-  registry.Register(ReadFileCommand(file_access_policy))
+  registry.Register(ReadFileCommand(cwd))
   registry.Register(ListFilesCommand(file_access_policy))
   registry.Register(SearchFileCommand(file_access_policy))
   registry.Register(AnswerCommand())
@@ -87,6 +88,7 @@ async def load_command_registry_config(
 
 async def create_command_registry(
     config: CommandRegistryConfig,
+    cwd: PathBox,
     validation_manager: ValidationManager | None,
     start_new_task: Callable[[TaskInformation], CommandOutput],
     git_dirty_accept: bool = False,
@@ -94,7 +96,7 @@ async def create_command_registry(
 
   assert config.file_access_policy
   file_access_policy = create_file_access_policy(config.file_access_policy)
-  registry = _create_base_registry(file_access_policy)
+  registry = _create_base_registry(cwd, file_access_policy)
 
   registry.Register(DoneCommand(arguments=[]))
 
@@ -146,5 +148,5 @@ async def create_command_registry(
 
 
 def CreateReviewCommandRegistry(
-    file_access_policy: FileAccessPolicy) -> CommandRegistry:
-  return _create_base_registry(file_access_policy)
+    cwd: PathBox, file_access_policy: FileAccessPolicy) -> CommandRegistry:
+  return _create_base_registry(cwd, file_access_policy)
