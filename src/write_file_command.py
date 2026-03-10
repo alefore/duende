@@ -1,11 +1,12 @@
-from typing import Any
-import logging
-import os
-import difflib
 import aiofiles
 import asyncio
+import difflib
+import logging
+import os
+import pathlib
+from typing import Any
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableName, VariableValue, VariableValueStr, VariableMap
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, PATH_VARIABLE_NAME, REASON_VARIABLE, VariableName, VariableValue, VariableValueStr, VariableMap
 from validation import ValidationManager
 from selection_manager import SelectionManager
 
@@ -16,7 +17,7 @@ class WriteFileCommand(AgentCommand):
 
   def __init__(self, validation_manager: ValidationManager | None,
                selection_manager: SelectionManager,
-               hard_coded_path: str | None):
+               hard_coded_path: pathlib.Path | None):
     self.validation_manager = validation_manager
     self.selection_manager = selection_manager
     self._hard_coded_path = hard_coded_path
@@ -29,7 +30,7 @@ class WriteFileCommand(AgentCommand):
       return []
     return [
         Argument(
-            name=VariableName("path"),
+            name=PATH_VARIABLE_NAME,
             arg_type=ArgumentContentType.PATH_OUTPUT,
             description="The file path to write the content to."),
         REASON_VARIABLE
@@ -48,7 +49,14 @@ class WriteFileCommand(AgentCommand):
         output_description='A string describing the result of the operation, possibly including a diff.'
     )
 
-  async def _get_full_diff(self, path: str,
+  def _get_path(self, inputs: VariableMap) -> pathlib.Path:
+    if self._hard_coded_path:
+      return self._hard_coded_path
+    inputs_path = inputs[PATH_VARIABLE_NAME]
+    assert isinstance(inputs_path, pathlib.Path)
+    return inputs_path
+
+  async def _get_full_diff(self, path: pathlib.Path,
                            new_content: str) -> list[str] | None:
     if not await asyncio.to_thread(os.path.exists, path):
       return None
@@ -67,8 +75,7 @@ class WriteFileCommand(AgentCommand):
 
   async def derive_args(self, inputs: VariableMap) -> VariableMap:
     output = VariableMap({})
-    path = self._hard_coded_path or inputs.get(VariableName("path"))
-    assert isinstance(path, str)
+    path = self._get_path(inputs)
     content = inputs[_content_variable]
     assert isinstance(content, str)
     if path and inputs.get(_content_variable):
@@ -76,7 +83,7 @@ class WriteFileCommand(AgentCommand):
           path, content)
     return output
 
-  async def _derive_diff(self, path: str,
+  async def _derive_diff(self, path: pathlib.Path,
                          new_content: VariableValueStr) -> VariableValue:
     try:
       diff = await self._get_full_diff(path, new_content)

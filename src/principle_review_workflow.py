@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import pathlib
 
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
@@ -105,9 +106,11 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
     logging.info(
         f"Starting AI conversation to fix {input_path} based on rejections.")
     command_registry = CommandRegistry()
+    # TODO(trivial): Remove need to call pathlib.Path below.
     command_registry.Register(
         WriteFileCommand(self._options.agent_loop_options.validation_manager,
-                         self._options.selection_manager, input_path))
+                         self._options.selection_manager,
+                         pathlib.Path(input_path)))
 
     conversation = self._options.conversation_factory.New(
         name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
