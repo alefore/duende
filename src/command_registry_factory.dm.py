@@ -21,7 +21,7 @@ from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
 from shell_command_command import ShellCommandCommand
-from swarm_commands import DelegateRequestConfig
+from swarm_commands import DelegateRequestConfig, PublishMessageConfig
 from swarm_types import AgentName
 from task_command import TaskInformation
 from validate_command import ValidateCommand
@@ -67,6 +67,8 @@ class CommandRegistryConfig:
   # If present and its `allow_list` is non-empty, signifies that
   # `delegate_request` should be enabled.
   delegate_request: DelegateRequestConfig | None = None
+
+  publish_message: PublishMessageConfig | None = None
 
   allow_shell: bool = False
 
