@@ -27,7 +27,7 @@ class FileAccessHiddenFiles(Enum):
 
 @dataclasses.dataclass(frozen=True)
 class FileAccessPolicyConfig:
-  regex: str | None = None
+  regex: re.Pattern | None = None
 
   scope: FileAccessScope = FileAccessScope.NONE
 
@@ -63,8 +63,8 @@ class FileAccessPolicy(abc.ABC):
 
 class RegexFileAccessPolicy(FileAccessPolicy):
 
-  def __init__(self, regex_pattern: str):
-    self.pattern = re.compile(regex_pattern)
+  def __init__(self, pattern: re.Pattern):
+    self.pattern = pattern
 
   def allow_access(self, path: str) -> bool:
     """Check if a path matches the regex pattern for access"""
