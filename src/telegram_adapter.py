@@ -21,11 +21,13 @@ class Handler:
     self._config = config
     self._message_bus = message_bus
 
-  async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+  async def start(self, update: Update,
+                  context: ContextTypes.DEFAULT_TYPE) -> None:
     assert update.message
     await update.message.reply_text("I'm awake!")
 
-  async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+  async def echo(self, update: Update,
+                 context: ContextTypes.DEFAULT_TYPE) -> None:
     """Receives a message from Telegram and inserts it to the message bus.
 
     If the update is a response to a previous message, looks up the previous
@@ -86,7 +88,7 @@ class Handler:
     logging.info(response_text)
     # ✨
 
-  async def _send_outgoing_messages(self):
+  async def _send_outgoing_messages(self) -> None:
     """Calls wait_for_outgoing_messages and dispatches messages to the user.
 
     For each message received, calls `self._app.bot.send_message` and
@@ -96,13 +98,13 @@ class Handler:
     """
     # ✨ read new outgoing messages
     while True:
-      logging.info('Waiting for outgoing messages...')
+      logging.info("Waiting for outgoing messages...")
       outgoing_messages = await self._message_bus.wait_for_outgoing_messages()
 
       for message in outgoing_messages:
         # Prepend the source agent to the message content as per the requirement.
         full_content = f"{message.source_agent}: {message.content}"
-        logging.info('Sending message to telegram_chat_id=%s, content="%s"',
+        logging.info("Sending message to telegram_chat_id=%s, content=\"%s\"",
                      message.telegram_chat_id, full_content)
         # Using self._app.bot.send_message to dispatch the message.
         # reply_to_message_id is used if message.telegram_reply_to_id is set.
@@ -112,14 +114,14 @@ class Handler:
               text=full_content,
               reply_to_message_id=message.telegram_reply_to_id)
           await self._message_bus.set_telegram_message_id(
-              message_id=message.id,
+              message_id=message.message_id,
               telegram_message_id=mb.TelegramMessageId(sent_message.message_id))
           logging.info(
-              'Message sent and telegram_message_id updated for bus message_id=%s, telegram_message_id=%s',
-              message.id, sent_message.message_id)
+              "Message sent and telegram_message_id updated for bus message_id=%s, telegram_message_id=%s",
+              message.message_id, sent_message.message_id)
         except Exception as e:
-          logging.error('Failed to send message_id=%s to Telegram: %s',
-                        message.id, e)
+          logging.error("Failed to send message_id=%s to Telegram: %s",
+                        message.message_id, e)
     # ✨
 
   async def run(self) -> None:

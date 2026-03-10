@@ -20,11 +20,13 @@ class Handler:
     self._config = config
     self._message_bus = message_bus
 
-  async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+  async def start(self, update: Update,
+                  context: ContextTypes.DEFAULT_TYPE) -> None:
     assert update.message
     await update.message.reply_text("I'm awake!")
 
-  async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+  async def echo(self, update: Update,
+                 context: ContextTypes.DEFAULT_TYPE) -> None:
     """Receives a message from Telegram and inserts it to the message bus.
 
     If the update is a response to a previous message, looks up the previous
@@ -39,7 +41,7 @@ class Handler:
     assert update.effective_chat  # for telegram_chat_id.
     raise NotImplementedError()  # {{🍄 write message to bus and respond}}
 
-  async def _send_outgoing_messages(self):
+  async def _send_outgoing_messages(self) -> None:
     """Calls wait_for_outgoing_messages and dispatches messages to the user.
 
     For each message received, calls `self._app.bot.send_message` and
