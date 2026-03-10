@@ -5,7 +5,7 @@ import pathlib
 import os
 from typing import AsyncIterable, Iterable, Any
 
-from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableName, VariableValue
+from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, PATH_VARIABLE_NAME, REASON_VARIABLE, VariableName, VariableMap, VariableValue
 from file_access_policy import FileAccessPolicy
 from list_files import list_all_files
 
@@ -40,14 +40,14 @@ class SearchFileCommand(AgentCommand):
                 description="The content to search for.",
                 required=True),
             Argument(
-                name=VariableName("path"),
+                name=PATH_VARIABLE_NAME,
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="File to search in. Skip it to find references in the entire repository.",
                 required=False)
         ])
 
-  async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
-    search_term: str = inputs[VariableName("content")].strip()
+  async def run(self, inputs: VariableMap) -> CommandOutput:
+    search_term: str = str(inputs[VariableName("content")]).strip()
     input_path: VariableValue | None = inputs.get(VariableName("path"))
     assert isinstance(input_path, pathlib.Path | None)
 
