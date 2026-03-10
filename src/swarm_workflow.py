@@ -22,6 +22,7 @@ from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
+from pathbox import PathBox
 from shell_command_command import ShellCommandCommand
 from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
@@ -92,6 +93,7 @@ class SwarmWorkflow(AgentWorkflow):
     * Otherwise: writes an outgoing message informing the user that the session
       no longer exists.
     """
+
     # ✨ process message
     await self._message_bus.mark_as_processed(message.message_id)
 
@@ -221,6 +223,11 @@ class SwarmWorkflow(AgentWorkflow):
          is non-empty, the registry contains DelegateRequestCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
+    {{🦔 If `message.local_directory` is None, the cwd passed to relevant
+         agent commands comes from self._options.}}
+    {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
+         agent commands is:
+         self._options.agent_loop_options.cwd / message.local_directory.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     # TODO: Figure out how to honor
@@ -228,12 +235,16 @@ class SwarmWorkflow(AgentWorkflow):
     # implementation of WriteFileCommand, it isn't feasible.
 
     # ✨ init command registry
+    agent_cwd = self._options.agent_loop_options.cwd
+    if message.local_directory:
+      agent_cwd = PathBox(agent_cwd / message.local_directory)
+
     file_access_policy_config = config.command_registry.file_access_policy or FileAccessPolicyConfig(
     )
     file_access_policy = create_file_access_policy(file_access_policy_config)
 
     command_registry.Register(DoneCommand([]))
-    command_registry.Register(ReadFileCommand(self._options.agent_loop_options.cwd))
+    command_registry.Register(ReadFileCommand(agent_cwd))
     command_registry.Register(ListFilesCommand(file_access_policy))
     command_registry.Register(SearchFileCommand(file_access_policy))
     command_registry.Register(
@@ -249,7 +260,7 @@ class SwarmWorkflow(AgentWorkflow):
                        message.target_agent))
 
     if config.command_registry.allow_shell:
-      command_registry.Register(ShellCommandCommand())
+      command_registry.Register(ShellCommandCommand(agent_cwd))
 
     if config.command_registry.writes:
       command_registry.Register(

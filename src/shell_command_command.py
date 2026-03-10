@@ -1,11 +1,16 @@
 import logging
 import asyncio
+import pathlib
 from typing import Any
 
 from agent_command import REASON_VARIABLE, AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from pathbox import PathBox
 
 
 class ShellCommandCommand(AgentCommand):
+
+  def __init__(self, cwd: PathBox) -> None:
+    self._cwd = cwd
 
   def Name(self) -> str:
     return self.Syntax().name
@@ -33,8 +38,7 @@ class ShellCommandCommand(AgentCommand):
     command = inputs[VariableName("command")]
     logging.info(f"Executing shell command: {command}")
 
-    cwd = inputs.get(VariableName('cwd'))
-    assert cwd is None or isinstance(cwd, str)
+    cwd = self._cwd / pathlib.Path(inputs.get(VariableName('cwd'), '.'))
     try:
       process = await asyncio.create_subprocess_shell(
           command,

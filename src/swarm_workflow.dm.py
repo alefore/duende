@@ -21,6 +21,7 @@ from message import ContentSection, Message
 import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
+from pathbox import PathBox
 from shell_command_command import ShellCommandCommand
 from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
@@ -148,6 +149,11 @@ class SwarmWorkflow(AgentWorkflow):
          is non-empty, the registry contains DelegateRequestCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
+    {{🦔 If `message.local_directory` is None, the cwd passed to relevant
+         agent commands comes from self._options.}}
+    {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
+         agent commands is:
+         self._options.agent_loop_options.cwd / message.local_directory.}}
     {{🦔 The file access policy is based on config.file_access_policy_regex.}}
     """
     # TODO: Figure out how to honor

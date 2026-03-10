@@ -1,15 +1,18 @@
+import asyncio
 import unittest
 from unittest.mock import MagicMock
-import asyncio
+import pathlib
 
 from agent_command import CommandInput, VariableMap, VariableName, VariableValueStr
+from pathbox import PathBox
 from shell_command_command import ShellCommandCommand
 
 
 class TestShellCommandCommand(unittest.IsolatedAsyncioTestCase):
 
   async def asyncSetUp(self) -> None:
-    self.shell_command = ShellCommandCommand()
+    self.pathbox = PathBox(pathlib.Path('.'))
+    self.shell_command = ShellCommandCommand(self.pathbox)
 
   async def test_shell_command_success(self) -> None:
     command_input = CommandInput(
@@ -23,6 +26,16 @@ class TestShellCommandCommand(unittest.IsolatedAsyncioTestCase):
                      "Shell command executed with exit status 0.")
     self.assertIn("'stdout': 'hello'", output.output)
     self.assertIn("'stderr': ''", output.output)
+    self.assertIn("'exit_status': 0", output.output)
+
+  async def test_shell_command_honors_path(self) -> None:
+    command_input = CommandInput(
+        command_name="shell_command",
+        args=VariableMap({VariableName('command'): VariableValueStr('pwd')}))
+    self.pathbox.path = pathlib.Path('/etc')
+    output = await self.shell_command.run(command_input.args)
+
+    self.assertIn("'stdout': '/etc'", output.output)
     self.assertIn("'exit_status': 0", output.output)
 
   async def test_shell_command_failure(self) -> None:

@@ -116,7 +116,7 @@ async def create_command_registry(
     registry.Register(ValidateCommand(validation_manager))
 
   if config.allow_shell:
-    registry.Register(ShellCommandCommand())
+    registry.Register(ShellCommandCommand(cwd))
 
   enable_select = False
 
