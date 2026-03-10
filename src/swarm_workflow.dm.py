@@ -143,12 +143,13 @@ class SwarmWorkflow(AgentWorkflow):
 
     {{🦔 The registry contains ReadFileCommand, ListFilesCommand,
          SearchFileCommand, DoneCommand (with no arguments),
-         ChangeWorkingDirectoryCommand, DisplayInfoCommand,
-         PublishMessageCommand and AskUserCommand.}}
+         ChangeWorkingDirectoryCommand, DisplayInfoCommand and AskUserCommand.}}
     {{🦔 If `config.command_registry.allow_shell', the registry contains
          `ShellCommandCommand`.}}
     {{🦔 If `config.command_registry.delegate_request.allow_list' exists and
          is non-empty, the registry contains DelegateRequestCommand.}}
+    {{🦔 If `config.command_registry.publish_message.allow_list' exists and
+         is non-empty, the registry contains PublishMessageCommand.}}
     {{🦔 If `config.command_registry.writes', the registry contains
          `WriteFileCommand`.}}
     {{🦔 If `message.local_directory` is None, the cwd passed to relevant
