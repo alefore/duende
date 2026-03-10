@@ -1,3 +1,4 @@
+import aiofiles
 import asyncio
 import logging
 import os
@@ -24,21 +25,20 @@ class PrincipleReviewWorkflow(AgentWorkflow):
       raise ValueError(
           "PrincipleReviewWorkflow requires principle_paths in AgentWorkflowOptions."
       )
-    self._principle_paths: list[str] = options.principle_paths
+    self._principle_paths: list[pathlib.Path] = options.principle_paths
 
     if not options.input_paths:
       raise ValueError(
           "PrincipleReviewWorkflow requires input_paths in AgentWorkflowOptions."
       )
-    self._input_paths: list[str] = options.input_paths
+    self._input_paths: list[pathlib.Path] = options.input_paths
 
-  def _path_to_id(self, path: str) -> str:
-    return os.path.basename(path).replace('.md', '')
+  def _path_to_id(self, path: pathlib.Path) -> str:
+    return path.name.replace('.md', '')
 
-  def _get_principle_prompt(self, principle_file: str,
+  def _get_principle_prompt(self, principle_file: pathlib.Path,
                             input_content: str) -> str:
-    with open(principle_file, 'r') as f:
-      principle_content = f.read()
+    principle_content = principle_file.read_text()
 
     return f"""# Your task
 
@@ -58,11 +58,11 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
 
 {input_content}"""
 
-  async def _process_single_input_path(self, input_path: str) -> None:
+  async def _process_single_input_path(self, input_path: pathlib.Path) -> None:
     logging.info(f"Starting Principle Review for: {input_path}")
 
-    with open(input_path, 'r') as f:
-      input_content = f.read()
+    async with aiofiles.open(input_path, 'r') as f:
+      input_content = await f.read()
 
     reviews_to_run: dict[str, str] = {
         f"{self._path_to_id(input_path)}-{self._path_to_id(p)}":
@@ -106,11 +106,9 @@ You MUST run the function `accept` or the function `reject`. Anything else (othe
     logging.info(
         f"Starting AI conversation to fix {input_path} based on rejections.")
     command_registry = CommandRegistry()
-    # TODO(trivial): Remove need to call pathlib.Path below.
     command_registry.Register(
         WriteFileCommand(self._options.agent_loop_options.validation_manager,
-                         self._options.selection_manager,
-                         pathlib.Path(input_path)))
+                         self._options.selection_manager, input_path))
 
     conversation = self._options.conversation_factory.New(
         name=f"AI Fixer: {input_path} - {self._options.agent_loop_options.conversation.GetName()}",
