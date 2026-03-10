@@ -9,7 +9,7 @@ from file_access_policy import FileAccessPolicy
 
 @dataclass
 class PathBox:
-  path: pathlib.Path
+  path = pathlib.Path('.')
 
   def __truediv__(self, other: pathlib.Path | str) -> pathlib.Path:
     return self.path / other
