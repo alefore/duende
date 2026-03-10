@@ -28,6 +28,14 @@ app.mount(
     name="static")
 
 
+def global_exception_handler(loop, context) -> None:
+  exception = context.get("exception")
+  if exception:
+    logging.error(f"Async task failed: {exception}", exc_info=exception)
+  else:
+    logging.error(f"Async error: {context['message']}")
+
+
 def parse_arguments() -> argparse.Namespace:
   parser = CreateCommonParser()
   parser.add_argument(
@@ -54,6 +62,10 @@ async def send_update(server_state: WebServerState, data: dict[str,
 
 
 async def main() -> None:
+  loop = asyncio.get_running_loop()
+  loop.set_exception_handler(global_exception_handler)
+  loop.set_debug(True)
+
   args = parse_arguments()
   server_state = await create_web_server_state(args, sio)
 
@@ -93,8 +105,13 @@ async def main() -> None:
       logging.info(f"Invalid data: {e}")
 
   server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=args.port))
-  await asyncio.gather(server.serve(), server_state.wait_for_background_tasks())
+  async with asyncio.TaskGroup() as tg:
+    tg.create_task(server.serve())
+    tg.create_task(server_state.wait_for_background_tasks())
 
 
 if __name__ == "__main__":
-  asyncio.run(main())
+  try:
+    asyncio.run(main())
+  except KeyboardInterrupt:
+    pass
