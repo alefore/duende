@@ -198,22 +198,20 @@ class SwarmWorkflow(AgentWorkflow):
   async def _new_start_message(self, message: BusMessage) -> Message:
     """Returns a new Message: agent's prompt + message's body.
 
-    Loads the prompt from the agent's config's prompt_path and appends the body
-    of the message to it.
+    Creates the initial message for the agent loop. It contains a section for
+    `prompt_content` and one for `message.content` (if non-empty).
     """
     assert message.target_agent
     head = self._config.agents[message.target_agent].prompt_content
-    tail = "<user_request>" + message.content + "</user_request>"
+    if message.content:
+      tail = "<user_request>" + message.content + "</user_request>"
+    else:
+      tail = None
     # ✨ new start message
-    assert message.target_agent
-    head = self._config.agents[message.target_agent].prompt_content
-    tail = "<user_request>" + message.content + "</user_request>"
-    return Message(
-        role='user',
-        content_sections=[
-            ContentSection(content=head),
-            ContentSection(content=tail)
-        ])
+    content_sections = [ContentSection(content=head)]
+    if tail:
+      content_sections.append(ContentSection(content=tail))
+    return Message(role='user', content_sections=content_sections)
     # ✨
 
   def _init_command_registry(self, conversation_id: ConversationId,
@@ -254,9 +252,12 @@ class SwarmWorkflow(AgentWorkflow):
 
     command_registry.Register(DoneCommand([]))
     command_registry.Register(ReadFileCommand(agent_current_working_directory))
-    command_registry.Register(ListFilesCommand(agent_current_working_directory, file_access_policy))
-    command_registry.Register(SearchFileCommand(agent_current_working_directory, file_access_policy))
-    command_registry.Register(ChangeWorkingDirectoryCommand(agent_current_working_directory))
+    command_registry.Register(
+        ListFilesCommand(agent_current_working_directory, file_access_policy))
+    command_registry.Register(
+        SearchFileCommand(agent_current_working_directory, file_access_policy))
+    command_registry.Register(
+        ChangeWorkingDirectoryCommand(agent_current_working_directory))
     command_registry.Register(
         DisplayInfoCommand(self._message_bus, conversation_id,
                            message.telegram_chat_id, telegram_reply_to_id,
@@ -266,7 +267,8 @@ class SwarmWorkflow(AgentWorkflow):
         config.command_registry.publish_message.allow_list):
       command_registry.Register(
           PublishMessageCommand(config.command_registry.publish_message,
-                                self._message_bus, agent_current_working_directory,
+                                self._message_bus,
+                                agent_current_working_directory,
                                 message.telegram_chat_id, telegram_reply_to_id,
                                 message.target_agent))
     command_registry.Register(
@@ -275,7 +277,8 @@ class SwarmWorkflow(AgentWorkflow):
                        message.target_agent))
 
     if config.command_registry.allow_shell:
-      command_registry.Register(ShellCommandCommand(agent_current_working_directory))
+      command_registry.Register(
+          ShellCommandCommand(agent_current_working_directory))
 
     if config.command_registry.writes:
       write_policies_to_compose = [file_access_policy]
