@@ -132,12 +132,15 @@ class SwarmWorkflow(AgentWorkflow):
   async def _new_start_message(self, message: BusMessage) -> Message:
     """Returns a new Message: agent's prompt + message's body.
 
-    Loads the prompt from the agent's config's prompt_path and appends the body
-    of the message to it.
+    Creates the initial message for the agent loop. It contains a section for
+    `prompt_content` and one for `message.content` (if non-empty).
     """
     assert message.target_agent
     head = self._config.agents[message.target_agent].prompt_content
-    tail = "<user_request>" + message.content + "</user_request>"
+    if message.content:
+      tail = "<user_request>" + message.content + "</user_request>"
+    else:
+      tail = None
     raise NotImplementedError()  # {{🍄 new start message}}
 
   def _init_command_registry(self, conversation_id: ConversationId,
