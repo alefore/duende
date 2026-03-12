@@ -53,6 +53,11 @@ class SearchFileCommand(AgentCommand):
                 name=PATH_VARIABLE_NAME,
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="File to search in. Skip it to find references in the entire repository.",
+                required=False),
+            Argument(
+                name=VariableName("case_sensitive"),
+                arg_type=ArgumentContentType.BOOL,
+                description="If true, the match must be case sensitive (false by default).",
                 required=False)
         ])
 
@@ -70,10 +75,21 @@ class SearchFileCommand(AgentCommand):
 
       return _single_file_iterator()
 
+  def _is_match(self, search_term: str, case_sensitive: bool,
+                line: str) -> bool:
+    # ✨ is match
+    if case_sensitive:
+      return search_term in line
+    else:
+      return search_term.lower() in line.lower()
+    # ✨
+
   async def run(self, inputs: VariableMap) -> CommandOutput:
     search_term: str = str(inputs[VariableName("content")]).strip()
     input_path: VariableValue | None = inputs.get(VariableName("path"))
+    case_sensitive = inputs.get(VariableName("case_sensitive"), False)
     assert isinstance(input_path, pathlib.Path | None)
+    assert isinstance(case_sensitive, bool)
 
     if len(search_term.splitlines()) > 1:
       # ✨ return error pattern crosses lines
@@ -111,7 +127,7 @@ class SearchFileCommand(AgentCommand):
 
         file_match_count = 0
         for i, line in enumerate(lines):
-          if search_term in line:
+          if self._is_match(search_term, case_sensitive, line):
             file_match_count += 1
             global_match_count += 1
             if global_match_count < match_limit:
