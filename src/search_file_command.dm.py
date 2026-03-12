@@ -45,6 +45,11 @@ class SearchFileCommand(AgentCommand):
                 name=PATH_VARIABLE_NAME,
                 arg_type=ArgumentContentType.PATH_INPUT,
                 description="File to search in. Skip it to find references in the entire repository.",
+                required=False),
+            Argument(
+                name=VariableName("case_sensitive"),
+                arg_type=ArgumentContentType.BOOL,
+                description="If true, the match must be case sensitive (false by default).",
                 required=False)
         ])
 
