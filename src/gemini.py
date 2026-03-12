@@ -5,7 +5,7 @@ import sys
 from typing import Any
 
 from command_registry import CommandRegistry
-from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableMap, VariableName, VariableValue, VariableValueInt, VariableValueStr
+from agent_command import ArgumentContentType, CommandInput, CommandSyntax, VariableMap, VariableName, VariableValue, VariableValueBool, VariableValueInt, VariableValueStr
 from conversation import Conversation
 from message import Message, ContentSection
 from conversational_ai import ConversationalAI, ConversationalAIConversation
@@ -15,6 +15,8 @@ import tenacity
 def _parse_arg_type(arg: ArgumentContentType) -> genai.types.Type:
   if arg == ArgumentContentType.INTEGER:
     return genai.types.Type.INTEGER
+  if arg == ArgumentContentType.BOOL:
+    return genai.types.Type.BOOLEAN
   return genai.types.Type.STRING
 
 
@@ -156,6 +158,8 @@ def _get_value(v: Any) -> VariableValue:
       return VariableValueStr(s)
     case int(i):
       return VariableValueInt(i)
+    case bool(b):
+      return VariableValueBool(b)
     case _:
       raise ValueError(f"Unsupported data type: {v}")
 

@@ -8,7 +8,8 @@ import pathlib
 VariableName = NewType("VariableName", str)
 VariableValueInt = NewType("VariableValueInt", int)
 VariableValueStr = NewType("VariableValueStr", str)
-VariableValue = VariableValueInt | VariableValueStr | pathlib.Path
+VariableValueBool = NewType("VariableValueBool", bool)
+VariableValue = VariableValueInt | VariableValueStr | VariableValueBool | pathlib.Path
 VariableMap = NewType("VariableMap", dict[VariableName, VariableValue])
 
 
@@ -42,6 +43,7 @@ class ArgumentContentType(Enum):
   REGEX = auto()
   STRING = auto()
   INTEGER = auto()
+  BOOL = auto()
 
 
 class Argument(NamedTuple):
