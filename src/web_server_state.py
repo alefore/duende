@@ -82,7 +82,6 @@ class WebServerState:
 
   async def _on_conversation_updated(self,
                                      conversation_id: ConversationId) -> None:
-    logging.info(f"Conversation {conversation_id} updated.")
     await self.send_update(conversation_id, None, confirmation_required=None)
 
   async def send_update(self, conversation_id: ConversationId,
@@ -99,12 +98,8 @@ class WebServerState:
     messages_list = conversation.GetMessagesList()
     if client_message_count is not None:
       new_messages = messages_list[client_message_count:]
-      logging.info(
-          f"Client has {client_message_count} messages. "
-          f"Sending from {client_message_count}, count: {len(new_messages)}.")
     else:
       new_messages = []
-      logging.info("Sending update without new messages.")
 
     if confirmation_required is None:
       confirmation_required = self.confirmation_manager.get_pending_message(
@@ -135,12 +130,10 @@ class WebServerState:
 
   async def _confirmation_requested(self, conversation_id: ConversationId,
                                     message: str) -> None:
-    logging.info("Confirmation requested.")
     await self.send_update(conversation_id, None, confirmation_required=message)
 
   def ReceiveConfirmation(self, confirmation_message: str,
                           conversation_id: int) -> None:
-    logging.info("Received confirmation.")
     self.confirmation_manager.provide_confirmation(conversation_id,
                                                    confirmation_message)
 
@@ -162,7 +155,6 @@ class WebServerState:
     }
 
   async def list_conversations(self, start_id: int = 0) -> None:
-    logging.info(f"Listing conversations with start_id={start_id}.")
     all_conversations = self._conversation_factory.GetAll()
     MAX_CONVERSATIONS_PER_UPDATE = 10
     await self.socketio.emit(
