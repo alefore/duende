@@ -155,6 +155,8 @@ class SwarmWorkflow(AgentWorkflow):
     assert telegram_id
     agent_message_queue = AgentMessageQueue()
     cwd = self._options.agent_loop_options.cwd
+    if message.local_directory:
+      cwd.path = cwd / message.local_directory
     command_registry = CommandRegistry()
     conversation = self._options.conversation_factory.New(
         f"{message.target_agent}: {message.content[:50]}", command_registry)
@@ -249,8 +251,6 @@ class SwarmWorkflow(AgentWorkflow):
          policy is given to `WriteFileCommand`.}}
     {{🦔 If `message.local_directory` is None, the cwd is passed to relevant
          agent commands unmodified.}}
-    {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
-         agent commands is adjusted: cwd / message.local_directory.}}
     {{🦔 Honors `config.shell_templates` (through `_add_shell_templates`).
     """
     # ✨ init command registry
