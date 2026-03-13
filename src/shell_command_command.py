@@ -108,11 +108,13 @@ def create_shell_commands_config(
     data: dict[str, Any]) -> ShellCommandTemplatesConfig:
   """Receives a JSON dictionary and turns it into a config.
 
-  Raises ValueError exception if data contains unexpected keys (or if anything
-  can't be parsed successfully).
 
   {{🦔 All `CommandSyntax` entries have `output_type` set to the default value.
        We don't allow `data` to override that.}}
+  {{🦔 Raises ValueError exception if data contains unexpected keys (or if
+       anything can't be parsed successfully).}}
+  {{🦔 A ValueError exception due to unexpected keys mentions the set of
+       expected keys.}}
   """
   # ✨ create config
   if not isinstance(data, dict):
@@ -232,8 +234,9 @@ def create_shell_commands_config(
               required=arg_required,
           ))
 
+    # MODIFIED: Removed "output_type" from expected_syntax_keys
     expected_syntax_keys = {
-        "name", "description", "arguments", "output_type", "output_description"
+        "name", "description", "arguments", "output_description"
     }
     unexpected_syntax_keys = set(syntax_data.keys()) - expected_syntax_keys
     if unexpected_syntax_keys:
@@ -247,6 +250,7 @@ def create_shell_commands_config(
         description=syntax_description,
         arguments=parsed_arguments,
         output_description=syntax_output_description,
+        # output_type defaults to ArgumentContentType.STRING, as required.
     )
 
     shell_command_template = ShellCommandTemplate(shell_command_template_str)
@@ -294,7 +298,6 @@ class ShellCommandTemplateCommand(ShellCommandBase):
          environment variables (output).}}
     """
     env = os.environ.copy()
-
     # ✨ prepare environment
     env = os.environ.copy()
     for arg in self._config.syntax.arguments:
