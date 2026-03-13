@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import logging
 import asyncio
 import pathlib
@@ -7,10 +8,47 @@ from agent_command import REASON_VARIABLE, AgentCommand, CommandInput, CommandOu
 from pathbox import PathBox
 
 
-class ShellCommandCommand(AgentCommand):
+class ShellCommandBase(ABC):
 
-  def __init__(self, cwd: PathBox) -> None:
+  def __init__(self, name: str, cwd: PathBox) -> None:
+    self._name = name
     self._cwd = cwd
+
+  async def execute(self, command: str,
+                    input_cwd: pathlib.Path | None) -> CommandOutput:
+    cwd: pathlib.Path = self._cwd.path
+    if input_cwd:
+      cwd = cwd / input_cwd
+    try:
+      logging.info(f"Executing shell command: {command}")
+      process = await asyncio.create_subprocess_shell(
+          command,
+          stdout=asyncio.subprocess.PIPE,
+          stderr=asyncio.subprocess.PIPE,
+          cwd=cwd)
+
+      stdout, stderr = await process.communicate()
+
+      return CommandOutput(
+          command_name=self._name,
+          output=str({
+              "stdout": stdout.decode().strip(),
+              "stderr": stderr.decode().strip(),
+              "exit_status": process.returncode
+          }),
+          errors="" if not stderr else stderr.decode().strip(),
+          summary=f"Shell command executed with exit status {process.returncode}."
+          + (" Stderr not empty." if stderr else ""))
+
+    except Exception as e:
+      return CommandOutput(
+          command_name=self._name,
+          output="",
+          errors=f"Shell command execution error: {e}",
+          summary=f"Shell command execution failed: {e}")
+
+
+class ShellCommandCommand(ShellCommandBase):
 
   def Name(self) -> str:
     return self.Syntax().name
@@ -36,32 +74,5 @@ class ShellCommandCommand(AgentCommand):
 
   async def run(self, inputs: dict[VariableName, Any]) -> CommandOutput:
     command = inputs[VariableName("command")]
-    logging.info(f"Executing shell command: {command}")
-
-    cwd = self._cwd / pathlib.Path(inputs.get(VariableName('cwd'), '.'))
-    try:
-      process = await asyncio.create_subprocess_shell(
-          command,
-          stdout=asyncio.subprocess.PIPE,
-          stderr=asyncio.subprocess.PIPE,
-          cwd=cwd)
-
-      stdout, stderr = await process.communicate()
-
-      return CommandOutput(
-          command_name=self.Syntax().name,
-          output=str({
-              "stdout": stdout.decode().strip(),
-              "stderr": stderr.decode().strip(),
-              "exit_status": process.returncode
-          }),
-          errors="" if not stderr else stderr.decode().strip(),
-          summary=f"Shell command executed with exit status {process.returncode}."
-          + (" Stderr not empty." if stderr else ""))
-
-    except Exception as e:
-      return CommandOutput(
-          command_name=self.Syntax().name,
-          output="",
-          errors=f"Shell command execution error: {e}",
-          summary=f"Shell command execution failed: {e}")
+    return await self.execute(
+        command, pathlib.Path(inputs.get(VariableName('cwd'), '.')))
