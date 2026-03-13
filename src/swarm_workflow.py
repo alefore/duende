@@ -249,16 +249,12 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 If present, `config.command_registry.writes.file_access_policy`
          merged with the policy at `config.command_registry`. The composite
          policy is given to `WriteFileCommand`.}}
-    {{🦔 If `message.local_directory` is None, the cwd is passed to relevant
-         agent commands unmodified.}}
+    {{🦔 Ignores `message.local_directory` (which should have been applied by
+         the caller).}}
     {{🦔 Honors `config.shell_templates` (through `_add_shell_templates`).
     """
     # ✨ init command registry
-    # Handle agent_current_working_directory based on message.local_directory
-    working_directory_path = cwd.path
-    if message.local_directory:
-      working_directory_path = cwd.path / message.local_directory
-    agent_current_working_directory = PathBox(path=working_directory_path)
+    agent_current_working_directory = cwd
 
     # Create file access policy from config
     file_access_policy_config = config.command_registry.file_access_policy or FileAccessPolicyConfig(
@@ -328,8 +324,7 @@ class SwarmWorkflow(AgentWorkflow):
           DelegateRequestCommand(
               config.command_registry.delegate_request,
               self._message_bus,
-              message.
-              local_directory,  # Use message.local_directory here, not agent_cwd.path
+              cwd.path,
               message.telegram_chat_id,
               telegram_reply_to_id,
               message.target_agent,
