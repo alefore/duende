@@ -21,7 +21,7 @@ from search_file_command import SearchFileCommand
 from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
-from shell_command_command import ShellCommandCommand
+import shell_command_command
 from swarm_commands import DelegateRequestConfig, PublishMessageConfig
 from swarm_types import AgentName
 from task_command import TaskInformation
@@ -62,6 +62,8 @@ class CommandRegistryConfig:
   # If `None`, no file access is given.
   file_access_policy: FileAccessPolicyConfig | None
 
+  shell_templates: shell_command_command.ShellCommandTemplatesConfig
+
   # If present, signifies that write access is allowed.
   writes: CommandRegistryWriteConfig | None = None
 
@@ -83,7 +85,7 @@ def create_command_registry_config(
   # ✨ create config
   allowed_keys = {
       'file_access_policy', 'allow_shell', 'writes', 'delegate_request',
-      'publish_message'
+      'publish_message', 'shell_templates'
   }
   for key in data:
     if key not in allowed_keys:
@@ -147,7 +149,7 @@ def create_command_registry_config(
               f"Expected string in 'delegate_request.allow_list', but got {type(item)}"
           )
         allow_list.append(AgentName(item))
-    delegate_request = DelegateRequestConfig(allow_list=frozenset(allow_list))
+      delegate_request = DelegateRequestConfig(allow_list=frozenset(allow_list))
 
   publish_message = None
   publish_message_data = data.get('publish_message')
@@ -179,12 +181,20 @@ def create_command_registry_config(
     publish_message = PublishMessageConfig(
         allow_list=frozenset(publish_message_allow_list))
 
+  shell_templates = shell_command_command.ShellCommandTemplatesConfig(
+      commands={})
+  shell_templates_data = data.get('shell_templates')
+  if shell_templates_data is not None:
+    shell_templates = shell_command_command.create_shell_commands_config(
+        shell_templates_data)
+
   return CommandRegistryConfig(
       file_access_policy=file_access_policy,
       allow_shell=allow_shell,
       writes=writes,
       delegate_request=delegate_request,
-      publish_message=publish_message)
+      publish_message=publish_message,
+      shell_templates=shell_templates)
   # ✨
 
 
@@ -245,7 +255,7 @@ async def create_command_registry(
     registry.Register(ValidateCommand(validation_manager))
 
   if config.allow_shell:
-    registry.Register(ShellCommandCommand(cwd))
+    registry.Register(shell_command_command.ShellCommandCommand(cwd))
 
   enable_select = False
 
