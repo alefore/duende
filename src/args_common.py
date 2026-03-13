@@ -20,6 +20,7 @@ from workflow_registry import StandardWorkflowFactoryContainer
 from chatgpt import ChatGPT
 from conversation import Conversation, ConversationFactory, ConversationFactoryOptions
 from message import Message, ContentSection
+import shell_command_command
 from conversational_ai import ConversationalAI
 from gemini import Gemini
 from agent_workflow_options import AgentWorkflowOptions
@@ -204,6 +205,8 @@ async def CreateAgentWorkflowOptions(
   registry = await create_command_registry(
       CommandRegistryConfig(
           file_access_policy=file_access_policy_config,
+          shell_templates=shell_command_command.ShellCommandTemplatesConfig(
+              commands={}),
           allow_shell=args.shell_command_execution),
       cwd,
       validation_manager,
