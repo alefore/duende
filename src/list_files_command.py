@@ -1,6 +1,6 @@
-import logging
 import os
 import aiofiles
+import anyio
 import pathlib
 
 from agent_command import AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, REASON_VARIABLE, VariableMap, VariableName
@@ -19,12 +19,20 @@ async def _ListFileDetails(
   async for file_path in list_all_files(directory, file_access_policy,
                                         directory_behavior):
     try:
-      async with aiofiles.open(file_path, 'r') as f:
-        lines = await f.readlines()
-        line_count = len(lines)
-        # os.path.getsize is synchronous, should be fine for now, or use aiofiles.os.stat
-        byte_count = os.path.getsize(file_path)
-        details.append(f"{file_path}: {line_count} lines, {byte_count} bytes")
+      if file_path.is_file():
+        async with aiofiles.open(file_path, 'r') as f:
+          lines = await f.readlines()
+          line_count = len(lines)
+          # os.path.getsize is synchronous, should be fine for now, or use aiofiles.os.stat
+          byte_count = os.path.getsize(file_path)
+          details.append(f"{file_path}: {line_count} lines, {byte_count} bytes")
+      elif file_path.is_dir():
+
+        def count_files():
+          return sum(1 for _ in file_path.iterdir())
+
+        entries = await anyio.to_thread.run_sync(count_files)
+        details.append(f"{file_path}: directory: [{entries=}]")
     except Exception as e:
       errors.append(f"Error: {file_path}: Error reading: {str(e)}")
   return "\n".join(details), "\n".join(errors)
@@ -64,7 +72,6 @@ class ListFilesCommand(AgentCommand):
     directory = self._cwd / pathlib.Path(directory_str)
     recursive = inputs.get(_RECURSIVE_VARIABLE_NAME, False)
     assert isinstance(recursive, bool)
-
     try:
       output, errors = await _ListFileDetails(
           directory, self.file_access_policy, DirectoryBehavior.RECURSE
