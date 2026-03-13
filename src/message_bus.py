@@ -74,7 +74,6 @@ class MessageBus:
         logging.info(f'New messages: {len(messages)}')
         return messages
       else:
-        logging.info('No new messages.')
         await asyncio.sleep(_poll_interval_secs)
     # ✨
 
@@ -152,8 +151,6 @@ class MessageBus:
           FROM message_bus
           WHERE processed_at IS NULL AND target_agent IN ({agent_placeholders})
       """
-      logging.info('Loading incoming messages for agents: %s', agents)
-
       if self._connection is None:
         raise ValueError("Database connection is not open.")
 
@@ -167,16 +164,22 @@ class MessageBus:
                 message_id=MessageId(row['message_id']),
                 source_agent=AgentName(row['source_agent']),
                 target_agent=AgentName(row['target_agent']),
-                local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
-                conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
+                local_directory=pathlib.Path(row['local_directory'])
+                if row['local_directory'] else None,
+                conversation_id=ConversationId(row['conversation_id'])
+                if row['conversation_id'] else None,
                 telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
-                telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
-                telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
+                telegram_message_id=TelegramMessageId(
+                    row['telegram_message_id'])
+                if row['telegram_message_id'] else None,
+                telegram_reply_to_id=TelegramMessageId(
+                    row['telegram_reply_to_id'])
+                if row['telegram_reply_to_id'] else None,
                 content=MessageContent(row['content']),
                 queued_at=datetime.datetime.fromisoformat(row['queued_at']),
-                processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
+                processed_at=datetime.datetime.fromisoformat(
+                    row['processed_at']) if row['processed_at'] else None,
             ))
-      logging.info(f'Loaded {len(messages)} new incoming messages.')
       return messages
       # ✨
 
@@ -210,8 +213,6 @@ class MessageBus:
           FROM message_bus
           WHERE telegram_message_id IS NULL AND target_agent = ?
       """
-      logging.info('Loading outgoing messages for END_USER_AGENT: %s', END_USER_AGENT)
-
       cursor = self._connection.execute(query, (END_USER_AGENT,))
       new_messages_rows = cursor.fetchall()
 
@@ -222,16 +223,22 @@ class MessageBus:
                 message_id=MessageId(row['message_id']),
                 source_agent=AgentName(row['source_agent']),
                 target_agent=AgentName(row['target_agent']),
-                local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
-                conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
+                local_directory=pathlib.Path(row['local_directory'])
+                if row['local_directory'] else None,
+                conversation_id=ConversationId(row['conversation_id'])
+                if row['conversation_id'] else None,
                 telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
-                telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
-                telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
+                telegram_message_id=TelegramMessageId(
+                    row['telegram_message_id'])
+                if row['telegram_message_id'] else None,
+                telegram_reply_to_id=TelegramMessageId(
+                    row['telegram_reply_to_id'])
+                if row['telegram_reply_to_id'] else None,
                 content=MessageContent(row['content']),
                 queued_at=datetime.datetime.fromisoformat(row['queued_at']),
-                processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
+                processed_at=datetime.datetime.fromisoformat(
+                    row['processed_at']) if row['processed_at'] else None,
             ))
-      logging.info(f'Loaded {len(messages)} new outgoing messages.')
       return messages
       # ✨
 
@@ -240,7 +247,8 @@ class MessageBus:
   async def set_conversation_id(self, message_id: MessageId,
                                 conversation_id: ConversationId) -> None:
     # ✨ set message conversation
-    def _set_conversation_id_db_op(msg_id: MessageId, conv_id: ConversationId) -> None:
+    def _set_conversation_id_db_op(msg_id: MessageId,
+                                   conv_id: ConversationId) -> None:
       """Synchronous database operation to set the conversation_id."""
       if self._connection is None:
         raise ValueError("Database connection is not open.")
@@ -253,12 +261,17 @@ class MessageBus:
       if cursor.rowcount == 0:
         # This means either the message_id was not found, or conversation_id was already set.
         # In either case, we consider this an error as per the requirement.
-        raise ValueError(f"Message with ID {msg_id} not found or conversation_id already set.")
+        raise ValueError(
+            f"Message with ID {msg_id} not found or conversation_id already set."
+        )
       elif cursor.rowcount > 1:
         # This should ideally not happen with a PRIMARY KEY condition.
-        raise RuntimeError(f"Multiple messages with ID {msg_id} updated, which should not happen.")
+        raise RuntimeError(
+            f"Multiple messages with ID {msg_id} updated, which should not happen."
+        )
 
-    await self._run_in_thread(_set_conversation_id_db_op, message_id, conversation_id)
+    await self._run_in_thread(_set_conversation_id_db_op, message_id,
+                              conversation_id)
     # ✨
 
   async def write_new_message(self, message: Message) -> Message:
@@ -345,8 +358,7 @@ class MessageBus:
       self._connection.commit()
       if cursor.rowcount == 0:
         raise ValueError(
-            f"Message with ID {msg_id} not found or already processed."
-        )
+            f"Message with ID {msg_id} not found or already processed.")
       elif cursor.rowcount > 1:
         raise RuntimeError(
             f"Multiple messages with ID {msg_id} updated, which should not happen."
@@ -364,6 +376,7 @@ class MessageBus:
     already has a value (we use a conditional update and validate that exactly
     1 row was updated).
     """
+
     # ✨ set telegram message id
     def _set_telegram_message_id_db_op(msg_id: MessageId,
                                        tg_msg_id: TelegramMessageId) -> None:
@@ -388,11 +401,12 @@ class MessageBus:
         )
 
     await self._run_in_thread(_set_telegram_message_id_db_op, message_id,
-                               telegram_message_id)
+                              telegram_message_id)
     # ✨
 
   async def read_message(self, message_id: MessageId) -> Message:
     """Returns a message from the database or raises ValueError."""
+
     # ✨ read message
     def _read_message_db_op(msg_id: MessageId) -> Message:
       """Synchronous database operation to read a message by its ID."""
@@ -427,14 +441,19 @@ class MessageBus:
           message_id=MessageId(row['message_id']),
           source_agent=AgentName(row['source_agent']),
           target_agent=AgentName(row['target_agent']),
-          local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
-          conversation_id=ConversationId(row['conversation_id']) if row['conversation_id'] else None,
+          local_directory=pathlib.Path(row['local_directory'])
+          if row['local_directory'] else None,
+          conversation_id=ConversationId(row['conversation_id'])
+          if row['conversation_id'] else None,
           telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
-          telegram_message_id=TelegramMessageId(row['telegram_message_id']) if row['telegram_message_id'] else None,
-          telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id']) if row['telegram_reply_to_id'] else None,
+          telegram_message_id=TelegramMessageId(row['telegram_message_id'])
+          if row['telegram_message_id'] else None,
+          telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id'])
+          if row['telegram_reply_to_id'] else None,
           content=MessageContent(row['content']),
           queued_at=datetime.datetime.fromisoformat(row['queued_at']),
-          processed_at=datetime.datetime.fromisoformat(row['processed_at']) if row['processed_at'] else None,
+          processed_at=datetime.datetime.fromisoformat(row['processed_at'])
+          if row['processed_at'] else None,
       )
       logging.info('Read message with ID: %s', msg_id)
       return message
@@ -446,10 +465,11 @@ class MessageBus:
       self, telegram_chat_id: TelegramChatId,
       telegram_message_id: TelegramMessageId) -> Message:
     """Returns a message from the database or raises ValueError."""
+
     # ✨ find message by telegram id
     def _find_message_by_telegram_id_db_op(
-        telegram_chat_id: TelegramChatId, telegram_message_id: TelegramMessageId
-    ) -> Message:
+        telegram_chat_id: TelegramChatId,
+        telegram_message_id: TelegramMessageId) -> Message:
       """Synchronous database operation to find a message by Telegram IDs."""
       if self._connection is None:
         raise ValueError("Database connection is not open.")
@@ -472,10 +492,10 @@ class MessageBus:
       """
       logging.info(
           'Finding message by telegram_chat_id=%s, telegram_message_id=%s',
-          telegram_chat_id, telegram_message_id
-      )
+          telegram_chat_id, telegram_message_id)
 
-      cursor = self._connection.execute(query, (telegram_chat_id, telegram_message_id))
+      cursor = self._connection.execute(query,
+                                        (telegram_chat_id, telegram_message_id))
       row = cursor.fetchone()
 
       if row is None:
@@ -487,22 +507,19 @@ class MessageBus:
           message_id=MessageId(row['message_id']),
           source_agent=AgentName(row['source_agent']),
           target_agent=AgentName(row['target_agent']),
-          local_directory=pathlib.Path(row['local_directory']) if row['local_directory'] else None,
+          local_directory=pathlib.Path(row['local_directory'])
+          if row['local_directory'] else None,
           conversation_id=ConversationId(row['conversation_id'])
-          if row['conversation_id']
-          else None,
+          if row['conversation_id'] else None,
           telegram_chat_id=TelegramChatId(row['telegram_chat_id']),
           telegram_message_id=TelegramMessageId(row['telegram_message_id'])
-          if row['telegram_message_id']
-          else None,
+          if row['telegram_message_id'] else None,
           telegram_reply_to_id=TelegramMessageId(row['telegram_reply_to_id'])
-          if row['telegram_reply_to_id']
-          else None,
+          if row['telegram_reply_to_id'] else None,
           content=MessageContent(row['content']),
           queued_at=datetime.datetime.fromisoformat(row['queued_at']),
           processed_at=datetime.datetime.fromisoformat(row['processed_at'])
-          if row['processed_at']
-          else None,
+          if row['processed_at'] else None,
       )
       logging.info('Found message with ID: %s', message.message_id)
       return message
