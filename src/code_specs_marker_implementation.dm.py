@@ -39,6 +39,7 @@ class MarkerImplementation:
          number of spaces before the first non-space character in the line that
          contains the marker.}}
     {{🦔 Uses `get_markers` rather than redundantly implementing its logic.}}
+    {{🦔 The file written ends in a newline character.}}
 
     Exceptions:
 
