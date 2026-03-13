@@ -52,6 +52,9 @@ class ShellCommandBase(agent_command.AgentCommand):
 
 class ShellCommandCommand(ShellCommandBase):
 
+  def __init__(self, cwd: PathBox):
+    return super().__init__(self.Syntax().name, cwd)
+
   def Name(self) -> str:
     return self.Syntax().name
 
