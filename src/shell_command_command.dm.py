@@ -108,7 +108,11 @@ def create_shell_commands_config(
   """Receives a JSON dictionary and turns it into a config.
 
   Raises ValueError exception if data contains unexpected keys (or if anything
-  can't be parsed successfully)."""
+  can't be parsed successfully).
+
+  {{🦔 All `CommandSyntax` entries have `output_type` set to the default value.
+       We don't allow `data` to override that.}}
+  """
   raise NotImplementedError()  # {{🍄 create config}}
 
 
