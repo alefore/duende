@@ -20,7 +20,7 @@ from search_file_command import SearchFileCommand
 from select_commands import SelectCommand, SelectOverwriteCommand
 from selection_manager import SelectionManager
 from select_python import SelectPythonCommand
-from shell_command_command import ShellCommandCommand
+import shell_command_command
 from swarm_commands import DelegateRequestConfig, PublishMessageConfig
 from swarm_types import AgentName
 from task_command import TaskInformation
@@ -60,6 +60,8 @@ class CommandRegistryWriteConfig:
 class CommandRegistryConfig:
   # If `None`, no file access is given.
   file_access_policy: FileAccessPolicyConfig | None
+
+  shell_templates: shell_command_command.ShellCommandTemplatesConfig
 
   # If present, signifies that write access is allowed.
   writes: CommandRegistryWriteConfig | None = None
@@ -118,7 +120,7 @@ async def create_command_registry(
     registry.Register(ValidateCommand(validation_manager))
 
   if config.allow_shell:
-    registry.Register(ShellCommandCommand(cwd))
+    registry.Register(shell_command_command.ShellCommandCommand(cwd))
 
   enable_select = False
 
