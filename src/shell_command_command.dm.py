@@ -19,8 +19,8 @@ class ShellCommandBase(agent_command.AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def execute(self, command: str, input_cwd: pathlib.Path | None,
-                    environment: dict[str, str] | None) -> CommandOutput:
+  async def execute(self, command: str,
+                    input_cwd: pathlib.Path | None) -> CommandOutput:
     cwd: pathlib.Path = self._cwd.path
     if input_cwd:
       cwd = cwd / input_cwd
@@ -84,7 +84,7 @@ class ShellCommandCommand(ShellCommandBase):
     input_path = inputs.get(VariableName('cwd'), '.')
     assert isinstance(command, str)
     assert isinstance(input_path, str)
-    return await self.execute(command, pathlib.Path(input_path), None)
+    return await self.execute(command, pathlib.Path(input_path))
 
 
 # The shell command string to be executed. Variables from `syntax` will be given
@@ -117,6 +117,9 @@ def create_shell_commands_config(
        anything can't be parsed successfully).}}
   {{🦔 A ValueError exception due to unexpected keys mentions the set of
        expected keys.}}
+  {{🦔 A ValueError exception is raised if one of the commands (in the
+       "arguments" dictionary) does not occur (in `{{...}}` syntax) in the
+       "command" string.}}
   """
   raise NotImplementedError()  # {{🍄 create config}}
 
@@ -138,20 +141,15 @@ class ShellCommandTemplateCommand(ShellCommandBase):
     """
     raise NotImplementedError()  # {{🍄 syntax}}
 
-  def _prepare_environment(self,
-                           inputs: agent_command.VariableMap) -> dict[str, str]:
-    """Adds inputs from `config` to the environment and returns it.
+  def expand_commands(self, inputs: agent_command.VariableMap) -> str:
+    """Replaces arguments in config.command.
 
     {{🦔 If an argument is not given (in `inputs`), asserts that the argument is
          not required and skips it (doesn't set it).}}
-    {{🦔 The string _DUENDE_SHELL_TEMPLATE is prefixed to the names of the
-         environment variables (output).}}
-    {{🦔 The names of the environment variables (output) are all in uppercase
-         (even if the config has lower-case names).}}
+    {{🦔 The values of an argument with name `foo` replaces strings `{{foo}}`
+         in the command (e.g. `mkdir -p {{path}}`).}}
     """
-    env = os.environ.copy()
     raise NotImplementedError()  # {{🍄 prepare environment}}
 
   async def run(self, inputs: agent_command.VariableMap) -> CommandOutput:
-    return await self.execute(self._config.command, None,
-                              self._prepare_environment(inputs))
+    return await self.execute(self.expand_commands(inputs), None)
