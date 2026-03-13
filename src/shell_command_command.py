@@ -108,7 +108,10 @@ def create_shell_commands_config(
     data: dict[str, Any]) -> ShellCommandTemplatesConfig:
   """Receives a JSON dictionary and turns it into a config.
 
-
+  {{🦔 The dictionary has at most three entries: "arguments", "description",
+       and "command".}}
+  {{🦔 The value of `syntax.name` (outputs) come from the "arguments" dictionary
+       keys.}}
   {{🦔 All `CommandSyntax` entries have `output_type` set to the default value.
        We don't allow `data` to override that.}}
   {{🦔 Raises ValueError exception if data contains unexpected keys (or if
@@ -126,21 +129,25 @@ def create_shell_commands_config(
     if not isinstance(command_data, dict):
       raise ValueError(f"Command '{command_name}' config must be a dictionary.")
 
-    syntax_data = command_data.get("syntax")
     shell_command_template_str = command_data.get("command")
+    syntax_description = command_data.get("description", "")
+    arguments_data = command_data.get("arguments", {})
 
-    if syntax_data is None:
-      raise ValueError(f"Missing 'syntax' for command '{command_name}'.")
     if shell_command_template_str is None:
       raise ValueError(f"Missing 'command' for command '{command_name}'.")
-    if not isinstance(syntax_data, dict):
-      raise ValueError(
-          f"'syntax' for command '{command_name}' must be a dictionary.")
     if not isinstance(shell_command_template_str, str):
       raise ValueError(
           f"'command' for command '{command_name}' must be a string.")
 
-    expected_command_keys = {"syntax", "command"}
+    if not isinstance(syntax_description, str):
+      raise ValueError(
+          f"Invalid type for 'description' in command '{command_name}'. Expected string."
+      )
+    if not isinstance(arguments_data, dict):
+      raise ValueError(
+          f"'arguments' for command '{command_name}' must be a dictionary.")
+
+    expected_command_keys = {"command", "description", "arguments"}
     unexpected_command_keys = set(command_data.keys()) - expected_command_keys
     if unexpected_command_keys:
       details = ', '.join(unexpected_command_keys)
@@ -148,111 +155,67 @@ def create_shell_commands_config(
           f"Unexpected keys in command '{command_name}' config: {details}. Expected keys are {expected_command_keys}"
       )
 
-    syntax_name = syntax_data.get("name", "")
-    syntax_description = syntax_data.get("description", "")
-    syntax_output_description = syntax_data.get("output_description")
-
-    if not isinstance(syntax_name, str):
-      raise ValueError(
-          f"Invalid type for 'syntax.name' in command '{command_name}'. Expected string."
-      )
-    if not isinstance(syntax_description, str):
-      raise ValueError(
-          f"Invalid type for 'syntax.description' in command '{command_name}'. Expected string."
-      )
-    if syntax_output_description is not None and not isinstance(
-        syntax_output_description, str):
-      raise ValueError(
-          f"Invalid type for 'syntax.output_description' in command '{command_name}'. Expected string or None."
-      )
-
     parsed_arguments: list[Argument] = []
-    arguments_data = syntax_data.get("arguments", [])
-    if not isinstance(arguments_data, list):
-      raise ValueError(
-          f"'syntax.arguments' for command '{command_name}' must be a list.")
-
-    for arg_idx, arg_dict in enumerate(arguments_data):
+    for arg_key, arg_dict in arguments_data.items():
       if not isinstance(arg_dict, dict):
         raise ValueError(
-            f"Argument at index {arg_idx} for command '{command_name}' must be a dictionary."
+            f"Argument '{arg_key}' for command '{command_name}' must be a dictionary."
         )
 
-      arg_name = arg_dict.get("name")
       arg_type_str = arg_dict.get("arg_type")
       arg_description = arg_dict.get("description")
-      arg_required = arg_dict.get("required", True)  # Default to True
+      arg_required = arg_dict.get("required", True)
 
-      if arg_name is None:
-        raise ValueError(
-            f"Missing 'name' for argument at index {arg_idx} in command '{command_name}'."
-        )
       if arg_type_str is None:
         raise ValueError(
-            f"Missing 'arg_type' for argument at index {arg_idx} in command '{command_name}'."
+            f"Missing 'arg_type' for argument '{arg_key}' in command '{command_name}'."
         )
       if arg_description is None:
         raise ValueError(
-            f"Missing 'description' for argument at index {arg_idx} in command '{command_name}'."
+            f"Missing 'description' for argument '{arg_key}' in command '{command_name}'."
         )
 
-      if not isinstance(arg_name, str):
-        raise ValueError(
-            f"Invalid type for 'name' in argument at index {arg_idx} for command '{command_name}'. Expected string."
-        )
       if not isinstance(arg_type_str, str):
         raise ValueError(
-            f"Invalid type for 'arg_type' in argument at index {arg_idx} for command '{command_name}'. Expected string."
+            f"Invalid type for 'arg_type' in argument '{arg_key}' for command '{command_name}'. Expected string."
         )
       if not isinstance(arg_description, str):
         raise ValueError(
-            f"Invalid type for 'description' in argument at index {arg_idx} for command '{command_name}'. Expected string."
+            f"Invalid type for 'description' in argument '{arg_key}' for command '{command_name}'. Expected string."
         )
       if not isinstance(arg_required, bool):
         raise ValueError(
-            f"Invalid type for 'required' in argument at index {arg_idx} for command '{command_name}'. Expected boolean."
+            f"Invalid type for 'required' in argument '{arg_key}' for command '{command_name}'. Expected boolean."
         )
 
       try:
         arg_type = ArgumentContentType[arg_type_str]
       except KeyError:
         raise ValueError(
-            f"Invalid 'arg_type' '{arg_type_str}' for argument at index {arg_idx} in command '{command_name}'."
+            f"Invalid 'arg_type' '{arg_type_str}' for argument '{arg_key}' in command '{command_name}'."
         )
 
-      expected_arg_keys = {"name", "arg_type", "description", "required"}
-      unexpected_arg_keys = set(arg_dict.keys()) - expected_arg_keys
+      expected_arg_keys_inner = {"arg_type", "description", "required"}
+      unexpected_arg_keys = set(arg_dict.keys()) - expected_arg_keys_inner
       if unexpected_arg_keys:
         details = ', '.join(unexpected_arg_keys)
         raise ValueError(
-            f"Unexpected keys in argument at index {arg_idx} for command '{command_name}': {details}. Expected keys are {expected_arg_keys}"
+            f"Unexpected keys in argument '{arg_key}' for command '{command_name}': {details}. Expected keys are {expected_arg_keys_inner}"
         )
 
       parsed_arguments.append(
           Argument(
-              name=VariableName(arg_name),
+              name=VariableName(arg_key),
               arg_type=arg_type,
               description=arg_description,
               required=arg_required,
           ))
 
-    # MODIFIED: Removed "output_type" from expected_syntax_keys
-    expected_syntax_keys = {
-        "name", "description", "arguments", "output_description"
-    }
-    unexpected_syntax_keys = set(syntax_data.keys()) - expected_syntax_keys
-    if unexpected_syntax_keys:
-      details = ', '.join(unexpected_syntax_keys)
-      raise ValueError(
-          f"Unexpected keys in 'syntax' for command '{command_name}': {details}. Expected keys are {expected_syntax_keys}"
-      )
-
+    # Derive syntax.name from arguments_data keys as per user's explicit instruction
     parsed_syntax = CommandSyntax(
-        name=syntax_name,
+        name=command_name,
         description=syntax_description,
         arguments=parsed_arguments,
-        output_description=syntax_output_description,
-        # output_type defaults to ArgumentContentType.STRING, as required.
     )
 
     shell_command_template = ShellCommandTemplate(shell_command_template_str)
@@ -279,7 +242,6 @@ class ShellCommandTemplateCommand(ShellCommandBase):
     {{🦔 Return value includes `REASON_VARIABLE`.}}
     {{🦔 Return value includes all elements in `config.syntax`.}}
     """
-
     # ✨ syntax
     return CommandSyntax(
         name=self._config.syntax.name,
@@ -308,7 +270,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
       if arg.name in inputs:
         # If the argument is provided in inputs, add it to the environment.
         # The environment variable name should be in uppercase.
-        env[_DUENDE_SHELL_TEMPLATE + str(arg.name).upper()] = str(inputs[arg.name])
+        env[_DUENDE_SHELL_TEMPLATE + str(arg.name).upper()] = str(
+            inputs[arg.name])
       else:
         # If the argument is not provided in inputs, it must not be required.
         if arg.required:
