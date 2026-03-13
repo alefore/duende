@@ -298,6 +298,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
          not required and skips it (doesn't set it).}}
     {{🦔 The string _DUENDE_SHELL_TEMPLATE is prefixed to the names of the
          environment variables (output).}}
+    {{🦔 The names of the environment variables (output) are all in uppercase
+         (even if the config has lower-case names).}}
     """
     env = os.environ.copy()
     # ✨ prepare environment
@@ -305,7 +307,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
     for arg in self._config.syntax.arguments:
       if arg.name in inputs:
         # If the argument is provided in inputs, add it to the environment.
-        env[_DUENDE_SHELL_TEMPLATE + str(arg.name)] = str(inputs[arg.name])
+        # The environment variable name should be in uppercase.
+        env[_DUENDE_SHELL_TEMPLATE + str(arg.name).upper()] = str(inputs[arg.name])
       else:
         # If the argument is not provided in inputs, it must not be required.
         if arg.required:
