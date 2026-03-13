@@ -16,6 +16,9 @@ class ShellCommandBase(agent_command.AgentCommand):
     self._name = name
     self._cwd = cwd
 
+  def Name(self) -> str:
+    return self.Syntax().name
+
   async def execute(self, command: str, input_cwd: pathlib.Path | None,
                     environment: dict[str, str] | None) -> CommandOutput:
     cwd: pathlib.Path = self._cwd.path
@@ -54,9 +57,6 @@ class ShellCommandCommand(ShellCommandBase):
 
   def __init__(self, cwd: PathBox):
     return super().__init__(self.Syntax().name, cwd)
-
-  def Name(self) -> str:
-    return self.Syntax().name
 
   @classmethod
   def Syntax(self) -> CommandSyntax:
