@@ -109,7 +109,11 @@ def create_shell_commands_config(
   """Receives a JSON dictionary and turns it into a config.
 
   Raises ValueError exception if data contains unexpected keys (or if anything
-  can't be parsed successfully)."""
+  can't be parsed successfully).
+
+  {{🦔 All `CommandSyntax` entries have `output_type` set to the default value.
+       We don't allow `data` to override that.}}
+  """
   # ✨ create config
   if not isinstance(data, dict):
     raise ValueError("Input data must be a dictionary.")
@@ -254,6 +258,9 @@ def create_shell_commands_config(
   # ✨
 
 
+_DUENDE_SHELL_TEMPLATE = "DUENDE_SHELL_TEMPLATE_"
+
+
 class ShellCommandTemplateCommand(ShellCommandBase):
 
   def __init__(self, cwd: PathBox, config: ShellCommandTemplateConfig) -> None:
@@ -266,6 +273,7 @@ class ShellCommandTemplateCommand(ShellCommandBase):
     {{🦔 Return value includes `REASON_VARIABLE`.}}
     {{🦔 Return value includes all elements in `config.syntax`.}}
     """
+
     # ✨ syntax
     return CommandSyntax(
         name=self._config.syntax.name,
@@ -282,13 +290,17 @@ class ShellCommandTemplateCommand(ShellCommandBase):
 
     {{🦔 If an argument is not given (in `inputs`), asserts that the argument is
          not required and skips it (doesn't set it).}}
+    {{🦔 The string _DUENDE_SHELL_TEMPLATE is prefixed to the names of the
+         environment variables (output).}}
     """
     env = os.environ.copy()
+
     # ✨ prepare environment
+    env = os.environ.copy()
     for arg in self._config.syntax.arguments:
       if arg.name in inputs:
         # If the argument is provided in inputs, add it to the environment.
-        env[str(arg.name)] = str(inputs[arg.name])
+        env[_DUENDE_SHELL_TEMPLATE + str(arg.name)] = str(inputs[arg.name])
       else:
         # If the argument is not provided in inputs, it must not be required.
         if arg.required:
