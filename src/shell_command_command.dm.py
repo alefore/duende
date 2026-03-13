@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 import asyncio
 from dataclasses import dataclass
 import logging
@@ -7,11 +6,11 @@ import pathlib
 from typing import Any, NewType
 
 import agent_command
-from agent_command import REASON_VARIABLE, AgentCommand, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
+from agent_command import REASON_VARIABLE, CommandInput, CommandOutput, CommandSyntax, Argument, ArgumentContentType, VariableName
 from pathbox import PathBox
 
 
-class ShellCommandBase(ABC):
+class ShellCommandBase(agent_command.AgentCommand):
 
   def __init__(self, name: str, cwd: PathBox) -> None:
     self._name = name
@@ -97,11 +96,12 @@ class ShellCommandTemplateConfig:
 
 
 @dataclass(frozen=True)
-class ShellCommandsConfig:
+class ShellCommandTemplatesConfig:
   commands: dict[str, ShellCommandTemplateConfig]
 
 
-def create_shell_commands_config(data: dict[str, Any]) -> ShellCommandsConfig:
+def create_shell_commands_config(
+    data: dict[str, Any]) -> ShellCommandTemplatesConfig:
   """Receives a JSON dictionary and turns it into a config.
 
   Raises ValueError exception if data contains unexpected keys (or if anything
