@@ -24,7 +24,7 @@ import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
 from pathbox import PathBox
-from shell_command_command import ShellCommandCommand
+import shell_command_command
 from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand, PublishMessageConfig
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
@@ -214,6 +214,17 @@ class SwarmWorkflow(AgentWorkflow):
     return Message(role='user', content_sections=content_sections)
     # ✨
 
+  def _add_shell_templates(
+      self, config: shell_command_command.ShellCommandTemplatesConfig,
+      command_registry: CommandRegistry, cwd: PathBox) -> None:
+    """Adds to the registry an element for each entry in `config.commands`."""
+    # ✨ add shell templates
+    for command_name, command_config in config.commands.items():
+      command_registry.Register(
+          shell_command_command.ShellCommandTemplateCommand(
+              cwd, command_config))
+    # ✨
+
   def _init_command_registry(self, conversation_id: ConversationId,
                              telegram_reply_to_id: TelegramMessageId,
                              message: BusMessage, config: AgentIdentityConfig,
@@ -240,16 +251,21 @@ class SwarmWorkflow(AgentWorkflow):
          agent commands unmodified.}}
     {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
          agent commands is adjusted: cwd / message.local_directory.}}
+    {{🦔 Honors `config.shell_templates` (through `_add_shell_templates`).
     """
     # ✨ init command registry
-    agent_current_working_directory = cwd
+    # Handle agent_current_working_directory based on message.local_directory
+    working_directory_path = cwd.path
     if message.local_directory:
-      agent_current_working_directory.path = cwd.path / message.local_directory
+      working_directory_path = cwd.path / message.local_directory
+    agent_current_working_directory = PathBox(path=working_directory_path)
 
+    # Create file access policy from config
     file_access_policy_config = config.command_registry.file_access_policy or FileAccessPolicyConfig(
     )
     file_access_policy = create_file_access_policy(file_access_policy_config)
 
+    # Register basic commands
     command_registry.Register(DoneCommand([]))
     command_registry.Register(ReadFileCommand(agent_current_working_directory))
     command_registry.Register(
@@ -262,7 +278,12 @@ class SwarmWorkflow(AgentWorkflow):
         DisplayInfoCommand(self._message_bus, conversation_id,
                            message.telegram_chat_id, telegram_reply_to_id,
                            message.target_agent))
+    command_registry.Register(
+        AskUserCommand(self._message_bus, queue, conversation_id,
+                       message.telegram_chat_id, telegram_reply_to_id,
+                       message.target_agent))
 
+    # Register PublishMessageCommand if configured
     if (config.command_registry.publish_message and
         config.command_registry.publish_message.allow_list):
       command_registry.Register(
@@ -271,15 +292,14 @@ class SwarmWorkflow(AgentWorkflow):
                                 agent_current_working_directory,
                                 message.telegram_chat_id, telegram_reply_to_id,
                                 message.target_agent))
-    command_registry.Register(
-        AskUserCommand(self._message_bus, queue, conversation_id,
-                       message.telegram_chat_id, telegram_reply_to_id,
-                       message.target_agent))
 
+    # Register ShellCommandCommand if allowed
     if config.command_registry.allow_shell:
       command_registry.Register(
-          ShellCommandCommand(agent_current_working_directory))
+          shell_command_command.ShellCommandCommand(
+              agent_current_working_directory))
 
+    # Register WriteFileCommand if configured
     if config.command_registry.writes:
       write_policies_to_compose = [file_access_policy]
 
@@ -301,6 +321,7 @@ class SwarmWorkflow(AgentWorkflow):
               hard_coded_path=None,
           ))
 
+    # Register DelegateRequestCommand if configured
     if (config.command_registry.delegate_request and
         config.command_registry.delegate_request.allow_list):
       command_registry.Register(
@@ -314,6 +335,12 @@ class SwarmWorkflow(AgentWorkflow):
               message.target_agent,
               message.content,
           ))
+
+    # Register shell templates if configured
+    if config.command_registry.shell_templates:
+      self._add_shell_templates(config.command_registry.shell_templates,
+                                command_registry,
+                                agent_current_working_directory)
     # ✨
 
 
