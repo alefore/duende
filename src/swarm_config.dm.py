@@ -59,8 +59,12 @@ async def _load_agent_identity_config(
 
   If `config.json` contains unexpected data or something that can't be parsed,
   or if `prompt_content` is empty, raises an exception.
+
   """
-  raise NotImplementedError()  # {{🍄 load agent config}}
+  try:
+    raise NotImplementedError()  # {{🍄 load agent config}}
+  except Exception as e:
+    raise RuntimeError(f"Failed to load config: {path}") from e
 
 
 async def load_config(path: pathlib.Path) -> SwarmConfig:
