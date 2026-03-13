@@ -140,11 +140,13 @@ def create_shell_commands_config(
       raise ValueError(
           f"'command' for command '{command_name}' must be a string.")
 
-    unexpected_command_keys = set(command_data.keys()) - {"syntax", "command"}
+    expected_command_keys = {"syntax", "command"}
+    unexpected_command_keys = set(command_data.keys()) - expected_command_keys
     if unexpected_command_keys:
       details = ', '.join(unexpected_command_keys)
       raise ValueError(
-          f"Unexpected keys in command '{command_name}' config: {details}")
+          f"Unexpected keys in command '{command_name}' config: {details}. Expected keys are {expected_command_keys}"
+      )
 
     syntax_name = syntax_data.get("name", "")
     syntax_description = syntax_data.get("description", "")
@@ -218,12 +220,12 @@ def create_shell_commands_config(
             f"Invalid 'arg_type' '{arg_type_str}' for argument at index {arg_idx} in command '{command_name}'."
         )
 
-      unexpected_arg_keys = set(
-          arg_dict.keys()) - {"name", "arg_type", "description", "required"}
-      details = ', '.join(unexpected_arg_keys)
+      expected_arg_keys = {"name", "arg_type", "description", "required"}
+      unexpected_arg_keys = set(arg_dict.keys()) - expected_arg_keys
       if unexpected_arg_keys:
+        details = ', '.join(unexpected_arg_keys)
         raise ValueError(
-            f"Unexpected keys in argument at index {arg_idx} for command '{command_name}': {details}"
+            f"Unexpected keys in argument at index {arg_idx} for command '{command_name}': {details}. Expected keys are {expected_arg_keys}"
         )
 
       parsed_arguments.append(
@@ -242,7 +244,7 @@ def create_shell_commands_config(
     if unexpected_syntax_keys:
       details = ', '.join(unexpected_syntax_keys)
       raise ValueError(
-          f"Unexpected keys in 'syntax' for command '{command_name}': {details}"
+          f"Unexpected keys in 'syntax' for command '{command_name}': {details}. Expected keys are {expected_syntax_keys}"
       )
 
     parsed_syntax = CommandSyntax(
