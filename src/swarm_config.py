@@ -60,72 +60,76 @@ async def _load_agent_identity_config(
 
   If `config.json` contains unexpected data or something that can't be parsed,
   or if `prompt_content` is empty, raises an exception.
+
   """
-  # ✨ load agent config
-  agent_name = AgentName(path.name)
-
-  config_json_path = path / "config.json"
-  prompt_md_path = path / "prompt.md"
-
   try:
-    async with aiofiles.open(config_json_path, mode="r") as f:
-      config_content = await f.read()
-  except FileNotFoundError:
-    raise ValueError(f"Agent configuration file not found for agent '{agent_name}': '{config_json_path}'.")
+    # ✨ load agent config
+    agent_name = AgentName(path.name)
 
-  try:
-    raw_agent_config = json.loads(config_content)
-  except json.JSONDecodeError as e:
-    raise ValueError(f"Invalid JSON in '{config_json_path}' for agent '{agent_name}': {e}") from e
+    config_json_path = path / "config.json"
+    prompt_md_path = path / "prompt.md"
 
-  if not isinstance(raw_agent_config, dict):
-    raise ValueError(f"Invalid configuration in '{config_json_path}' for agent '{agent_name}': Expected a dictionary, but got {type(raw_agent_config)}.")
+    try:
+      async with aiofiles.open(config_json_path, mode="r") as f:
+        config_content = await f.read()
+    except FileNotFoundError:
+      raise ValueError(f"Agent configuration file not found for agent '{agent_name}': '{config_json_path}'.")
 
-  allowed_keys = {'command_registry', 'prompts'}
-  for key in raw_agent_config:
-    if key not in allowed_keys:
-      raise ValueError(f"Unknown configuration key '{key}' in '{config_json_path}' for agent '{agent_name}'.")
+    try:
+      raw_agent_config = json.loads(config_content)
+    except json.JSONDecodeError as e:
+      raise ValueError(f"Invalid JSON in '{config_json_path}' for agent '{agent_name}': {e}") from e
 
-  command_registry_data = raw_agent_config.get("command_registry", {})
-  if not isinstance(command_registry_data, dict):
-    raise ValueError(f"Invalid 'command_registry' configuration in '{config_json_path}' for agent '{agent_name}': Expected a dictionary, but got {type(command_registry_data)}.")
-  command_registry_config = create_command_registry_config(command_registry_data)
+    if not isinstance(raw_agent_config, dict):
+      raise ValueError(f"Invalid configuration in '{config_json_path}' for agent '{agent_name}': Expected a dictionary, but got {type(raw_agent_config)}.")
 
-  prompt_parts = []
+    allowed_keys = {'command_registry', 'prompts'}
+    for key in raw_agent_config:
+      if key not in allowed_keys:
+        raise ValueError(f"Unknown configuration key '{key}' in '{config_json_path}' for agent '{agent_name}'.")
 
-  # Read prompt.md if it exists
-  try:
-    async with aiofiles.open(prompt_md_path, mode="r") as f:
-      prompt_parts.append(await f.read())
-  except FileNotFoundError:
-    pass # It's optional, will check final content later.
+    command_registry_data = raw_agent_config.get("command_registry", {})
+    if not isinstance(command_registry_data, dict):
+      raise ValueError(f"Invalid 'command_registry' configuration in '{config_json_path}' for agent '{agent_name}': Expected a dictionary, but got {type(command_registry_data)}.")
+    command_registry_config = create_command_registry_config(command_registry_data)
 
-  # Read prompts from config.json if present
-  prompts_list = raw_agent_config.get("prompts")
-  if prompts_list is not None:
-    if not isinstance(prompts_list, list):
-      raise ValueError(f"Invalid 'prompts' configuration in '{config_json_path}' for agent '{agent_name}': Expected a list, but got {type(prompts_list)}.")
-    for prompt_relative_path_str in prompts_list:
-      if not isinstance(prompt_relative_path_str, str):
-        raise ValueError(f"Invalid prompt path '{prompt_relative_path_str}' in 'prompts' list in '{config_json_path}' for agent '{agent_name}': Expected a string, but got {type(prompt_relative_path_str)}.")
-      prompt_abs_path = path / prompt_relative_path_str
-      try:
-        async with aiofiles.open(prompt_abs_path, mode="r") as f:
-          prompt_parts.append(await f.read())
-      except FileNotFoundError:
-        raise ValueError(f"Prompt file not found for agent '{agent_name}' at path '{prompt_abs_path}', specified in '{config_json_path}'.")
+    prompt_parts = []
 
-  final_prompt_content = "\n".join(prompt_parts)
+    # Read prompt.md if it exists
+    try:
+      async with aiofiles.open(prompt_md_path, mode="r") as f:
+        prompt_parts.append(await f.read())
+    except FileNotFoundError:
+      pass # It's optional, will check final content later.
 
-  if not final_prompt_content.strip():
-    raise ValueError(f"Agent prompt content is empty for agent '{agent_name}'. Please provide content via 'prompt.md' or 'prompts' in 'config.json'.")
+    # Read prompts from config.json if present
+    prompts_list = raw_agent_config.get("prompts")
+    if prompts_list is not None:
+      if not isinstance(prompts_list, list):
+        raise ValueError(f"Invalid 'prompts' configuration in '{config_json_path}' for agent '{agent_name}': Expected a list, but got {type(prompts_list)}.")
+      for prompt_relative_path_str in prompts_list:
+        if not isinstance(prompt_relative_path_str, str):
+          raise ValueError(f"Invalid prompt path '{prompt_relative_path_str}' in 'prompts' list in '{config_json_path}' for agent '{agent_name}': Expected a string, but got {type(prompt_relative_path_str)}.")
+        prompt_abs_path = path / prompt_relative_path_str
+        try:
+          async with aiofiles.open(prompt_abs_path, mode="r") as f:
+            prompt_parts.append(await f.read())
+        except FileNotFoundError:
+          raise ValueError(f"Prompt file not found for agent '{agent_name}' at path '{prompt_abs_path}', specified in '{config_json_path}'.")
 
-  return AgentIdentityConfig(
-      name=agent_name,
-      command_registry=command_registry_config,
-      prompt_content=final_prompt_content,
-  )
-  # ✨
+    final_prompt_content = "\n".join(prompt_parts)
+
+    if not final_prompt_content.strip():
+      raise ValueError(f"Agent prompt content is empty for agent '{agent_name}'. Please provide content via 'prompt.md' or 'prompts' in 'config.json'.")
+
+    return AgentIdentityConfig(
+        name=agent_name,
+        command_registry=command_registry_config,
+        prompt_content=final_prompt_content,
+    )
+    # ✨
+  except Exception as e:
+    raise RuntimeError(f"Failed to load config: {path}") from e
 
 
 async def load_config(path: pathlib.Path) -> SwarmConfig:
