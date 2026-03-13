@@ -173,8 +173,8 @@ class SwarmWorkflow(AgentWorkflow):
     {{🦔 If present, `config.command_registry.writes.file_access_policy`
          merged with the policy at `config.command_registry`. The composite
          policy is given to `WriteFileCommand`.}}
-    {{🦔 If `message.local_directory` is None, the cwd is passed to relevant
-         agent commands unmodified.}}
+    {{🦔 Ignores `message.local_directory` (which should have been applied by
+         the caller).}}
     {{🦔 Honors `config.shell_templates` (through `_add_shell_templates`).
     """
     raise NotImplementedError()  # {{🍄 init command registry}}
