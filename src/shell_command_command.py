@@ -20,8 +20,8 @@ class ShellCommandBase(agent_command.AgentCommand):
   def Name(self) -> str:
     return self.Syntax().name
 
-  async def execute(self, command: str, input_cwd: pathlib.Path | None,
-                    environment: dict[str, str] | None) -> CommandOutput:
+  async def execute(self, command: str,
+                    input_cwd: pathlib.Path | None) -> CommandOutput:
     cwd: pathlib.Path = self._cwd.path
     if input_cwd:
       cwd = cwd / input_cwd
@@ -85,7 +85,7 @@ class ShellCommandCommand(ShellCommandBase):
     input_path = inputs.get(VariableName('cwd'), '.')
     assert isinstance(command, str)
     assert isinstance(input_path, str)
-    return await self.execute(command, pathlib.Path(input_path), None)
+    return await self.execute(command, pathlib.Path(input_path))
 
 
 # The shell command string to be executed. Variables from `syntax` will be given
@@ -118,6 +118,9 @@ def create_shell_commands_config(
        anything can't be parsed successfully).}}
   {{🦔 A ValueError exception due to unexpected keys mentions the set of
        expected keys.}}
+  {{🦔 A ValueError exception is raised if one of the commands (in the
+       "arguments" dictionary) does not occur (in `{{...}}` syntax) in the
+       "command" string.}}
   """
   # ✨ create config
   if not isinstance(data, dict):
@@ -150,7 +153,7 @@ def create_shell_commands_config(
     expected_command_keys = {"command", "description", "arguments"}
     unexpected_command_keys = set(command_data.keys()) - expected_command_keys
     if unexpected_command_keys:
-      details = ', '.join(unexpected_command_keys)
+      details = ", ".join(unexpected_command_keys)
       raise ValueError(
           f"Unexpected keys in command '{command_name}' config: {details}. Expected keys are {expected_command_keys}"
       )
@@ -198,7 +201,7 @@ def create_shell_commands_config(
       expected_arg_keys_inner = {"arg_type", "description", "required"}
       unexpected_arg_keys = set(arg_dict.keys()) - expected_arg_keys_inner
       if unexpected_arg_keys:
-        details = ', '.join(unexpected_arg_keys)
+        details = ", ".join(unexpected_arg_keys)
         raise ValueError(
             f"Unexpected keys in argument '{arg_key}' for command '{command_name}': {details}. Expected keys are {expected_arg_keys_inner}"
         )
@@ -211,7 +214,15 @@ def create_shell_commands_config(
               required=arg_required,
           ))
 
-    # Derive syntax.name from arguments_data keys as per user's explicit instruction
+    # Verify all defined arguments occur as placeholders in the command string template.
+    for arg in parsed_arguments:
+      placeholder = "{{" + arg.name + "}}"
+      if placeholder not in shell_command_template_str:
+        raise ValueError(
+            f"Argument '{arg.name}' defined for command '{command_name}' does not appear "
+            f"as a placeholder ('{placeholder}') in the 'command' string template."
+        )
+
     parsed_syntax = CommandSyntax(
         name=command_name,
         description=syntax_description,
@@ -252,34 +263,28 @@ class ShellCommandTemplateCommand(ShellCommandBase):
     )
     # ✨
 
-  def _prepare_environment(self,
-                           inputs: agent_command.VariableMap) -> dict[str, str]:
-    """Adds inputs from `config` to the environment and returns it.
+  def expand_commands(self, inputs: agent_command.VariableMap) -> str:
+    """Replaces arguments in config.command.
 
     {{🦔 If an argument is not given (in `inputs`), asserts that the argument is
          not required and skips it (doesn't set it).}}
-    {{🦔 The string _DUENDE_SHELL_TEMPLATE is prefixed to the names of the
-         environment variables (output).}}
-    {{🦔 The names of the environment variables (output) are all in uppercase
-         (even if the config has lower-case names).}}
+    {{🦔 The values of an argument with name `foo` replaces strings `{{foo}}`
+         in the command (e.g. `mkdir -p {{path}}`).}}
     """
-    env = os.environ.copy()
+
     # ✨ prepare environment
-    env = os.environ.copy()
+    command_string = str(self._config.command)
     for arg in self._config.syntax.arguments:
+      placeholder = "{{" + str(arg.name) + "}}"
       if arg.name in inputs:
-        # If the argument is provided in inputs, add it to the environment.
-        # The environment variable name should be in uppercase.
-        env[_DUENDE_SHELL_TEMPLATE + str(arg.name).upper()] = str(
-            inputs[arg.name])
+        value = inputs[arg.name]
+        command_string = command_string.replace(placeholder, str(value))
       else:
-        # If the argument is not provided in inputs, it must not be required.
         if arg.required:
           raise ValueError(f"Missing required argument: {arg.name}")
-        # If not required and not provided, we skip it (don't add to env).
-    return env
+        command_string = command_string.replace(placeholder, "")
+    return command_string
     # ✨
 
   async def run(self, inputs: agent_command.VariableMap) -> CommandOutput:
-    return await self.execute(self._config.command, None,
-                              self._prepare_environment(inputs))
+    return await self.execute(self.expand_commands(inputs), None)
