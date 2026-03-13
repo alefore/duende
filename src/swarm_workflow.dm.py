@@ -23,7 +23,7 @@ import message_bus
 from message_bus import Message as BusMessage, MessageBus, TelegramChatId, TelegramMessageId
 from message_queue import AgentMessageQueue
 from pathbox import PathBox
-from shell_command_command import ShellCommandCommand
+import shell_command_command
 from swarm_commands import AskUserCommand, DelegateRequestConfig, DelegateRequestCommand, DisplayInfoCommand, PublishMessageCommand, PublishMessageConfig
 from swarm_config import AgentIdentityConfig, SwarmConfig, load_config
 from swarm_types import AgentName
@@ -143,6 +143,12 @@ class SwarmWorkflow(AgentWorkflow):
       tail = None
     raise NotImplementedError()  # {{🍄 new start message}}
 
+  def _add_shell_templates(
+      self, config: shell_command_command.ShellCommandTemplatesConfig,
+      command_registry: CommandRegistry, cwd: PathBox) -> None:
+    """Adds to the registry an element for each entry in `config.commands`."""
+    raise NotImplementedError()  # {{🍄 add shell templates}}
+
   def _init_command_registry(self, conversation_id: ConversationId,
                              telegram_reply_to_id: TelegramMessageId,
                              message: BusMessage, config: AgentIdentityConfig,
@@ -169,6 +175,7 @@ class SwarmWorkflow(AgentWorkflow):
          agent commands unmodified.}}
     {{🦔 If `message.local_directory` is not None, the cwd passed to relevant
          agent commands is adjusted: cwd / message.local_directory.}}
+    {{🦔 Honors `config.shell_templates` (through `_add_shell_templates`).
     """
     raise NotImplementedError()  # {{🍄 init command registry}}
 
