@@ -121,6 +121,7 @@ class AskUserCommand(AgentCommand):
 
 @dataclasses.dataclass(frozen=True)
 class DelegateRequestConfig:
+  # Must not be empty.
   allow_list: frozenset[AgentName]
 
 
