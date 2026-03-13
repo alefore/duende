@@ -112,6 +112,9 @@ def create_shell_commands_config(
   raise NotImplementedError()  # {{🍄 create config}}
 
 
+_DUENDE_SHELL_TEMPLATE = "DUENDE_SHELL_TEMPLATE_"
+
+
 class ShellCommandTemplateCommand(ShellCommandBase):
 
   def __init__(self, cwd: PathBox, config: ShellCommandTemplateConfig) -> None:
@@ -132,6 +135,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
 
     {{🦔 If an argument is not given (in `inputs`), asserts that the argument is
          not required and skips it (doesn't set it).}}
+    {{🦔 The string _DUENDE_SHELL_TEMPLATE is prefixed to the names of the
+         environment variables (output).}}
     """
     env = os.environ.copy()
     raise NotImplementedError()  # {{🍄 prepare environment}}
