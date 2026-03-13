@@ -143,6 +143,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
          not required and skips it (doesn't set it).}}
     {{🦔 The string _DUENDE_SHELL_TEMPLATE is prefixed to the names of the
          environment variables (output).}}
+    {{🦔 The names of the environment variables (output) are all in uppercase
+         (even if the config has lower-case names).}}
     """
     env = os.environ.copy()
     raise NotImplementedError()  # {{🍄 prepare environment}}
