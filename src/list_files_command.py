@@ -28,7 +28,7 @@ async def _ListFileDetails(
           details.append(f"{file_path}: {line_count} lines, {byte_count} bytes")
       elif file_path.is_dir():
 
-        def count_files():
+        def count_files() -> int:
           return sum(1 for _ in file_path.iterdir())
 
         entries = await anyio.to_thread.run_sync(count_files)
