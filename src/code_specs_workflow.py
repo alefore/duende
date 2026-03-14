@@ -29,6 +29,7 @@ from list_files_command import ListFilesCommand
 from message import Message, ContentSection
 import output_cache
 from read_file_command import ReadFileCommand
+import review_utils
 from search_file_command import SearchFileCommand
 from validation import ValidationResult
 from write_file_command import WriteFileCommand
@@ -158,7 +159,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "typically near the top of the file."
         "\n"
         "If the dm_path is a Python file, "
-        "suggest that the validator could be `mypy`."
+        "suggest that the validator could be "
+        "`mypy --pretty --show-error-context $DMPATH`."
         "\n"
         "Once the user has given you appropriate values "
         "(or you have inferred them), "
@@ -346,7 +348,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"These relevant paths should be given to the "
         f"`{relevant_paths_variable}` argument of the `done` command."
         f"\n"
-        f"Example: `done(relevant_paths=\"src/foo.py,src/bar.cc\")"
+        f"Example: `done relevant_paths='src/foo.py,src/bar.cc'"
         f"\n"
         f"Feel free to use `read_file`, `list_files` and `search_file` "
         f"to explore the codebase.")
@@ -433,6 +435,50 @@ class CodeSpecsWorkflow(AgentWorkflow):
       await implementation.save(inputs.output_path())
     # ✨
 
+  async def _review_implementation(self, dm_path: pathlib.Path,
+                                   marker: MarkerName,
+                                   value_to_review: str) -> ValidationResult:
+    """Returns result of running review agents on `value_to_review`.
+
+    {{🦔 Calls `implementation_review_spec` to get the set of review prompts.}}
+    {{🦔 `run_parallel_reviews` is called with `expose_read_commands` set to
+         False.}}
+    """
+    original_task_prompt_content = (
+        "Goal of code under review: "
+        "Provide the best possible implementation "
+        f"to replace the contents in file `{dm_path}` "
+        "of the line that contains the string: "
+        f"{{{{{MUSHROOM} {marker.name}}}}}")
+    # We don't have a diff output, but we provide the entire new block:
+    value_to_review = ("Code for review:\n<code>\n" + value_to_review +
+                       "\n</code>")
+    # ✨ review implementation
+    reviews_to_run = review_utils.implementation_review_spec(
+        parent_options=self._options.agent_loop_options,
+        original_task_prompt_content=original_task_prompt_content,
+        git_diff_output=value_to_review,
+    )
+
+    all_review_results = await review_utils.run_parallel_reviews(
+        reviews_to_run=reviews_to_run,
+        parent_options=self._options.agent_loop_options,
+        conversation_factory=self._options.conversation_factory,
+        expose_read_commands=False,
+    )
+
+    rejection_feedback_sections = review_utils.reject_output_content_sections(
+        all_review_results)
+
+    if rejection_feedback_sections:
+      error_message = "\n".join(
+          [section.content for section in rejection_feedback_sections])
+      return ValidationResult(success=False, output="", error=error_message)
+    else:
+      return ValidationResult(
+          success=True, output="All reviews accepted.", error="")
+    # ✨
+
   async def _implement_marker(
       self,
       path_and_validator: PathAndValidator,
@@ -472,7 +518,16 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
-      """Calls validator.validate_marker_implementation to validate."""
+      """Validates the marker.
+
+      {{🦔 If `validator.validate_marker_implementation` does not succeed,
+           returns its output.}}
+      {{🦔 If `MarkerImplementation` or methods in `validator` raise an
+           exception, catches it and returns a failed `ValidationResult`.}}
+      {{🦔 If `_review_implementation` does not succeed, returns its output.}}
+      {{🦔 Only calls `_review_implementation` when
+           `validator.validate_marker_implementation` succeeds.}}
+      """
       # ✨ implement validator
       implementation_val = inputs.get(implementation_variable)
 
@@ -488,14 +543,45 @@ class CodeSpecsWorkflow(AgentWorkflow):
             name=marker,
             value=str(implementation_val),
             file_extension=file_extension)
-        return await path_and_validator.validator.validate_marker_implementation(
+
+        # 1. Validate the marker implementation using the provided validator
+        validation_result_from_validator = await path_and_validator.validator.validate_marker_implementation(
             source=path_and_validator.output_path(),
             implementation=implementation_obj)
+
+        if not validation_result_from_validator.success:
+          # If the validator fails, return its output directly
+          return validation_result_from_validator
+
+        # 2. If validator succeeds, proceed to review the implementation
+        review_result = await self._review_implementation(
+            path_and_validator.dm_path, marker, implementation_obj.value)
+
+        if not review_result.success:
+          # If the review fails, return its output directly
+          return review_result
+
+        # If both validation and review succeed
+        return ValidationResult(
+            success=True,
+            output="Implementation validated and reviewed successfully.",
+            error="")
+
       except ValueError as e:
+        # Catches exceptions related to MarkerImplementation creation or
+        # specific ValueError from validate_marker_implementation if applicable.
         return ValidationResult(
             success=False,
             output="",
-            error=f"Invalid implementation block format: {e}")
+            error=f"Invalid implementation block format or validation error: {e}"
+        )
+      except Exception as e:
+        # Catches any other unexpected exceptions during the process.
+        return ValidationResult(
+            success=False,
+            output="",
+            error=(f"An unexpected error occurred during marker implementation "
+                   f"validation and review: {e}"))
       # ✨
 
     file_extension = FileExtension(path_and_validator.output_path().suffix[1:])
