@@ -28,6 +28,7 @@ from list_files_command import ListFilesCommand
 from message import Message, ContentSection
 import output_cache
 from read_file_command import ReadFileCommand
+import review_utils
 from search_file_command import SearchFileCommand
 from validation import ValidationResult
 from write_file_command import WriteFileCommand
@@ -176,7 +177,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         f"These relevant paths should be given to the "
         f"`{relevant_paths_variable}` argument of the `done` command."
         f"\n"
-        f"Example: `done(relevant_paths=\"src/foo.py,src/bar.cc\")"
+        f"Example: `done relevant_paths='src/foo.py,src/bar.cc'"
         f"\n"
         f"Feel free to use `read_file`, `list_files` and `search_file` "
         f"to explore the codebase.")
@@ -203,6 +204,26 @@ class CodeSpecsWorkflow(AgentWorkflow):
          markers occur in the DM file.}}
     """
     raise NotImplementedError()  # {{🍄 implement file}}
+
+  async def _review_implementation(self, dm_path: pathlib.Path,
+                                   marker: MarkerName,
+                                   value_to_review: str) -> ValidationResult:
+    """Returns result of running review agents on `value_to_review`.
+
+    {{🦔 Calls `implementation_review_spec` to get the set of review prompts.}}
+    {{🦔 `run_parallel_reviews` is called with `expose_read_commands` set to
+         False.}}
+    """
+    original_task_prompt_content = (
+        "Goal of code under review: "
+        "Provide the best possible implementation "
+        f"to replace the contents in file `{dm_path}` "
+        "of the line that contains the string: "
+        f"{{{{{MUSHROOM} {marker.name}}}}}")
+    # We don't have a diff output, but we provide the entire new block:
+    value_to_review = ("Code for review:\n<code>\n" + value_to_review +
+                       "\n</code>")
+    raise NotImplementedError()  # {{🍄 review implementation}}
 
   async def _implement_marker(
       self,
@@ -243,7 +264,16 @@ class CodeSpecsWorkflow(AgentWorkflow):
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
-      """Calls validator.validate_marker_implementation to validate."""
+      """Validates the marker.
+
+      {{🦔 If `validator.validate_marker_implementation` does not succeed,
+           returns its output.}}
+      {{🦔 If `MarkerImplementation` or methods in `validator` raise an
+           exception, catches it and returns a failed `ValidationResult`.}}
+      {{🦔 If `_review_implementation` does not succeed, returns its output.}}
+      {{🦔 Only calls `_review_implementation` when
+           `validator.validate_marker_implementation` succeeds.}}
+      """
       raise NotImplementedError()  # {{🍄 implement validator}}
 
     file_extension = FileExtension(path_and_validator.output_path().suffix[1:])
