@@ -240,8 +240,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const id = parseInt($(this).val());
     if (conversationsById[id]) conversationsById[id].show();
     updatePageTitle();
-    $('#content_panes').children().hide();
-    $('#conversation_view').show();
   });
 
   function updateConfirmationButtonVisibility() {
