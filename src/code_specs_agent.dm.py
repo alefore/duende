@@ -1,4 +1,7 @@
-# Suggested validator: MYPYPATH=~/coding-agent/src mypy $DMPATH
+# Contains public functions for code_specs-related agents to use the
+# infrastructure from Duende.
+#
+# Suggested validator: mypy $DMPATH
 
 import aiofiles
 import asyncio
