@@ -11,7 +11,7 @@ from agent_loop import AgentLoopFactory
 from agent_loop_options import AgentLoopOptions
 from agent_workflow import AgentWorkflow
 from command_registry import CommandRegistry
-from command_registry_factory import CommandRegistryConfig, create_command_registry, create_ask_command_registry
+from command_registry_factory import CommandRegistryConfig, CommandRegistryWriteConfig, create_command_registry, create_ask_command_registry
 from confirmation import ConfirmationState, ConfirmationManager
 from file_access_policy import create_file_access_policy, load_file_access_policy, FileAccessPolicy, RegexFileAccessPolicy, CurrentDirectoryFileAccessPolicy, CompositeFileAccessPolicy
 from list_files import list_all_files
@@ -205,6 +205,7 @@ async def CreateAgentWorkflowOptions(
   registry = await create_command_registry(
       CommandRegistryConfig(
           file_access_policy=file_access_policy_config,
+          writes=CommandRegistryWriteConfig(file_access_policy=None),
           shell_templates=shell_command_command.ShellCommandTemplatesConfig(
               commands={}),
           allow_shell=args.shell_command_execution),
