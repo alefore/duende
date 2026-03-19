@@ -26,10 +26,39 @@ def _group_sections(contents: list[str],
     yield MarkdownSection(current[0], current[1:])
 
 
+@dataclass(frozen=True)
+class Task:
+  title: str
+  description: str
+  attempts: list[str]
+
+  @classmethod
+  def from_markdown_section(cls, section: MarkdownSection) -> "Task":
+    all_sub_sections = list(_group_sections(section.lines, 3))
+    parsed_title = section.header.removeprefix("## Task: ").strip()
+
+    if not all_sub_sections:
+      return cls(title=parsed_title, description="", attempts=[])
+
+    return cls(
+        title=parsed_title,
+        description="\n".join([all_sub_sections[0].header] +
+                              all_sub_sections[0].lines),
+        attempts=[
+            attempt_section.header + "\n" + "\n".join(attempt_section.lines)
+            for attempt_section in all_sub_sections[1:]
+        ])
+
+  def to_markdown_lines(self) -> list[str]:
+    return ([f"## Task: {self.title}"] +
+            ([self.description] if self.description else []) + self.attempts +
+            [""])
+
+
 class PlanFile:
 
   def __init__(self, contents: str) -> None:
-    self.tasks: list[MarkdownSection] = []
+    self.tasks: list[Task] = []
     goal: str | None = None
     task_pattern = re.compile("## Task: .+$")
     for section in _group_sections(contents.splitlines(), 2):
@@ -39,9 +68,15 @@ class PlanFile:
         goal = "\n".join(section.lines)
         continue
       if task_pattern.fullmatch(section.header):
-        self.tasks.append(section)
+        self.tasks.append(Task.from_markdown_section(section))
     if goal is None:
       raise ValueError("Section missing: `## Goal`")
     self.goal: str = goal
     if not self.tasks:
       raise ValueError("No tasks (sections `## Task: …`) were found.")
+
+  def to_string(self) -> str:
+    return "\n".join(
+        ["## Goal", self.goal, ""] +
+        [line for task in self.tasks
+         for line in task.to_markdown_lines()]).strip() + "\n"
