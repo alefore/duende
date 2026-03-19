@@ -1,12 +1,55 @@
 from dataclasses import dataclass
 import re
 from typing import Iterator
+from enum import Enum
+
+
+class AttemptState(Enum):
+  NEW = "New"
+  ONGOING = "Ongoing"
+  FAIL = "Fail"
+  SUCCESS = "Success"
+  REVIEW = "Review"
+  IMPROVE = "Improve"
+  COMMIT = "Commit"
+  OBSOLETE = "Obsolete"
+
+
+@dataclass(frozen=True)
+class Attempt:
+  attempt_number: int
+  state: AttemptState
+  details: str
+  title: str | None = None
+
+  @classmethod
+  def from_markdown_section(cls, section: "MarkdownSection") -> "Attempt":
+    match = re.compile(
+        "### Attempt ([0-9]+)(: (([a-zA-Z]+)(: (.*)?))?").fullmatch(
+            section.header)
+    if not match:
+      raise ValueError(f"Unable to parse attempt header: {section.header}")
+    groups = match.groups()
+    return cls(
+        attempt_number=int(groups[0]),
+        state=AttemptState(groups[3]) if len(groups) >= 3 else AttemptState.NEW,
+        title=(groups[5] if len(groups) > 5 else None),
+        details="\n".join(section.lines))
+
+  def to_markdown_lines(self) -> list[str]:
+    header = f"### Attempt {self.attempt_number}: {self.state.value}"
+    if self.title is not None:
+      header += f": {self.title}"
+    return [header] + (self.details.splitlines() if self.details else [])
 
 
 @dataclass(frozen=True)
 class MarkdownSection:
   header: str
   lines: list[str]
+
+  def contents(self) -> str:
+    return "\n".join([self.header] + self.lines)
 
 
 def _is_header(line: str, header_depth: int) -> bool:
@@ -30,29 +73,29 @@ def _group_sections(contents: list[str],
 class Task:
   title: str
   description: str
-  attempts: list[str]
+  attempts: list[Attempt]
 
   @classmethod
   def from_markdown_section(cls, section: MarkdownSection) -> "Task":
-    all_sub_sections = list(_group_sections(section.lines, 3))
+    sections = list(_group_sections(section.lines, 3))
     parsed_title = section.header.removeprefix("## Task: ").strip()
 
-    if not all_sub_sections:
-      return cls(title=parsed_title, description="", attempts=[])
+    def _is_attempt(section: MarkdownSection) -> bool:
+      return section.header.startswith("### Attempt")
 
     return cls(
         title=parsed_title,
-        description="\n".join([all_sub_sections[0].header] +
-                              all_sub_sections[0].lines),
-        attempts=[
-            attempt_section.header + "\n" + "\n".join(attempt_section.lines)
-            for attempt_section in all_sub_sections[1:]
-        ])
+        description=sections[0].contents()
+        if sections and not _is_attempt(sections[0]) else "",
+        attempts=list(
+            map(Attempt.from_markdown_section, filter(_is_attempt, sections))))
 
   def to_markdown_lines(self) -> list[str]:
     return ([f"## Task: {self.title}"] +
-            ([self.description] if self.description else []) + self.attempts +
-            [""])
+            (self.description.splitlines() if self.description else []) + [
+                line for attempt in self.attempts
+                for line in attempt.to_markdown_lines()
+            ])
 
 
 class PlanFile:
