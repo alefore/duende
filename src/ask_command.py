@@ -36,7 +36,7 @@ class AskCommand(AgentCommand):
   def Syntax(self) -> CommandSyntax:
     return CommandSyntax(
         name="ask",
-        description="Forks a separate AI conversation to investigate the codebase and answer a specific question. Use this when you need detailed information that cannot be trivially obtained with existing commands. The AI in the forked conversation will have read-only access.",
+        description="Forks a separate AI conversation to investigate the codebase and answer a specific question. Use this when you need detailed information that cannot be trivially obtained with existing commands. The AI in the forked conversation will have read-only access. You MUST NOT use this command for questions meant for the user (human).",
         arguments=[
             Argument(
                 name=VariableName("question"),

@@ -464,7 +464,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         reviews_to_run=reviews_to_run,
         parent_options=self._options.agent_loop_options,
         conversation_factory=self._options.conversation_factory,
-        expose_read_commands=False,
+        expose_read_commands=True,
     )
 
     rejection_feedback_sections = review_utils.reject_output_content_sections(
