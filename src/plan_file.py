@@ -15,7 +15,7 @@ class AttemptState(Enum):
   OBSOLETE = "Obsolete"
 
 
-@dataclass(frozen=True)
+@dataclass
 class Attempt:
   attempt_number: int
   state: AttemptState
@@ -25,7 +25,7 @@ class Attempt:
   @classmethod
   def from_markdown_section(cls, section: "MarkdownSection") -> "Attempt":
     match = re.compile(
-        "### Attempt ([0-9]+)(: (([a-zA-Z]+)(: (.*)?))?").fullmatch(
+        "### Attempt ([0-9]+)(: (([a-zA-Z]+)(: (.+))?)?)?").fullmatch(
             section.header)
     if not match:
       raise ValueError(f"Unable to parse attempt header: {section.header}")
@@ -38,9 +38,9 @@ class Attempt:
 
   def to_markdown_lines(self) -> list[str]:
     header = f"### Attempt {self.attempt_number}: {self.state.value}"
-    if self.title is not None:
+    if self.title:
       header += f": {self.title}"
-    return [header] + (self.details.splitlines() if self.details else [])
+    return [header] + self.details.split("\n")
 
 
 @dataclass(frozen=True)
@@ -69,57 +69,91 @@ def _group_sections(contents: list[str],
     yield MarkdownSection(current[0], current[1:])
 
 
-@dataclass(frozen=True)
+class TaskState(Enum):
+  PENDING = "pending"
+  DONE = "done"
+  OBSOLETE = "obsolete"
+
+
+ATTEMPT_STATE_TO_TASK_STATE = {
+    AttemptState.NEW: TaskState.PENDING,
+    AttemptState.ONGOING: TaskState.PENDING,
+    AttemptState.FAIL: TaskState.PENDING,
+    AttemptState.SUCCESS: TaskState.DONE,
+    AttemptState.REVIEW: TaskState.PENDING,
+    AttemptState.IMPROVE: TaskState.PENDING,
+    AttemptState.COMMIT: TaskState.PENDING,
+    AttemptState.OBSOLETE: TaskState.OBSOLETE
+}
+
+
+@dataclass
 class Task:
   title: str
+  state: TaskState
   description: str
   attempts: list[Attempt]
 
   @classmethod
   def from_markdown_section(cls, section: MarkdownSection) -> "Task":
     sections = list(_group_sections(section.lines, 3))
-    parsed_title = section.header.removeprefix("## Task: ").strip()
+    title_pattern = re.compile("## Task: (.*?)( \\((done|obsolete)\\))?")
+    title_match = title_pattern.fullmatch(section.header)
+    assert title_match
 
     def _is_attempt(section: MarkdownSection) -> bool:
       return section.header.startswith("### Attempt")
 
     return cls(
-        title=parsed_title,
+        title=title_match.groups()[0],
+        state=TaskState(title_match.groups()[2] or "pending"),
         description=sections[0].contents()
         if sections and not _is_attempt(sections[0]) else "",
         attempts=list(
             map(Attempt.from_markdown_section, filter(_is_attempt, sections))))
 
   def to_markdown_lines(self) -> list[str]:
-    return ([f"## Task: {self.title}"] +
-            (self.description.splitlines() if self.description else []) + [
+    state = "" if self.state == TaskState.PENDING else f" ({self.state.value})"
+    return ([f"## Task: {self.title}{state}"] +
+            (self.description.split("\n") if self.description else []) + [
                 line for attempt in self.attempts
                 for line in attempt.to_markdown_lines()
             ])
+
+  def __str__(self):
+    return "\n".join(self.to_markdown_lines())
 
 
 class PlanFile:
 
   def __init__(self, contents: str) -> None:
     self.tasks: list[Task] = []
-    goal: str | None = None
+    goal_title: str | None = None
+    goal_description: str | None = None
+    goal_pattern = re.compile("## Goal: (.+)$")
     task_pattern = re.compile("## Task: .+$")
-    for section in _group_sections(contents.splitlines(), 2):
-      if section.header == "## Goal":
-        if goal is not None:
+    for section in _group_sections(contents.split("\n"), 2):
+      goal_match = goal_pattern.fullmatch(section.header)
+      if goal_match:
+        if goal_title is not None:
           raise ValueError("Multiple `## Goal` sections found.")
-        goal = "\n".join(section.lines)
+        goal_title = goal_match.group(1)
+        goal_description = "\n".join(section.lines)
         continue
       if task_pattern.fullmatch(section.header):
         self.tasks.append(Task.from_markdown_section(section))
-    if goal is None:
+        continue
+      raise ValueError(f"Unexpected section: {section.header}")
+    if goal_title is None or goal_description is None:
       raise ValueError("Section missing: `## Goal`")
-    self.goal: str = goal
-    if not self.tasks:
-      raise ValueError("No tasks (sections `## Task: …`) were found.")
+    self.goal_title: str = goal_title
+    self.goal_description: str = goal_description
 
   def to_string(self) -> str:
     return "\n".join(
-        ["## Goal", self.goal, ""] +
-        [line for task in self.tasks
-         for line in task.to_markdown_lines()]).strip() + "\n"
+        [f"## Goal: {self.goal_title}", self.goal_description] +
+        [line for task in self.tasks for line in task.to_markdown_lines()])
+
+  def index_first_pending(self) -> int | None:
+    return next((i for i, task in enumerate(self.tasks)
+                 if task.state == TaskState.PENDING), None)
