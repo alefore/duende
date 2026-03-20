@@ -358,6 +358,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
             f"code_specs_workflow:{path}", self._output_cache,
             self._options.agent_loop_factory))
+
     # ✨ find relevant paths
     registry = await prepare_command_registry(
         done_command_arguments=[
@@ -464,7 +465,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         reviews_to_run=reviews_to_run,
         parent_options=self._options.agent_loop_options,
         conversation_factory=self._options.conversation_factory,
-        expose_read_commands=True,
+        expose_read_commands=False,
     )
 
     rejection_feedback_sections = review_utils.reject_output_content_sections(
@@ -525,8 +526,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
       {{🦔 If `MarkerImplementation` or methods in `validator` raise an
            exception, catches it and returns a failed `ValidationResult`.}}
       {{🦔 If `_review_implementation` does not succeed, returns its output.}}
-      {{🦔 Only calls `_review_implementation` when
+      {{🦔 Only calls `_review_implementation` when (after)
            `validator.validate_marker_implementation` succeeds.}}
+      {{🦔 Only calls `_review_implementation` if `_options.do_review` is
+           True.}}
       """
       # ✨ implement validator
       implementation_val = inputs.get(implementation_variable)
@@ -554,12 +557,13 @@ class CodeSpecsWorkflow(AgentWorkflow):
           return validation_result_from_validator
 
         # 2. If validator succeeds, proceed to review the implementation
-        review_result = await self._review_implementation(
-            path_and_validator.dm_path, marker, implementation_obj.value)
+        if self._options.do_review:
+          review_result = await self._review_implementation(
+              path_and_validator.dm_path, marker, implementation_obj.value)
 
-        if not review_result.success:
-          # If the review fails, return its output directly
-          return review_result
+          if not review_result.success:
+            # If the review fails, return its output directly
+            return review_result
 
         # If both validation and review succeed
         return ValidationResult(
