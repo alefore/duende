@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import logging
 import os
 import pathlib
+import shlex
 from typing import Any, NewType
 
 import agent_command
@@ -238,9 +239,6 @@ def create_shell_commands_config(
   # ✨
 
 
-_DUENDE_SHELL_TEMPLATE = "DUENDE_SHELL_TEMPLATE_"
-
-
 class ShellCommandTemplateCommand(ShellCommandBase):
 
   def __init__(self, cwd: PathBox, config: ShellCommandTemplateConfig) -> None:
@@ -253,6 +251,7 @@ class ShellCommandTemplateCommand(ShellCommandBase):
     {{🦔 Return value includes `REASON_VARIABLE`.}}
     {{🦔 Return value includes all elements in `config.syntax`.}}
     """
+
     # ✨ syntax
     return CommandSyntax(
         name=self._config.syntax.name,
@@ -270,6 +269,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
          not required and skips it (doesn't set it).}}
     {{🦔 The values of an argument with name `foo` replaces strings `{{foo}}`
          in the command (e.g. `mkdir -p {{path}}`).}}
+    {{🦔 The values of the arguments are properly shell escaped (before being
+         expanded into the template) using `shlex.quote`.}}
     """
 
     # ✨ prepare environment
@@ -278,7 +279,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
       placeholder = "{{" + str(arg.name) + "}}"
       if arg.name in inputs:
         value = inputs[arg.name]
-        command_string = command_string.replace(placeholder, str(value))
+        # Shell escape the value before replacing the placeholder
+        command_string = command_string.replace(placeholder, shlex.quote(str(value)))
       else:
         if arg.required:
           raise ValueError(f"Missing required argument: {arg.name}")
