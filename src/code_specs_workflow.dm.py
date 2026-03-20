@@ -271,8 +271,10 @@ class CodeSpecsWorkflow(AgentWorkflow):
       {{🦔 If `MarkerImplementation` or methods in `validator` raise an
            exception, catches it and returns a failed `ValidationResult`.}}
       {{🦔 If `_review_implementation` does not succeed, returns its output.}}
-      {{🦔 Only calls `_review_implementation` when
+      {{🦔 Only calls `_review_implementation` when (after)
            `validator.validate_marker_implementation` succeeds.}}
+      {{🦔 Only calls `_review_implementation` if `_options.do_review` is
+           True.}}
       """
       raise NotImplementedError()  # {{🍄 implement validator}}
 
