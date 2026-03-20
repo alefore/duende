@@ -7,3 +7,7 @@ Examples of BAD comments:
     # Iterate the list of elements
     for i in elements:
       ...
+
+Comment lines that start with the character `✨` are OK and should be allowed.
+That's because they are used by this coding system to annotate specific lines
+(where code is generated automatically by AI).
