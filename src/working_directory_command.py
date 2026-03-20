@@ -25,7 +25,7 @@ class ChangeWorkingDirectoryCommand(AgentCommand):
             REASON_VARIABLE,
             Argument(
                 name=PATH_VARIABLE_NAME,
-                arg_type=ArgumentContentType.PATH_INPUT,
+                arg_type=ArgumentContentType.PATH_UNVALIDATED,
                 description="New working directory.",
                 required=False)
         ])
@@ -33,9 +33,9 @@ class ChangeWorkingDirectoryCommand(AgentCommand):
   async def run(self, inputs: VariableMap) -> CommandOutput:
     """Assigns input `path` to `self._working_directory`."""
     # ✨ run method
-    path_input = inputs.get(PATH_VARIABLE_NAME)
+    path_input_raw = inputs.get(PATH_VARIABLE_NAME)
 
-    if path_input is None:
+    if path_input_raw is None:
       return CommandOutput(
           command_name=self.Name(),
           output=f"Current working directory remains: {self._working_directory.path}",
@@ -43,8 +43,8 @@ class ChangeWorkingDirectoryCommand(AgentCommand):
           summary="No new working directory path provided. Working directory unchanged.",
       )
 
-    assert isinstance(path_input, pathlib.Path)
-    path_input = self._working_directory.path / path_input
+    assert isinstance(path_input_raw, str)
+    path_input = self._working_directory.path / pathlib.Path(path_input_raw)
     if not path_input.exists():
       return CommandOutput(
           command_name=self.Name(),

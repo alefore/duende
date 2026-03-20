@@ -22,7 +22,7 @@ class ChangeWorkingDirectoryCommand(AgentCommand):
             REASON_VARIABLE,
             Argument(
                 name=PATH_VARIABLE_NAME,
-                arg_type=ArgumentContentType.PATH_INPUT,
+                arg_type=ArgumentContentType.PATH_UNVALIDATED,
                 description="New working directory.",
                 required=False)
         ])
