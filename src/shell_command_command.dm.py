@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import logging
 import os
 import pathlib
+import shlex
 from typing import Any, NewType
 
 import agent_command
@@ -124,9 +125,6 @@ def create_shell_commands_config(
   raise NotImplementedError()  # {{🍄 create config}}
 
 
-_DUENDE_SHELL_TEMPLATE = "DUENDE_SHELL_TEMPLATE_"
-
-
 class ShellCommandTemplateCommand(ShellCommandBase):
 
   def __init__(self, cwd: PathBox, config: ShellCommandTemplateConfig) -> None:
@@ -148,6 +146,8 @@ class ShellCommandTemplateCommand(ShellCommandBase):
          not required and skips it (doesn't set it).}}
     {{🦔 The values of an argument with name `foo` replaces strings `{{foo}}`
          in the command (e.g. `mkdir -p {{path}}`).}}
+    {{🦔 The values of the arguments are properly shell escaped (before being
+         expanded into the template) using `shlex.quote`.}}
     """
     raise NotImplementedError()  # {{🍄 prepare environment}}
 
