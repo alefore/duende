@@ -122,7 +122,7 @@ class SwarmWorkflow(AgentWorkflow):
         .agent_loop_options.confirmation_state.confirmation_manager)
     agent_loop_options = self._options.agent_loop_options._replace(
         conversation=conversation,
-        start_message=await self._new_start_message(message),
+        start_message=await self._new_start_message(message, cwd.path),
         command_registry=command_registry,
         file_access_policy=create_file_access_policy(self._config.agents[
             message.target_agent].command_registry.file_access_policy or
@@ -131,14 +131,15 @@ class SwarmWorkflow(AgentWorkflow):
         cwd=cwd)
     raise NotImplementedError()  # {{🍄 create and start agent loop}}
 
-  async def _new_start_message(self, message: BusMessage) -> Message:
+  async def _new_start_message(self, message: BusMessage,
+                               cwd: pathlib.Path) -> Message:
     """Returns a new Message: agent's prompt + message's body.
 
     Creates the initial message for the agent loop. It contains a section for
     `prompt_content` and one for `message.content` (if non-empty).
     """
     assert message.target_agent
-    head = self._config.agents[message.target_agent].prompt_content
+    head = await self._config.agents[message.target_agent].prompt(cwd)
     if message.content:
       tail = "<user_request>" + message.content + "</user_request>"
     else:

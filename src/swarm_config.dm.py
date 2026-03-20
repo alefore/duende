@@ -1,10 +1,13 @@
 import aiofiles
+import asyncio
 import dataclasses
 import json
+import os
 import pathlib
 from typing import NewType
 
 from command_registry_factory import create_command_registry_config, CommandRegistryConfig
+from message import ContentSection
 from swarm_types import AgentName
 
 TelegramId = NewType("TelegramId", int)
@@ -17,7 +20,25 @@ class AgentIdentityConfig:
 
   command_registry: CommandRegistryConfig
 
-  prompt_content: str
+  prompt_sources: list[pathlib.Path]
+
+  async def prompt(self, cwd: pathlib.Path) -> list[ContentSection]:
+    """Loads all sections for the initial message.
+
+    {{🦔 There is exactly one section for each input in `prompt_sources`.}}
+    {{🦔 The outputs are sorted in the same order as `prompt_sources`.}}
+    {{🦔 If an entry in `prompt_sources` is executable (by Unix permissions),
+         the contents in its output are the stdout from executing it.}}
+    {{🦔 If an entry in `prompt_sources` is not-executable, the contents in its
+         output are the result of reading it.}}
+    {{🦔 For the execution, we don't adjust the process's current working
+         directory, but we pass the value of `cwd.path` as the environment
+         variable `DUENDE_AGENT_CWD`.}}
+    {{🦔 If an execution returns non-zero, we raise a ValueError exception.
+         The exception contains details (including the program's error
+         output).}}
+    """
+    raise NotImplementedError()  # {{🍄 generate agent prompt}}
 
 
 @dataclasses.dataclass(frozen=True)
