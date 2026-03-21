@@ -80,7 +80,6 @@ async def _load_agent_identity_config(
 
   If `config.json` contains unexpected data or something that can't be parsed,
   or if `prompt_content` is empty, raises an exception.
-
   """
   try:
     raise NotImplementedError()  # {{🍄 load agent config}}
@@ -106,5 +105,8 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
   If any configuration contains unexpected keys (or any data that can't be
   parsed successfully, raises a ValueError with a good description of the
   problem (including the location).
+
+  Validates *all* configurations and successfully detects ALL errors in them
+  (in the exception raised), rather than simply stopping at the first failure.
   """
   raise NotImplementedError()  # {{🍄 load config}}
