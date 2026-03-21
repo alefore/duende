@@ -42,13 +42,13 @@ class AgentIdentityConfig:
 
     # ✨ generate agent prompt
     async def _get_content_from_source(
-        source_path: pathlib.Path) -> ContentSection:
+        source_path: pathlib.Path, cwd_path: pathlib.Path) -> ContentSection:
       if not os.access(source_path, os.X_OK):
         async with aiofiles.open(source_path, mode="r") as f:
           return ContentSection(content=await f.read())
 
       env: dict[str, str] = os.environ.copy()
-      env["DUENDE_AGENT_CWD"] = str(cwd)
+      env["DUENDE_AGENT_CWD"] = str(cwd_path)
       process: asyncio.subprocess.Process = await asyncio.create_subprocess_exec(
           "/bin/bash",
           "-c",
@@ -64,8 +64,10 @@ class AgentIdentityConfig:
             f"{stderr_bytes.decode().strip()}")
       return ContentSection(content=stdout_bytes.decode())
 
-    return await asyncio.gather(
-        *map(_get_content_from_source, self.prompt_sources))
+    return await asyncio.gather(*[
+        _get_content_from_source(source_path, cwd)
+        for source_path in self.prompt_sources
+    ])
     # ✨
 
 
@@ -108,7 +110,6 @@ async def _load_agent_identity_config(
 
   If `config.json` contains unexpected data or something that can't be parsed,
   or if `prompt_content` is empty, raises an exception.
-
   """
   try:
     # ✨ load agent config
@@ -210,138 +211,211 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
   If any configuration contains unexpected keys (or any data that can't be
   parsed successfully, raises a ValueError with a good description of the
   problem (including the location).
+
+  Validates *all* configurations and successfully detects ALL errors in them
+  (in the exception raised), rather than simply stopping at the first failure.
   """
   # ✨ load config
+  errors: list[str] = []
+  config_content = ""
+  raw_config: dict = {}
+
   try:
     async with aiofiles.open(path, mode="r") as f:
       config_content = await f.read()
   except FileNotFoundError:
-    raise ValueError(f"Configuration file not found: '{path}'.")
+    errors.append(f"Configuration file not found: '{path}'.")
 
-  try:
-    raw_config = json.loads(config_content)
-  except json.JSONDecodeError as e:
-    raise ValueError(f"Invalid JSON in '{path}': {e}") from e
+  if not errors:
+    try:
+      raw_config = json.loads(config_content)
+    except json.JSONDecodeError as e:
+      errors.append(f"Invalid JSON in '{path}': {e}")
 
-  if not isinstance(raw_config, dict):
-    raise ValueError(
-        f"Invalid configuration in '{path}': Expected a dictionary.")
+  if not errors and not isinstance(raw_config, dict):
+    errors.append(
+        f"Invalid configuration in '{path}': Expected a dictionary, but got {type(raw_config)}."
+    )
 
-  allowed_keys = {'agents', 'message_bus_path', 'telegram'}
-  for key in raw_config:
-    if key not in allowed_keys:
-      raise ValueError(f"Unknown configuration key '{key}' in '{path}'.")
+  if not errors:
+    allowed_keys = {'agents', 'message_bus_path', 'telegram'}
+    for key in raw_config:
+      if key not in allowed_keys:
+        errors.append(f"Unknown configuration key '{key}' in '{path}'.")
 
-  message_bus_path_str = raw_config.get("message_bus_path")
-  if not message_bus_path_str:
-    raise ValueError(f"Missing 'message_bus_path' in '{path}'.")
-  if not isinstance(message_bus_path_str, str):
-    raise ValueError(
-        f"Invalid 'message_bus_path' in '{path}': Expected a string.")
-  message_bus_path = pathlib.Path(message_bus_path_str)
-
-  raw_agents = raw_config.get("agents")
-  if not raw_agents:
-    raise ValueError(f"Missing 'agents' in '{path}'.")
-  if not isinstance(raw_agents, list):
-    raise ValueError(
-        f"Invalid 'agents' in '{path}': Expected a list of agent names.")
+  message_bus_path: pathlib.Path | None = None
+  if "message_bus_path" in raw_config:
+    message_bus_path_str = raw_config["message_bus_path"]
+    if not isinstance(message_bus_path_str, str):
+      errors.append(
+          f"Invalid 'message_bus_path' in '{path}': Expected a string, but got {type(message_bus_path_str)}."
+      )
+    else:
+      message_bus_path = pathlib.Path(message_bus_path_str)
+  else:
+    errors.append(f"Missing 'message_bus_path' in '{path}'.")
 
   agents: dict[AgentName, AgentIdentityConfig] = {}
-  config_dir = path.parent
-  for agent_name_str in raw_agents:
-    if not isinstance(agent_name_str, str):
-      raise ValueError(
-          f"Invalid agent name in '{path}': Expected a string, got {type(agent_name_str)}."
+
+  if "agents" in raw_config:
+    raw_agents: list | None = raw_config["agents"]
+    if not isinstance(raw_agents, list):
+      errors.append(
+          f"Invalid 'agents' in '{path}': Expected a list of agent names, but got {type(raw_agents)}."
       )
-    agent_path = config_dir / "agents" / agent_name_str
-    agent_identity_config = await _load_agent_identity_config(agent_path)
-    if AgentName(agent_name_str) in agents:
-      raise ValueError(f"Duplicate agent name '{agent_name_str}' in '{path}'.")
-    agents[AgentName(agent_name_str)] = agent_identity_config
+    else:
+      config_dir = path.parent
+      agent_loading_awaitables = []
+      for i, agent_name_str_raw in enumerate(raw_agents):
+        if not isinstance(agent_name_str_raw, str):
+          errors.append(
+              f"Invalid agent name at index {i} in '{path}': Expected a string, got {type(agent_name_str_raw)}."
+          )
+          continue
+
+        agent_name_str = agent_name_str_raw
+        agent_path = config_dir / "agents" / agent_name_str
+        agent_loading_awaitables.append(
+            (agent_name_str, _load_agent_identity_config(agent_path)))
+
+      results = await asyncio.gather(
+          *[a[1] for a in agent_loading_awaitables], return_exceptions=True)
+
+      for i, result in enumerate(results):
+        original_agent_name_str = agent_loading_awaitables[i][0]
+        if isinstance(
+            result,
+            AgentIdentityConfig):  # Directly check if it's the expected type
+          valid_agent_config: AgentIdentityConfig = result
+          if AgentName(original_agent_name_str) in agents:
+            errors.append(
+                f"Duplicate agent name '{original_agent_name_str}' in '{path}'."
+            )
+          else:
+            agents[AgentName(original_agent_name_str)] = valid_agent_config
+        else:  # It must be an exception
+          if isinstance(result, RuntimeError) and result.__cause__ is not None:
+            errors.append(str(result.__cause__))
+          else:
+            errors.append(str(result))
+  else:
+    errors.append(f"Missing 'agents' in '{path}'.")
 
   telegram_config: SwarmTelegramConfig | None = None
-  raw_telegram_config = raw_config.get("telegram")
-  if raw_telegram_config:
+  if "telegram" in raw_config:
+    raw_telegram_config = raw_config["telegram"]
     if not isinstance(raw_telegram_config, dict):
-      raise ValueError(
-          f"Invalid 'telegram' configuration in '{path}': Expected a dictionary."
+      errors.append(
+          f"Invalid 'telegram' configuration in '{path}': Expected a dictionary, but got {type(raw_telegram_config)}."
       )
+    else:
+      telegram_allowed_keys = {
+          'token', 'consumer_agent', 'end_user_identity', 'authorized_users'
+      }
+      for key in raw_telegram_config:
+        if key not in telegram_allowed_keys:
+          errors.append(
+              f"Unknown configuration key 'telegram.{key}' in '{path}'.")
 
-    telegram_allowed_keys = {
-        'token', 'consumer_agent', 'end_user_identity', 'authorized_users'
-    }
-    for key in raw_telegram_config:
-      if key not in telegram_allowed_keys:
-        raise ValueError(
-            f"Unknown configuration key 'telegram.{key}' in '{path}'.")
+      telegram_token: str | None = None
+      telegram_consumer_agent_name: AgentName | None = None
+      telegram_end_user_identity_name: AgentName | None = None
+      telegram_authorized_users: list[TelegramId] = []
 
-    telegram_token = raw_telegram_config.get("token")
-    if not telegram_token:
-      raise ValueError(f"Missing 'telegram.token' in '{path}'.")
-    if not isinstance(telegram_token, str):
-      raise ValueError(
-          f"Invalid 'telegram.token' in '{path}': Expected a string.")
+      if "token" in raw_telegram_config:
+        raw_token = raw_telegram_config["token"]
+        if not isinstance(raw_token, str):
+          errors.append(
+              f"Invalid 'telegram.token' in '{path}': Expected a string, but got {type(raw_token)}."
+          )
+        else:
+          telegram_token = raw_token
+      else:
+        errors.append(f"Missing 'telegram.token' in '{path}'.")
 
-    telegram_consumer_agent_str = raw_telegram_config.get("consumer_agent")
-    if not telegram_consumer_agent_str:
-      raise ValueError(f"Missing 'telegram.consumer_agent' in '{path}'.")
-    if not isinstance(telegram_consumer_agent_str, str):
-      raise ValueError(
-          f"Invalid 'telegram.consumer_agent' in '{path}': Expected a string.")
-    telegram_consumer_agent = AgentName(telegram_consumer_agent_str)
+      if "consumer_agent" in raw_telegram_config:
+        raw_consumer_agent = raw_telegram_config["consumer_agent"]
+        if not isinstance(raw_consumer_agent, str):
+          errors.append(
+              f"Invalid 'telegram.consumer_agent' in '{path}': Expected a string, but got {type(raw_consumer_agent)}."
+          )
+        else:
+          temp_consumer_agent_name = AgentName(raw_consumer_agent)
+          if temp_consumer_agent_name not in agents:
+            errors.append(
+                f"Telegram consumer agent '{raw_consumer_agent}' not found in defined agents in '{path}'."
+            )
+          else:
+            telegram_consumer_agent_name = temp_consumer_agent_name
+      else:
+        errors.append(f"Missing 'telegram.consumer_agent' in '{path}'.")
 
-    if telegram_consumer_agent not in agents:
-      raise ValueError(
-          f"Telegram consumer agent '{telegram_consumer_agent_str}' not found in defined agents in '{path}'."
-      )
+      if "end_user_identity" in raw_telegram_config:
+        raw_end_user_identity = raw_telegram_config["end_user_identity"]
+        if not isinstance(raw_end_user_identity, str):
+          errors.append(
+              f"Invalid 'telegram.end_user_identity' in '{path}': Expected a string, but got {type(raw_end_user_identity)}."
+          )
+        else:
+          temp_end_user_identity_name = AgentName(raw_end_user_identity)
+          if temp_end_user_identity_name in agents:
+            errors.append(
+                f"Telegram end user identity '{raw_end_user_identity}' cannot be an existing agent in '{path}'."
+            )
+          else:
+            telegram_end_user_identity_name = temp_end_user_identity_name
+      else:
+        errors.append(f"Missing 'telegram.end_user_identity' in '{path}'.")
 
-    telegram_end_user_identity_str = raw_telegram_config.get(
-        "end_user_identity")
-    if not telegram_end_user_identity_str:
-      raise ValueError(f"Missing 'telegram.end_user_identity' in '{path}'.")
-    if not isinstance(telegram_end_user_identity_str, str):
-      raise ValueError(
-          f"Invalid 'telegram.end_user_identity' in '{path}': Expected a string."
-      )
-    telegram_end_user_identity = AgentName(telegram_end_user_identity_str)
+      if "authorized_users" in raw_telegram_config:
+        raw_authorized_users = raw_telegram_config["authorized_users"]
+        if not isinstance(raw_authorized_users, list):
+          errors.append(
+              f"Invalid 'telegram.authorized_users' in '{path}': Expected a list of integers, but got {type(raw_authorized_users)}."
+          )
+        else:
+          if not raw_authorized_users:
+            errors.append(
+                f"Missing 'telegram.authorized_users' in '{path}': List cannot be empty."
+            )
+          else:
+            for i, user_id in enumerate(raw_authorized_users):
+              if not isinstance(user_id, int):
+                errors.append(
+                    f"Invalid user ID '{user_id}' at index {i} in 'telegram.authorized_users' in '{path}': Expected an integer, but got {type(user_id)}."
+                )
+              else:
+                telegram_authorized_users.append(TelegramId(user_id))
+      else:
+        errors.append(f"Missing 'telegram.authorized_users' in '{path}'.")
 
-    if telegram_end_user_identity in agents:
-      raise ValueError(
-          f"Telegram end user identity '{telegram_end_user_identity_str}' cannot be an existing agent in '{path}'."
-      )
-
-    raw_authorized_users = raw_telegram_config.get("authorized_users")
-    if not raw_authorized_users:
-      raise ValueError(f"Missing 'telegram.authorized_users' in '{path}'.")
-    if not isinstance(raw_authorized_users, list):
-      raise ValueError(
-          f"Invalid 'telegram.authorized_users' in '{path}': Expected a list of integers."
-      )
-
-    telegram_authorized_users: list[TelegramId] = []
-    for user_id in raw_authorized_users:
-      if not isinstance(user_id, int):
-        raise ValueError(
-            f"Invalid user ID '{user_id}' in 'telegram.authorized_users' in '{path}': Expected an integer."
+      if (telegram_token is not None and
+          telegram_consumer_agent_name is not None and
+          telegram_end_user_identity_name is not None and
+          telegram_authorized_users):  # Check if list is not empty
+        telegram_config = SwarmTelegramConfig(
+            token=telegram_token,
+            consumer_agent=telegram_consumer_agent_name,
+            end_user_identity=telegram_end_user_identity_name,
+            authorized_users=telegram_authorized_users,
         )
-      telegram_authorized_users.append(TelegramId(user_id))
 
-    if not telegram_authorized_users:
-      raise ValueError(
-          f"Missing 'telegram.authorized_users' in '{path}': List cannot be empty."
-      )
+  if errors:
+    raise ValueError("\n".join(errors))
 
-    telegram_config = SwarmTelegramConfig(
-        token=telegram_token,
-        consumer_agent=telegram_consumer_agent,
-        end_user_identity=telegram_end_user_identity,
-        authorized_users=telegram_authorized_users,
-    )
+  # Final checks for required top-level elements that might be missing if raw_config was empty or malformed
+  if message_bus_path is None:
+    errors.append(
+        f"'message_bus_path' was not successfully parsed in '{path}'.")
+  if not agents:
+    errors.append(f"No agents were successfully loaded or defined in '{path}'.")
+
+  if errors:
+    raise ValueError("\n".join(errors))
 
   return SwarmConfig(
       agents=agents,
-      message_bus_path=message_bus_path,
+      message_bus_path=message_bus_path,  # type: ignore
       telegram=telegram_config,
   )
   # ✨
