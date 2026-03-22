@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import pathlib
 
 
@@ -8,3 +8,6 @@ class PathBox:
 
   def __truediv__(self, other: pathlib.Path | str) -> pathlib.Path:
     return self.path / other
+
+  def copy(self) -> "PathBox":
+    return replace(self)
