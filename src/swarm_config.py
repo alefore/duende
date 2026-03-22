@@ -39,7 +39,6 @@ class AgentIdentityConfig:
          The exception contains details (including the program's error
          output).}}
     """
-
     # ✨ generate agent prompt
     async def _get_content_from_source(
         source_path: pathlib.Path, cwd_path: pathlib.Path) -> ContentSection:
@@ -210,7 +209,7 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
 
   If any configuration contains unexpected keys (or any data that can't be
   parsed successfully, raises a ValueError with a good description of the
-  problem (including the location).
+  problem (including the file where the error occurs).
 
   Validates *all* configurations and successfully detects ALL errors in them
   (in the exception raised), rather than simply stopping at the first failure.
@@ -294,10 +293,12 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
           else:
             agents[AgentName(original_agent_name_str)] = valid_agent_config
         else:  # It must be an exception
+          error_message = ""
           if isinstance(result, RuntimeError) and result.__cause__ is not None:
-            errors.append(str(result.__cause__))
+            error_message = str(result.__cause__)
           else:
-            errors.append(str(result))
+            error_message = str(result)
+          errors.append(f"Error loading agent '{original_agent_name_str}': {error_message}")
   else:
     errors.append(f"Missing 'agents' in '{path}'.")
 
