@@ -104,7 +104,7 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
 
   If any configuration contains unexpected keys (or any data that can't be
   parsed successfully, raises a ValueError with a good description of the
-  problem (including the location).
+  problem (including the file where the error occurs).
 
   Validates *all* configurations and successfully detects ALL errors in them
   (in the exception raised), rather than simply stopping at the first failure.
