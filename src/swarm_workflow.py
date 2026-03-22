@@ -154,7 +154,7 @@ class SwarmWorkflow(AgentWorkflow):
     telegram_id = message.telegram_message_id or message.telegram_reply_to_id
     assert telegram_id
     agent_message_queue = AgentMessageQueue()
-    cwd = self._options.agent_loop_options.cwd
+    cwd = self._options.agent_loop_options.cwd.copy()
     if message.local_directory:
       cwd.path = cwd / message.local_directory
     command_registry = CommandRegistry()
