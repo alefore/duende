@@ -7,7 +7,7 @@ import shutil
 import tempfile
 
 from code_specs import MarkerChar, MarkersOverlapError, get_markers_str
-from code_specs_marker_implementation import MarkerImplementation
+from code_specs_marker_implementation import DuendeBlockImplementation
 from validation import ValidationResult
 
 
@@ -69,7 +69,7 @@ class Validator:
 
   async def validate_marker_implementation(
       self, source: pathlib.Path,
-      implementation: MarkerImplementation) -> ValidationResult:
+      implementation: DuendeBlockImplementation) -> ValidationResult:
     """Validates the implementation of a marker on a copy of `source`.
 
     {{🦔 Validation fails if the implementation contains markers (per

@@ -19,8 +19,7 @@ from agent_workflow_options import AgentWorkflowOptions
 from ask_command import AskCommand
 from code_specs import FileExtension, MarkerChar, MarkerName, MarkersOverlapError, comment_string, get_markers, relevant_paths_variable
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
-from code_specs_commands import ListDuendeMarkerImplementationCommand, UpdateDuendeMarkerImplementationCommand, ReadDuendeImplementationMarkerCommand
-from code_specs_marker_implementation import MarkerImplementation
+from code_specs_commands import ListDuendeBlocksCommand, UpdateDuendeBlockCommand, ReadDuendeImplementationMarkerCommand
 from code_specs_path_and_validator import PathAndValidator
 from code_specs_validator import Validator
 from conversation import Conversation, ConversationId, ConversationFactory
@@ -210,10 +209,10 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     {{🦔 No `done` command argument is given to `prepare_command_registry`.}}
     {{🦔 The command registry given to the agent includes `WriteFileCommand`.}}
     {{🦔 The command registry given to the agent includes
-         `ListDuendeMarkerImplementationCommand`.}}
+         `ListDuendeBlocksCommand`.}}
     {{🦔 The command registry given to the agent includes:
-         * `ListDuendeMarkerImplementationCommand`
-         * `UpdateDuendeMarkerImplementationCommand`
+         * `ListDuendeBlocksCommand`
+         * `UpdateDuendeBlocksCommand`
          * `ReadDuendeImplementationMarkerCommand`
          * `AskCommand`}}
     {{🦔 The name of the conversation includes `len(tests)` followed by the last
@@ -285,7 +284,7 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
     command_registry.Register(write_file_command)
 
     # Register Duende marker commands.
-    list_duende_marker_implementation_command = ListDuendeMarkerImplementationCommand(
+    list_duende_marker_implementation_command = ListDuendeBlocksCommand(
         file_access_policy=self._options.agent_loop_options.file_access_policy,
         validation_manager=self._options.agent_loop_options.validation_manager)
     command_registry.Register(list_duende_marker_implementation_command)
@@ -295,10 +294,10 @@ class CodeSpecsTestsEnableWorkflow(AgentWorkflow):
         validation_manager=self._options.agent_loop_options.validation_manager)
     command_registry.Register(read_duende_implementation_marker_command)
 
-    update_duende_marker_implementation_command = UpdateDuendeMarkerImplementationCommand(
+    update_duende_block_command = UpdateDuendeBlockCommand(
         file_access_policy=self._options.agent_loop_options.file_access_policy,
         validation_manager=self._options.agent_loop_options.validation_manager)
-    command_registry.Register(update_duende_marker_implementation_command)
+    command_registry.Register(update_duende_block_command)
 
     # Register AskCommand to allow the agent to fork conversations.
     ask_command = AskCommand(

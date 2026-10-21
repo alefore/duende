@@ -5,7 +5,7 @@ import dataclasses
 import json
 import os
 import pathlib
-from typing import NewType
+from typing import Any, NewType
 
 from command_registry_factory import create_command_registry_config, CommandRegistryConfig
 from message import ContentSection
@@ -39,6 +39,7 @@ class AgentIdentityConfig:
          The exception contains details (including the program's error
          output).}}
     """
+
     # ✨ generate agent prompt
     async def _get_content_from_source(
         source_path: pathlib.Path, cwd_path: pathlib.Path) -> ContentSection:
@@ -217,7 +218,7 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
   # ✨ load config
   errors: list[str] = []
   config_content = ""
-  raw_config: dict = {}
+  raw_config: dict[str, Any] = {}
 
   try:
     async with aiofiles.open(path, mode="r") as f:
@@ -257,7 +258,7 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
   agents: dict[AgentName, AgentIdentityConfig] = {}
 
   if "agents" in raw_config:
-    raw_agents: list | None = raw_config["agents"]
+    raw_agents: list[str] | None = raw_config["agents"]
     if not isinstance(raw_agents, list):
       errors.append(
           f"Invalid 'agents' in '{path}': Expected a list of agent names, but got {type(raw_agents)}."
@@ -298,7 +299,9 @@ async def load_config(path: pathlib.Path) -> SwarmConfig:
             error_message = str(result.__cause__)
           else:
             error_message = str(result)
-          errors.append(f"Error loading agent '{original_agent_name_str}': {error_message}")
+          errors.append(
+              f"Error loading agent '{original_agent_name_str}': {error_message}"
+          )
   else:
     errors.append(f"Missing 'agents' in '{path}'.")
 

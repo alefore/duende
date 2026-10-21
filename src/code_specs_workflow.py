@@ -17,9 +17,9 @@ from agent_command import Argument, ArgumentContentType, VariableMap, VariableNa
 from agent_loop_options import AgentLoopOptions, BaseAgentLoopFactory
 from agent_workflow import AgentWorkflow, AgentWorkflowFactory
 from agent_workflow_options import AgentWorkflowOptions
-from code_specs import FileExtension, MarkerChar, MarkerName, RepeatedExpandedMarkersError, comment_string, get_expanded_markers, get_markers, relevant_paths_variable
+from code_specs import DuendeBlock, DuendeBlockName, FileExtension, MarkerChar, MarkerName, comment_string, get_duende_blocks, get_markers, relevant_paths_variable
 from code_specs_agent import prepare_command_registry, prepare_initial_message, run_agent_loop
-from code_specs_marker_implementation import MarkerImplementation
+from code_specs_marker_implementation import DuendeBlockImplementation
 from code_specs_path_and_validator import PathAndValidator
 from code_specs_validator import Validator
 from conversation import Conversation, ConversationId, ConversationFactory
@@ -38,11 +38,11 @@ MUSHROOM = MarkerChar("🍄")
 
 # If the end user specifies files with globs (e.g., `src/bar/*/age*/fo*.py`),
 # the conversational AI should try to search for it and help the user.
-dm_path_variable = VariableName('dm_path')
+path_variable = VariableName('path')
 
 validator_variable = VariableName('validator')
 
-# Value is a block of code that implement a DM marker. See MarkerImplementation
+# Value is a block of code that implement a DM marker. See DuendeBlockImplementation
 # for constraints on allowed values.
 implementation_variable = VariableName('implementation')
 
@@ -55,8 +55,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def run(self) -> None:
     input = await self._get_initial_parameters()
-    await self._prepare_output_path(input)
-    relevant_paths = await self._find_relevant_paths(input.output_path())
+    relevant_paths = await self._find_relevant_paths(input)
     await self._implement_file(input, relevant_paths)
 
   async def _get_initial_parameters(self) -> PathAndValidator:
@@ -66,7 +65,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
     `prepare_initial_message`.
 
     {{🦔 The done command arguments given to `prepare_command_registry` are
-         `dm_path_variable` and `validator_variable`.}}
+         `path_variable` and `validator_variable`.}}
     {{🦔 Does *not* enable caching of conversations (through output_cache).}}
     {{🦔 If `original_task_prompt_content` is present and non-empty, appends
          to the initial message a section `<inputs>…</inputs>` that contains
@@ -79,57 +78,41 @@ class CodeSpecsWorkflow(AgentWorkflow):
       On any failure, gives a very friendly and helpful explanation message to
       the AI.
 
-      {{🦔 If the dm_path has repeated (identical) MUSHROOM markers (per
+      {{🦔 If the path has repeated (identical) MUSHROOM markers (per
            `code_specs.get_markers`), validation fails with an explanation.}}
       {{🦔 Catches exceptions from PathAndValidator and turns them into a
            failed `ValidationResult`.}}
       """
       # ✨ initial parameters validator
-      dm_path_val = inputs.get(dm_path_variable)
+      path_val = inputs.get(path_variable)
       validator_val = inputs.get(validator_variable)
 
-      if not dm_path_val:
+      if not path_val:
         return ValidationResult(
             success=False,
             output="",
-            error=(f"'{dm_path_variable}' is missing. "
-                   "Please provide a path to the DM file "
+            error=(f"'{path_variable}' is missing. "
+                   "Please provide a path to the Duende Blocks file "
                    "(e.g., 'src/my_component.dm.py')."))
       if not validator_val:
         return ValidationResult(
             success=False,
             output="",
-            error=(
-                f"'{validator_variable}' is missing. "
-                "Please provide a validator command (e.g., 'mypy $DMPATH')."))
+            error=(f"'{validator_variable}' is missing. "
+                   "Please provide a validator command (e.g., 'mypy $PATH')."))
 
       try:
-        dm_path = pathlib.Path(str(dm_path_val))
-        validator = Validator(command=str(validator_val))
         path_and_validator = PathAndValidator(
-            dm_path=dm_path, validator=validator)
+            path=pathlib.Path(str(path_val)),
+            validator=Validator(command=str(validator_val)))
         await path_and_validator.validate_fields()
         return ValidationResult(
             success=True, output="Parameters are valid.", error="")
       except ValueError as e:
-        # PathAndValidator.validate_fields can raise ValueError for:
-        # - Missing '.dm.' in path
-        # - No 🍄 markers found
-        # - Repeated or overlapping 🍄 markers (MarkersOverlapError is a ValueError subclass)
-        # - FileNotFoundError (re-raised as ValueError)
         return ValidationResult(
             success=False,
             output="",
             error=f"Invalid parameters for PathAndValidator: {e}")
-      except Exception as e:
-        # Catch any other unexpected exceptions.
-        return ValidationResult(
-            success=False,
-            output="",
-            error=(
-                f"An unexpected error occurred during validation: {e}. "
-                "Please ensure the dm_path is a valid file and the validator "
-                "command is correctly formatted."))
       # ✨
 
     start_message_content = (
@@ -138,49 +121,50 @@ class CodeSpecsWorkflow(AgentWorkflow):
         "If the user's request doesn't include enough information, "
         "describe these variables to the user "
         "to help them understand what is expected "
-        "(mention the $DMPATH environment variable of `validator`)."
+        "(mention the $DUENDE_CODE_PATH environment variable of `validator`)."
         "\n"
         "If the user mentions a file that doesn't exist, "
         "try to look for likely typos in their input. "
         "Try also to list files in the directory "
         "to see if you can guess what the user may have meant. "
         "If the user entered a file without an extension, "
-        "they probably expect you to append `.dm.py` or `.dm.ts` or similar. "
+        "they probably expect you to append `.py` or `.cc` or similar. "
         "Your goal is to figure out which file the user means "
         "even if the user is sloppy or lazy "
         "(maybe he is too busy; "
         "or is typing on a phone with broken autocomplete). "
         "Try to save the user time; "
-        "try to make the user as efficient as possible."
+        "try to help the user achieve as much as possible "
+        "while saying as little as possible."
         "\n"
         "Once the user has mentioned a file, "
         "read it and try to see if the file suggests "
         "what to use as the validator for its own expansion, "
         "typically near the top of the file."
         "\n"
-        "If the dm_path is a Python file, "
+        "If the path is a Python file, "
         "suggest that the validator could be "
-        "`mypy --pretty --show-error-context $DMPATH`."
+        "`mypy --pretty --show-error-context $DUENDE_CODE_PATH`."
         "\n"
         "Once the user has given you appropriate values "
         "(or you have inferred them), "
         "your goal is achieved and you should run `done`.")
     # ✨ initial parameters
-    dm_path_arg = Argument(
-        name=dm_path_variable,
+    path_arg = Argument(
+        name=path_variable,
         arg_type=ArgumentContentType.PATH_INPUT,
-        description="""Path to the DM file (e.g., 'src/my_component.dm.py'). Must contain '.dm.' and at least one '🍄' marker."""
+        description="Path to the file with duende blocks (e.g., 'src/foo.py'). The file must contain at least one duende block."
     )
 
     validator_arg = Argument(
         name=validator_variable,
         arg_type=ArgumentContentType.STRING,
-        description="""A shell command that validates contents of a file. The command receives the path through $DMPATH. Example: 'mypy $DMPATH' or 'python3 -m pytest $DMPATH'. If the dm_path is a Python file, suggest that the validator could be `mypy` (with an appropriate MYPATH="..." value) or `python3` (with an appropriate PYTHONPATH="..." value)."""
+        description="A shell command that validates contents of a file. The command receives the path through $DUENDE_CODE_PATH. Example: 'mypy $DUENDE_CODE_PATH' or 'python3 -m pytest $DUENDE_CODE_PATH'. If the dm_path is a Python file, suggest that the validator could be `mypy` (with an appropriate MYPYPATH=\"...\" value) or `python3` (with an appropriate PYTHONPATH=\"...\" value)."
     )
 
     registry = await prepare_command_registry(
         done_command_arguments=[
-            dm_path_arg,
+            path_arg,
             validator_arg,
         ],
         done_validator_callback=done_validator,
@@ -209,35 +193,23 @@ class CodeSpecsWorkflow(AgentWorkflow):
         command_registry=registry,
     )
 
-    dm_path_val = output_variables.get(dm_path_variable)
+    path_val = output_variables.get(path_variable)
     validator_val = output_variables.get(validator_variable)
 
-    if not dm_path_val or not validator_val:
+    if not path_val or not validator_val:
       # This case should ideally be caught by done_validator,
       # but as a safeguard, we raise an error.
-      raise ValueError("Missing dm_path or validator in agent loop output.")
+      raise ValueError("Missing path or validator in agent loop output.")
 
     return PathAndValidator(
-        dm_path=pathlib.Path(str(dm_path_val)),
+        path=pathlib.Path(str(path_val)),
         validator=Validator(command=str(validator_val)),
     )
     # ✨
 
-  async def _prepare_output_path(self, input: PathAndValidator) -> None:
-    """Prepares various files, moving old implementations aside.
-
-    {{🦔 If it exists, `input.output_path()` is copied to `input.old_path()`.}}
-    {{🦔 Unconditionally overwrites `input.output_path()` with
-         `input.dm_path` (after copying it to `old_path`).}}
-    """
-    # ✨ prepare output path
-    if input.output_path().exists():
-      shutil.copyfile(input.output_path(), input.old_path())
-    await input.overwrite(input.output_path())
-    # ✨
-
   async def _find_relevant_paths(
-      self, path: pathlib.Path) -> dict[MarkerName, set[pathlib.Path]]:
+      self,
+      input: PathAndValidator) -> dict[DuendeBlockName, set[pathlib.Path]]:
     """Finds all relevant markers.
 
     {{🦔 Calls `find_relevant_paths_for_marker` exactly once for each marker
@@ -245,25 +217,22 @@ class CodeSpecsWorkflow(AgentWorkflow):
     {{🦔 Calls to `find_relevant_paths_for_marker` happen concurrently.}}
     {{🦔 The output contains one entry for each marker found in `path`.}}
     {{🦔 The output values correspond to the outputs of
-         `_find_relevant_paths_for_marker` for each key (marker).}}
+         `_find_relevant_paths_for_block` for each block.}}
     """
     # ✨ find relevant paths loop
-    markers = await get_markers(MUSHROOM, path)
-    tasks = []
-    for marker_name in markers.keys():
-      tasks.append(self._find_relevant_paths_for_marker(path, marker_name))
-
+    blocks = await get_duende_blocks(input.path)
+    tasks = [self._find_relevant_paths_for_block(input, b) for b in blocks]
     results = await asyncio.gather(*tasks)
 
-    relevant_paths_output: dict[MarkerName, set[pathlib.Path]] = {}
-    for i, marker_name in enumerate(markers.keys()):
-      relevant_paths_output[marker_name] = results[i]
+    relevant_paths_output: dict[DuendeBlockName, set[pathlib.Path]] = {}
+    for i, b in enumerate(blocks):
+      relevant_paths_output[b.name] = results[i]
 
     return relevant_paths_output
     # ✨
 
-  async def _find_relevant_paths_for_marker(
-      self, path: pathlib.Path, marker: MarkerName) -> set[pathlib.Path]:
+  async def _find_relevant_paths_for_block(
+      self, input: PathAndValidator, block: DuendeBlock) -> set[pathlib.Path]:
     """Finds all relevant paths to implement a single DM marker.
 
     Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
@@ -340,23 +309,38 @@ class CodeSpecsWorkflow(AgentWorkflow):
           error="")
       # ✨
 
+    token = "✨"
     start_message_content = (
-        f"GOAL: identify local file paths that are relevant "
-        f"to replace the line that contains '{{{{{MUSHROOM} {marker.name}}}}}' "
-        f"from \"{path}\" (included below) with valid code."
+        f"We are going to ask a software engineer to implement a block of code "
+        f"inside the source file \"{input.path}\". "
+        f"The block may already be implemented; "
+        f"if it is, the engineer will be asked to validate it "
+        f"(and/or improve it)."
         f"\n"
-        f"These relevant paths should be given to the "
+        f"The specific code block in question starts "
+        f"in the line with the code comment '{token} {block.name}' "
+        f"(line {block.start_index + 1}) "
+        f"and ends in the nearest line with code comment '{token}' "
+        f"(line {block.end_index + 1})."
+        f"\n"
+        f"YOUR GOAL: Identify local file paths "
+        f"that we should share with the engineer "
+        f"in order to make THEIR task "
+        f"(of implementing the aforementioned code block) possible. "
+        f"The list of paths should be enough "
+        f"for a software engineer to gain enough context "
+        f"to fully implement the code block "
+        f"(i.e., the engineer shouldn't need to read any other files)."
+        "\n"
+        f"The relevant paths should be given to the "
         f"`{relevant_paths_variable}` argument of the `done` command."
         f"\n"
-        f"Example: `done relevant_paths='src/foo.py,src/bar.cc'"
-        f"\n"
-        f"Feel free to use `read_file`, `list_files` and `search_file` "
-        f"to explore the codebase.")
+        f"Example: `done relevant_paths='src/foo.py,src/bar.cc'")
 
     # Enable caching in the options given to `run_agent_loop`:
     options = self._options._replace(
         agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
-            f"code_specs_workflow:{path}", self._output_cache,
+            f"code_specs_workflow:{input.path}", self._output_cache,
             self._options.agent_loop_factory))
 
     # ✨ find relevant paths
@@ -376,12 +360,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
     start_message = await prepare_initial_message(
         start_message_content=start_message_content,
-        relevant_files={path},
+        relevant_files={input.path},
     )
 
     output_variables = await run_agent_loop(
         workflow_options=options,  # Use the 'options' variable which includes the CachingDelegatingAgentLoopFactory
-        conversation_name=f"find_relevant_paths_for_{marker.name}",
+        conversation_name=f"find_relevant_paths_for_{block.name}",
         start_message=start_message,
         command_registry=registry,
     )
@@ -404,12 +388,12 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
   async def _implement_file(
       self, inputs: PathAndValidator,
-      relevant_paths: dict[MarkerName, set[pathlib.Path]]) -> None:
-    """Implements all DM markers in `inputs.output_path()` sequentially.
+      relevant_paths: dict[DuendeBlockName, set[pathlib.Path]]) -> None:
+    """Implements all blocks in `inputs.path` sequentially.
 
     {{🦔 The calls to `_implement_marker` happen sequentially.}}
     {{🦔 The output of a call to `_implement_marker` is stored through
-         `MarkerImplementation.save` on `inputs.output_path()`.}}
+         `DuendeBlockImplementation.save` on `inputs.path`.}}
     {{🦔 The output of a call to `_implement_marker` is stored before the next
          call begins (so that the next call already sees the output of the
          previous call).}}
@@ -417,27 +401,21 @@ class CodeSpecsWorkflow(AgentWorkflow):
          markers occur in the DM file.}}
     """
     # ✨ implement file
-    # Get all markers from the output_path (which is the modified dm_path without '.dm.')
-    output_file_markers = await get_markers(MUSHROOM, inputs.output_path())
+    blocks = await get_duende_blocks(inputs.path)
 
-    for marker_name in output_file_markers:
-      # Retrieve the relevant paths for the current marker
-      # If no relevant paths were found for a specific marker, it will be an empty set
-      marker_relevant_paths = relevant_paths.get(marker_name, set())
-
+    for block in blocks:
       # Call _implement_marker to get the implementation for the current marker
       implementation = await self._implement_marker(
           path_and_validator=inputs,
-          marker=marker_name,
-          relevant_paths=marker_relevant_paths,
+          block=block,
+          relevant_paths=relevant_paths[block.name],
       )
 
       # Save the implementation to update the output file before processing the next marker
-      await implementation.save(inputs.output_path())
+      await implementation.save(inputs.path)
     # ✨
 
-  async def _review_implementation(self, dm_path: pathlib.Path,
-                                   marker: MarkerName,
+  async def _review_implementation(self, path: pathlib.Path, block: DuendeBlock,
                                    value_to_review: str) -> ValidationResult:
     """Returns result of running review agents on `value_to_review`.
 
@@ -448,9 +426,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
     original_task_prompt_content = (
         "Goal of code under review: "
         "Provide the best possible implementation "
-        f"to replace the contents in file `{dm_path}` "
-        "of the line that contains the string: "
-        f"{{{{{MUSHROOM} {marker.name}}}}}")
+        f"to replace a specific block in file `{path}`. "
+        f"{block.describe_for_prompt()}")
     # We don't have a diff output, but we provide the entire new block:
     value_to_review = ("Code for review:\n<code>\n" + value_to_review +
                        "\n</code>")
@@ -483,9 +460,9 @@ class CodeSpecsWorkflow(AgentWorkflow):
   async def _implement_marker(
       self,
       path_and_validator: PathAndValidator,
-      marker: MarkerName,
+      block: DuendeBlock,
       relevant_paths: set[pathlib.Path],
-  ) -> MarkerImplementation:
+  ) -> DuendeBlockImplementation:
     """Finds a suitable implementation for `marker` from `path_and_validator`.
 
     Calls `run_agent_loop` passing outputs of `prepare_command_registry` and
@@ -508,14 +485,13 @@ class CodeSpecsWorkflow(AgentWorkflow):
          `path_and_validator.dm_path` and marker, the 2nd call reuses the
          outputs from the first.}}
     {{🦔 Doesn't actually overwrite any files (the caller does).}}
-
     Arguments:
       marker: The marker to implement.
       path_and_validator: The dm file we're inspecting.
       relevant_paths: A list of relevant paths for the initial prompt.
 
     Returns:
-      A validated MarkerImplementation that customers can call `save` on.
+      A validated DuendeBlockImplementation that customers can call `save` on.
     """
 
     async def done_validate(inputs: VariableMap) -> ValidationResult:
@@ -523,7 +499,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
 
       {{🦔 If `validator.validate_marker_implementation` does not succeed,
            returns its output.}}
-      {{🦔 If `MarkerImplementation` or methods in `validator` raise an
+      {{🦔 If `DuendeBlockImplementation` or methods in `validator` raise an
            exception, catches it and returns a failed `ValidationResult`.}}
       {{🦔 If `_review_implementation` does not succeed, returns its output.}}
       {{🦔 Only calls `_review_implementation` when (after)
@@ -542,15 +518,14 @@ class CodeSpecsWorkflow(AgentWorkflow):
                    "Please provide the implementation code block."))
 
       try:
-        implementation_obj = MarkerImplementation(
-            name=marker,
+        implementation_obj = DuendeBlockImplementation(
+            name=block.name,
             value=str(implementation_val),
             file_extension=file_extension)
 
         # 1. Validate the marker implementation using the provided validator
         validation_result_from_validator = await path_and_validator.validator.validate_marker_implementation(
-            source=path_and_validator.output_path(),
-            implementation=implementation_obj)
+            source=path_and_validator.path, implementation=implementation_obj)
 
         if not validation_result_from_validator.success:
           # If the validator fails, return its output directly
@@ -559,7 +534,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
         # 2. If validator succeeds, proceed to review the implementation
         if self._options.do_review:
           review_result = await self._review_implementation(
-              path_and_validator.dm_path, marker, implementation_obj.value)
+              path_and_validator.path, block, implementation_obj.value)
 
           if not review_result.success:
             # If the review fails, return its output directly
@@ -572,7 +547,7 @@ class CodeSpecsWorkflow(AgentWorkflow):
             error="")
 
       except ValueError as e:
-        # Catches exceptions related to MarkerImplementation creation or
+        # Catches exceptions related to DuendeBlockImplementation creation or
         # specific ValueError from validate_marker_implementation if applicable.
         return ValidationResult(
             success=False,
@@ -588,44 +563,41 @@ class CodeSpecsWorkflow(AgentWorkflow):
                    f"validation and review: {e}"))
       # ✨
 
-    file_extension = FileExtension(path_and_validator.output_path().suffix[1:])
+    file_extension = path_and_validator.file_extension()
     start_message_content = (
-        "GOAL: provide the *code content* "
-        "that will replace the line containing the "
-        f"'{{{{{MUSHROOM} {marker.name}}}}}' marker "
-        f"in the file '{path_and_validator.output_path()}'."
+        f"You are a senior software engineer with decades of experience "
+        f"implementing robust, maintainable and readable systems. "
+        f"Today, you are tasked with implementing (or improving) "
+        f"a single block of code "
+        f"inside the source file \"{path_and_validator.path}\"."
+        f"\n"
+        f"{block.describe_for_prompt()}"
+        f"\n"
+        f"If the block is already implemented, "
+        f"you must validate it (and/or improve it). "
+        f"In particular, pay attention to any `TODO` comments in the block, "
+        f"which may signal oppotunities for improvement. "
+        f"Try to apply any of them as long as they are feasible, "
+        f"based on your ample engineering experience."
+        f"\n"
+        "GOAL: Call `done` passing the entire *code content* "
+        "that will replace the block."
         "\n"
-        "The implementation block *must* strictly follow this format:"
+        "Your output MUST:"
         "\n"
-        "* It must begin with line containing nothing but "
-        f"\"{comment_string(file_extension, '✨ ' + marker.name)}\" "
-        "(preceded by whitespace characters to match "
-        "the indentation of the block that contains the implementation)."
+        "* Begin with line: "
+        f"\"{comment_string(file_extension, '✨ ' + block.name)}\" "
         "\n"
-        "* It must end with a line containing "
-        f"nothing but \"{comment_string(file_extension, '✨')}\" "
-        "(also preceded by whitespace)."
+        "* End with line: \"{comment_string(file_extension, '✨')}\" "
         "\n"
-        "Once you have the complete and correct implementation code, "
-        "call the `done` command. "
-        f"The `done` command requires an argument `{implementation_variable}` "
-        "which *must* be your full implementation block as a single string.")
-
-    # Content to append conditionally if `path_and_validator.old_path()` exists:
-    additional_start_message_content_if_old_implementation_available = (
-        f"In your implementation, try to reuse as much as possible the old "
-        f"implementation (included in the initial message). "
-        f"Only change the implementation if this is strictly necessary: "
-        f"if the old implementation has bugs "
-        f"(e.g., does not honor some documented property), "
-        f"new requirements have been added, "
-        f"or requirements have been removed/relaxed "
-        f"(in ways that allow code simplifications).")
+        "Our system will indent this code "
+        "(prefix non-empty lines with spaces) "
+        "to match the location of the block.")
 
     # Enable caching in the options given to `run_agent_loop`:
     options = self._options._replace(
         agent_loop_factory=output_cache.CachingDelegatingAgentLoopFactory(
-            f"code_specs_workflow:{path_and_validator.output_path()}",
+            f"code_specs_workflow:{path_and_validator.path}",
             self._output_cache, self._options.agent_loop_factory))
 
     # ✨ implement single marker
@@ -645,37 +617,13 @@ class CodeSpecsWorkflow(AgentWorkflow):
     initial_message_main_content = start_message_content
 
     all_files_to_read = set(relevant_paths)
-    all_files_to_read.add(path_and_validator.output_path())
-
-    old_path = path_and_validator.old_path()
-
-    if await asyncio.to_thread(old_path.exists):
-      try:
-        old_expanded_markers = get_expanded_markers(old_path)
-        old_marker_implementation = None
-        for old_marker in old_expanded_markers:
-          if old_marker.name == marker.name:
-            old_marker_implementation = old_marker
-            break
-
-        if old_marker_implementation:
-          initial_message_main_content += "\nPrevious implementation:\n" + old_marker_implementation.contents
-          initial_message_main_content += "\n" + additional_start_message_content_if_old_implementation_available
-        else:
-          all_files_to_read.add(old_path)
-      except (FileNotFoundError, ValueError) as e:
-        logging.warning(
-            f"Could not load old implementation for marker '{marker.name}' " +
-            f"from '{old_path}': {e}. Including '{old_path}' as a general relevant file."
-        )
-        all_files_to_read.add(old_path)
-
+    all_files_to_read.add(path_and_validator.path)
     start_message = await prepare_initial_message(initial_message_main_content,
                                                   all_files_to_read)
 
     output_variables = await run_agent_loop(
         workflow_options=options,
-        conversation_name=f"implement_marker_{marker.name}",
+        conversation_name=f"implement_marker_{block.name}",
         start_message=start_message,
         command_registry=registry,
     )
@@ -686,8 +634,8 @@ class CodeSpecsWorkflow(AgentWorkflow):
       raise ValueError(
           f"Missing {implementation_variable} in agent loop output.")
 
-    return MarkerImplementation(
-        name=marker,
+    return DuendeBlockImplementation(
+        name=block.name,
         value=str(implementation_str_val),
         file_extension=file_extension,
     )

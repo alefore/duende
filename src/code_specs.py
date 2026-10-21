@@ -95,8 +95,8 @@ def reindent_code(code: str, desired_spaces: int) -> str:
   """Returns a copy of `code` with the desired leading spaces.
 
     First finds the longest whitespace prefix that all non-empty `code` lines
-    contain and removes it (from all lines). Then prepends to all lines a prefix
-    of the desired length.
+    contain and removes it (from all non-empty lines). Then prepends to all
+    non-empty lines ' ' * desired_spaces.
 
     {{🦔 If an input line (from `code`) is empty or only contains whitespace
          characters, the corresponding line in the output is empty.}}
@@ -142,71 +142,66 @@ def reindent_code(code: str, desired_spaces: int) -> str:
   # ✨
 
 
-class ExpandedMarker(NamedTuple):
-  """Contains the position in a file of an expanded DM marker.
+DuendeBlockName = NewType("DuendeBlockName", str)
+LineIndex = NewType("LineIndex", int)
 
-  The marker is a block of consecutive lines starting with a line containing
+
+class DuendeBlock(NamedTuple):
+  """Contains the position in a file of duende block.
+
+  A duende block is a block of consecutive lines starting with a line containing
   only whitespace and the comment "✨ {name}" and ending in the first line
   (after the start) containing only whitespace and the comment "✨". The format
-  of the command depends on the programming language of the file, determined by
+  of the comment depends on the programming language of the file, determined by
   its file extension. (e.g., "  # ✨ foo  " is a valid start for a marker with
   name "foo" in a file that ends in `.py`). """
 
-  name: str
+  name: DuendeBlockName
   """Name of the marker (does not include the "✨" character)."""
 
-  start_index: int
+  start_index: LineIndex
   """Index in the file of the line with the start comment ("# ✨ foo")."""
 
-  end_index: int
+  end_index: LineIndex
   """Index in the file of the line with the end comment ("# ✨")."""
 
   contents: str
   """All the lines in the expanded marker (including start/end comment)."""
 
+  def describe_for_prompt(self) -> str:
+    return (f"The specific code block starts "
+            f"in the line with the code comment '✨ {self.name}' "
+            f"(at line {self.start_index + 1}) "
+            f"and ends in the nearest line with the code comment '✨' "
+            f"(at line {self.end_index + 1}).")
 
-class RepeatedExpandedMarkersError(ValueError):
-  """Two expanded markers with identical names were found."""
+
+class RepeatedDuendeBlocksError(ValueError):
+  """Two DM markers with identical names were found."""
 
 
-def get_expanded_markers(path: pathlib.Path) -> list[ExpandedMarker]:
+async def get_duende_blocks(path: pathlib.Path) -> list[DuendeBlock]:
   """Returns the expanded markers found in `path` in appearance order.
 
   {{🦔 Given an empty (existing) file, returns an empty list.}}
   {{🦔 Raises FileNotFoundError for a non-existent file}}
   {{🦔 Given an file with four different markers, returns a list with four
-       elements. The outputs match the inputs: fields in the ExpandedMarker
+       elements. The outputs match the inputs: fields in the DuendeBlock
        entries are correct, and the output order matches the input.}}
   {{🦔 Given a file with two different markers each ocurring twice, raises
-       `RepeatedExpandedMarkersError`. The exception string mentions all
+       `RepeatedDuendeBlocksError`. The exception string mentions all
        repeated markers.}}
   """
-  # ✨ get expanded markers
-  try:
-    with open(path, 'r') as f:
-      lines = f.read().splitlines()
-  except FileNotFoundError:
-    raise  # Re-raise the exception as per the test case, or return [] if that's the desired behavior for "empty file"
-    # The existing test case `{{🦔 Given an empty file, returns an empty list.}}` conflicts
-    # with `{{🦔 Raises FileNotFoundError for a non-existent file}}`
-    # Given the new test case "Raises FileNotFoundError for a non-existent file" in src/code_specs.py, I will explicitly raise FileNotFoundError.
-
+  # ✨ get duende blocks
+  async with aiofiles.open(
+      path, mode='r') as f:
+    content = await f.read()
+  lines = content.splitlines()
   if not lines:
     return []
 
   # Determine file extension.
   file_extension_str = path.suffix.lstrip('.')
-  if '.dm.' in path.name:
-    parts = path.name.split('.')
-    try:
-      dm_index = parts.index('dm')
-      if dm_index + 1 < len(parts):
-        file_extension_str = parts[dm_index + 1]
-      else:
-        file_extension_str = ''
-    except ValueError:
-      file_extension_str = path.suffix.lstrip('.')
-
   comment_patterns = {
       "py": (r"#", r""),
       "sh": (r"#", r""),
@@ -234,58 +229,42 @@ def get_expanded_markers(path: pathlib.Path) -> list[ExpandedMarker]:
   end_marker_full_pattern = re.compile(r"^\s*" + escaped_start + r"\s*✨\s*" +
                                        escaped_end + r"\s*$")
 
-  expanded_markers: list[ExpandedMarker] = []
-  found_marker_names_with_lines: collections.defaultdict[
-      str, list[int]] = collections.defaultdict(list)
+  blocks: list[DuendeBlock] = []
 
-  in_marker_block = False
-  current_marker_start_index = -1
-  current_marker_name = ""
-  current_marker_content_lines: list[str] = []
+  @dataclasses.dataclass(frozen=True)
+  class ParseData:
+    name: DuendeBlockName
+    start: LineIndex
+    content: list[str] = dataclasses.field(default_factory=list)
 
+  data: ParseData | None = None
   for line_index, line in enumerate(lines):
-    start_match = start_marker_full_pattern.match(line)
-    end_match = end_marker_full_pattern.match(line)
+    if not data:
+      start_match = start_marker_full_pattern.match(line)
+      if start_match:
+        data = ParseData(
+            DuendeBlockName(start_match.group(1)), LineIndex(line_index),
+            [line])
+      continue
 
-    if not in_marker_block and start_match:
-      marker_name_cleaned = MarkerName(
-          char=MarkerChar('✨'), name=start_match.group(1)).name
+    data.content.append(line)
+    if end_marker_full_pattern.match(line):
+      blocks.append(
+          DuendeBlock(
+              name=data.name,
+              start_index=data.start,
+              end_index=LineIndex(line_index),
+              contents="\n".join(data.content)))
+      data = None
 
-      found_marker_names_with_lines[marker_name_cleaned].append(line_index)
+  block_counts: dict[DuendeBlockName, int] = collections.defaultdict(int)
+  for b in blocks:
+    block_counts[b.name] += 1
+  repeated = [key for key, value in block_counts.items() if value > 1]
+  if repeated:
+    raise ValueError(f"Repeated duende blocks found: {', '.join(repeated)}")
 
-      if len(found_marker_names_with_lines[marker_name_cleaned]) > 1:
-        repeated_markers_info_list = []
-        for name, lines_found in found_marker_names_with_lines.items():
-          if len(lines_found) > 1:
-            repeated_markers_info_list.append(
-                f"'{name}' at lines {', '.join(map(str, lines_found))}")
-        raise RepeatedExpandedMarkersError(
-            f"Repeated expanded markers found: {'; '.join(repeated_markers_info_list)}"
-        )
-
-      in_marker_block = True
-      current_marker_start_index = line_index
-      current_marker_name = marker_name_cleaned
-      current_marker_content_lines = [line]
-    elif in_marker_block and end_match:
-      current_marker_content_lines.append(line)
-      expanded_markers.append(
-          ExpandedMarker(
-              name=current_marker_name,
-              start_index=current_marker_start_index,
-              end_index=line_index,
-              contents="\n".join(current_marker_content_lines)))
-
-      # Reset state
-      in_marker_block = False
-      current_marker_start_index = -1
-      current_marker_name = ""
-      current_marker_content_lines = []
-    elif in_marker_block:
-      # Just a regular line inside the marker block
-      current_marker_content_lines.append(line)
-
-  return expanded_markers
+  return blocks
   # ✨
 
 
@@ -297,37 +276,34 @@ class MarkersOverlapError(ValueError):
 
 
 def get_markers_str(char: MarkerChar,
-                    input: str) -> dict[MarkerName, list[int]]:
-  """Returns the positions (line index) of all markers in `path`.
+                    content: str) -> dict[MarkerName, list[LineIndex]]:
+  """Returns the positions (line index) of all markers in `content`.
 
-  {{🦔 Returns {} for an empty input}}
-  {{🦔 Returns {} for an input with 5 lines but no markers}}
-  {{🦔 Correctly returns a marker in an input with just 1 marker}}
-  {{🦔 If a marker starts in the first line in the input, its value in the
+  {{🦔 Returns {} for an empty content}}
+  {{🦔 Returns {} for a content with 5 lines but no markers}}
+  {{🦔 Correctly returns a marker in a content with just 1 marker}}
+  {{🦔 If a marker starts in the first line in content, its value in the
        output is [0].}}
   {{🦔 If a marker starts in the last line, its value in the output is
        `len(lines) - 1`.}}
-  {{🦔 Correctly handles an input where a marker starts in the first line and
+  {{🦔 Correctly handles a content where a marker starts in the first line and
        finishes in the last line.}}
   {{🦔 Spaces are correctly removed from a marker named "  foo bar  ".}}
-  {{🦔 Returns all markers in an input with ten markers.}}
-  {{🦔 The index of markers returned in an input with ten markers is correct.}}
-  {{🦔 An input can have repeated markers; the output just lists their
+  {{🦔 Returns all markers in a content with ten markers.}}
+  {{🦔 The index of markers returned in a content with ten markers is correct.}}
+  {{🦔 Content can have repeated markers; the output just lists their
        positions.}}
-  {{🦔 An input where two markers overlap (one ends in the same line where the
-       other begins) raises `MarkersOverlapError`.}}
+  {{🦔 If two markers overlap (one ends in the same line where the other
+       begins), raises `MarkersOverlapError`.}}
   {{🦔 The returned object is sorted by appearance order (i.e., iterating across
        the keys of the returned dictionary matches the order in which the first
-       appearance of each marker was found in the input).}}
+       appearance of each marker was found in content).}}
 
   Raises:
       MarkersOverlapError: if two markers share a common line.
   """
   # ✨ get markers str
-  # 1. Get the content directly from the input string.
-  content = input
-
-  # 2. Define the regex and find all matches.
+  # 1. Define the regex and find all matches.
   #    finditer() returns matches in order, so no sorting is needed.
   pattern = re.compile(r"\{\{" + re.escape(char) + r"\s*(.*?)\s*\}\}",
                        re.DOTALL)
@@ -335,7 +311,7 @@ def get_markers_str(char: MarkerChar,
   if not all_matches:
     return {}
 
-  # 3. Validate markers.
+  # 2. Validate markers.
   #    Iterate over consecutive pairs and check for overlaps.
   for prev_match, curr_match in itertools.pairwise(all_matches):
     prev_end = prev_match.end()
@@ -354,15 +330,15 @@ def get_markers_str(char: MarkerChar,
           f"Marker at char {curr_start} starts on the same line "
           f"as the previous marker ended (char {prev_end}) in the input string")
 
-  # 4. If validation passed, build the result dictionary.
-  markers = collections.defaultdict(list)
-  current_line = 0
+  # 3. If validation passed, build the result dictionary.
+  markers: dict[MarkerName, list[LineIndex]] = collections.defaultdict(list)
+  current_line = LineIndex(0)
   last_char_index = 0
   for match in all_matches:
     start_char_index = match.start()
     # Count newlines *only in the new gap* since the last match
     gap_text = content[last_char_index:start_char_index]
-    current_line += gap_text.count('\n')
+    current_line = LineIndex(current_line + gap_text.count('\n'))
 
     # Store the calculated line number
     name_str = match.group(1).strip()
@@ -377,18 +353,16 @@ def get_markers_str(char: MarkerChar,
 
 
 async def get_markers(char: MarkerChar,
-                      path: pathlib.Path) -> dict[MarkerName, list[int]]:
+                      path: pathlib.Path) -> dict[MarkerName, list[LineIndex]]:
   """Reads the file contents and calls `get_markers_str`.
 
   {{🦔 Reads `path` asynchronously}}
   {{🦔 Raises FileNotFoundError for a non-existent file}}
   """
   # ✨ get markers
-  try:
-    async with aiofiles.open(path, mode='r') as f:
-      content = await f.read()
-  except FileNotFoundError:
-    raise
+  async with aiofiles.open(
+      path, mode='r') as f:
+    content = await f.read()
 
   return get_markers_str(char, content)
   # ✨
@@ -489,11 +463,6 @@ class MarkerImplementation:
       be updated.
     """
     # ✨ marker implementation save
-    if ".dm." in path.name:
-      raise ValueError(
-          f"`path` ('{path}') must not contain '.dm.'. DM files themselves should never be updated."
-      )
-
     # 1. Get marker positions.
     all_markers = await get_markers(self._name.char, path)
     if self._name not in all_markers:

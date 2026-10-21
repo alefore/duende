@@ -2,88 +2,46 @@ import aiofiles
 import dataclasses
 import pathlib
 
-from code_specs import FileExtension, MarkerChar, MarkersOverlapError, comment_string, get_markers
+from code_specs import FileExtension, MarkerChar, RepeatedDuendeBlocksError, comment_string, get_duende_blocks
 from code_specs_validator import Validator
 
 
 @dataclasses.dataclass(frozen=True)
 class PathAndValidator:
-  """An immutable container for a DM file path and a validator."""
-  dm_path: pathlib.Path
+  """An immutable container for a file path and a validator."""
+  path: pathlib.Path
   validator: Validator
 
   async def validate_fields(self) -> None:
     """Validates fields, conditionally raising ValueError.
 
-    When searching for markers, uses MarkerChar('🍄').
-
-    {{🦔 Doesn't raise if `dm_path` is a valid file with two 🍄 markers.}}
-    {{🦔 Raises ValueError if `dm_path` is "foo.py" (lacks the `.dm.` part).}}
-    {{🦔 Raises ValueError if `dm_path` is a valid file with no 🍄 markers.}}
-    {{🦔 Raises ValueError if `dm_path` contains a repeated 🍄 marker.}}
+    {{🦔 Doesn't raise if `path` is a valid file with two duende blocks.}}
+    {{🦔 Raises ValueError if `path` contains a repeated duende block.}}
+    {{🦔 Raises ValueError if `path` doesn't contain any duende blocks.}}
 
     We can't use `__post_init__` because we want `async` validation.
     """
     # ✨ PathAndValidator validate fields
-    if ".dm." not in self.dm_path.name:
-      raise ValueError(f"`dm_path` ('{self.dm_path}') must contain '.dm.'.")
-
     try:
-      markers = await get_markers(MarkerChar('🍄'), self.dm_path)
-    except MarkersOverlapError as e:
+      blocks = await get_duende_blocks(self.path)
+    except RepeatedDuendeBlocksError as e:
       raise ValueError(
-          f"Overlapping 🍄 markers found in '{self.dm_path}': {e}") from e
+          f"Repeated duende blocks found in '{self.path}': {e}") from e
     except FileNotFoundError as e:
-      raise ValueError(f"File not found: '{self.dm_path}'") from e
+      raise ValueError(f"File not found: '{self.path}'") from e
 
-    if not markers:
-      raise ValueError(f"No 🍄 markers found in '{self.dm_path}'.")
+    if not blocks:
+      raise ValueError(f"No duende blocks found in '{self.path}'.")
 
-    for marker_name, positions in markers.items():
-      if len(positions) > 1:
-        raise ValueError(
-            f"Repeated 🍄 marker '{marker_name.name}' found in '{self.dm_path}' "
-            f"at lines: {', '.join(map(str, positions))}. Each marker name must be unique."
-        )
     # ✨
 
   def file_extension(self) -> FileExtension:
-    """Returns the file extension of the `dm_path`.
+    """Returns the file extension of the `path`.
 
-    {{🦔 For `dm_path` "foo/bar/quux.dm.py", returns "py"}}
+    {{🦔 For `path` "foo/bar/quux.py", returns "py"}}
     """
     # ✨ PathAndValidator file extension
-    file_extension_str = self.dm_path.suffix.lstrip('.')
-    # If the file has a compound extension like .dm.py,
-    # we take the last part (e.g., 'py').
-    if '.dm.' in self.dm_path.name:
-      parts = self.dm_path.name.split('.')
-      # Find the index of 'dm' and take the next part as the extension
-      try:
-        dm_index = parts.index('dm')
-        if dm_index + 1 < len(parts):
-          file_extension_str = parts[dm_index + 1]
-        else:  # Handle cases like 'foo.dm' where there's no extension after '.dm'
-          file_extension_str = ''
-      except ValueError:
-        # This case should ideally not be reached if '.dm.' is in the name.
-        # Fallback to general suffix if 'dm' part itself is not found in parts
-        # (e.g., if dm_path.name was "my.dm.test.py" and we looked for "notdm").
-        # However, for ".dm." to be in name and "dm" not in parts is contradictory
-        # unless ".dm." is a substring not a component.
-        # Given the structure of "foo.dm.py", splitting by '.' should yield 'dm' as a part.
-        file_extension_str = self.dm_path.suffix.lstrip('.')
-    return FileExtension(file_extension_str)
-    # ✨
-
-  def output_path(self) -> pathlib.Path:
-    """Returns `dm_path` without the `.dm` part.
-
-    {{🦔 If `dm_path` is "foo/bar/quux.dm.py", returns "foo/bar/quux.py"}}
-    """
-    # ✨ PathAndValidator output path
-    return pathlib.Path(self.dm_path.parent /
-                        self.dm_path.name.replace(".dm.", "."))
+    return FileExtension(self.path.suffix.lstrip('.'))
     # ✨
 
   def old_path(self) -> pathlib.Path:
@@ -94,63 +52,26 @@ class PathAndValidator:
     When expansion begins, we use these paths to make a copy of previous files
     that we'll overwrite.
 
-    {{🦔 For `dm_path` "foo/bar.dm.py", returns "foo/bar.old.py".}}
+    {{🦔 For `path` "foo/bar.py", returns "foo/bar.old.py".}}
     """
     # ✨ PathAndValidator old path
-    return pathlib.Path(self.dm_path.parent /
-                        self.dm_path.name.replace(".dm.", ".old."))
+    ext = self.file_extension()
+    return pathlib.Path(self.path.parent /
+                        self.path.name.replace(ext, f".old.{ext}"))
     # ✨
 
-  async def overwrite(self, target: pathlib.Path) -> None:
-    """Copies `dm_path`'s contents to `target` (overwriting it).
-
-    The contents of the new file are:
-
-    * A line with the comment:
-      "DO NOT EDIT. This file is automatically generated by Duende."
-    * The entire (unmodified) contents of `dm_path`.
+  async def copy_to(self, target: pathlib.Path) -> None:
+    """Copies `path`'s contents to `target` (overwriting it).
 
     {{🦔 The read operation is async}}
     {{🦔 The write operation is async}}
-    {{🦔 The output of a call with a normal dm file starts with the "DO NOT EDIT
-         code comment}}
-    {{🦔 The output of a call with a normal dm file contains a copy (of the dm
-         file), starting at line 2 (of the output)}}
+    {{🦔 The output of a call with a normal file contains a copy.}}
     """
     # ✨ overwrite
-    try:
-      async with aiofiles.open(self.dm_path, mode='r') as f:
-        dm_content = await f.read()
-    except FileNotFoundError:
-      # TODO: What is this stupidity of catching an exception just to raise it?
-      # Gemini is so stupid sometimes.
-      raise
-
-    # Determine file extension for commenting
-    file_extension_str = self.dm_path.suffix.lstrip('.')
-    # If the file has a compound extension like .dm.py,
-    # we take the last part (e.g., 'py').
-    if '.dm.' in self.dm_path.name:
-      parts = self.dm_path.name.split('.')
-      # Find the index of '.dm.' and take the next part as the extension
-      try:
-        dm_index = parts.index('dm')
-        if dm_index + 1 < len(parts):
-          file_extension_str = parts[dm_index + 1]
-        else:  # Handle cases like 'foo.dm'
-          file_extension_str = ''
-      except ValueError:
-        # Should not happen if '.dm.' is in name but 'dm' part not found
-        file_extension_str = self.dm_path.suffix.lstrip('.')
-
-    file_extension = FileExtension(file_extension_str)
-
-    auto_gen_comment = comment_string(
-        file_extension,
-        "DO NOT EDIT. This file is automatically generated by Duende.")
-
-    new_content = f"{auto_gen_comment}\n{dm_content}"
+    async with aiofiles.open(
+        self.path, mode='r') as f:
+      content = await f.read()
 
     async with aiofiles.open(target, mode='w') as f:
-      await f.write(new_content)
+      await f.write(content)
     # ✨
