@@ -1,0 +1,46 @@
+{
+  "command_registry": {
+    "file_access_policy": {
+      "regex": "swarm/products/.*",
+      "scope": "local"
+    },
+    "allow_shell": true,
+    "writes": {
+      "file_access_policy": {
+        "regex": "swarm/products/[^/]*/projects/[^/]*/(data|research)/[^/]+",
+        "scope": "local"
+      }
+    },
+    "shell_templates": {
+      "task_done": {
+        "command":
+          "../../../../coding/scripts/task_research_done.sh {{research_path}}",
+        "arguments": {
+          "research_path": {
+            "arg_type": "STRING",
+            "description":
+              "Path to the research/ file created. Must start with `research/`."
+          }
+        }
+      },
+      "task_fail": {
+        "command":
+          "../../../../coding/scripts/task_fail.sh {{failure_details}}",
+        "arguments": {
+          "failure_details": {
+            "arg_type": "STRING",
+            "description":
+              "Summary of why the attempt failed. This may be useful for the system to detect that the task was infeasible and figure out alternatives."
+          }
+        }
+      }
+    },
+    "delegate_request": {
+      "allow_list": ["coding_coordinator", "coding_task_coordinator"]
+    }
+  },
+  "prompts": [
+    "../../coding/scripts/list_research.sh",
+    "../../coding/scripts/task_list_first_pending.sh"
+  ]
+}

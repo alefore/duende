@@ -1,0 +1,31 @@
+{
+  "command_registry": {
+    "file_access_policy": {
+      "regex": "swarm/products/.*",
+      "scope": "local"
+    },
+    "shell_templates": {
+      "obsolete": {
+        "command": "../../../../coding/scripts/state_task_set.sh Obsolete"
+      },
+      "attempt_add": {
+        "command": "../../../../coding/scripts/attempt_add.sh"
+      }
+    },
+    "delegate_request": {
+      "allow_list": [
+        "coding_coordinator",
+        "coding_task_implementer",
+        "coding_task_planner",
+        "coding_task_researcher",
+        "coding_task_reviewer",
+        "coding_task_committer"
+      ]
+    }
+  },
+  "prompts": [
+    "../../coding/project_directory.md",
+    "../../coding/task_types.md",
+    "../../coding/scripts/task_list_first_pending.sh"
+  ]
+}

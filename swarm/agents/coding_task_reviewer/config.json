@@ -1,0 +1,22 @@
+{
+  "command_registry": {
+    "file_access_policy": {
+      "regex": "swarm/products/.*",
+      "scope": "local"
+    },
+    "allow_shell": true,
+    "writes": {
+      "file_access_policy": {
+        "regex": "swarm/products/[^/]*/projects/[^/]*/plan.md",
+        "scope": "local"
+      }
+    },
+    "delegate_request": {
+      "allow_list": ["coding_task_coordinator"]
+    }
+  },
+  "prompts": [
+    "../../coding/project_directory.md",
+    "../../coding/plan.md"
+  ]
+}

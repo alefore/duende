@@ -1,0 +1,31 @@
+{
+  "command_registry": {
+    "file_access_policy": {
+      "regex": "swarm/products/.*",
+      "scope": "local"
+    },
+    "delegate_request": {
+      "allow_list": ["coding_task_coordinator"]
+    },
+    "shell_templates": {
+      "task_replace": {
+        "command":
+          "../../../../coding/scripts/task_plan_add.sh {{title}} {{description}} && ../../../../coding/scripts/state_task_set.sh Obsolete",
+        "arguments": {
+          "title": {
+            "arg_type": "STRING",
+            "description": "Title of the planning task."
+          },
+          "description": {
+            "arg_type": "STRING",
+            "description": "Description of the goals of the planning task."
+          }
+        }
+      }
+    }
+  },
+  "prompts": [
+    "../../coding/scripts/list_research.sh",
+    "../../coding/scripts/plan_summary.sh"
+  ]
+}

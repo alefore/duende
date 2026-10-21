@@ -1,0 +1,10 @@
+{
+  "command_registry": {
+    "delegate_request": {
+      "allow_list": ["zksearch", "swiss", "coding_receptionist"]
+    }
+  },
+  "prompts": [
+    "../../coding/scripts/products_list.sh"
+  ]
+}

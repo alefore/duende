@@ -1,0 +1,8 @@
+{
+  "command_registry": {
+    "file_access_policy": {
+      "regex": "/home/alejo/zettelkasten(/([a-z0-9]*.md)?)?",
+      "scope": "all"
+    }
+  }
+}

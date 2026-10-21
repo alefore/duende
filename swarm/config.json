@@ -1,0 +1,22 @@
+{
+  "agents": [
+    "zksearch",
+    "receptionist",
+    "swiss",
+    "coding_receptionist",
+    "coding_coordinator",
+    "coding_task_coordinator",
+    "coding_task_implementer",
+    "coding_task_researcher",
+    "coding_task_planner",
+    "coding_task_committer",
+    "coding_task_reviewer"
+  ],
+  "message_bus_path": "swarm/message_bus.db",
+  "telegram": {
+    "token": "8705478018:AAGef02zvlErtAM3DTsQwoqDXVQaxgUpao0",
+    "authorized_users": [1140526816],
+    "consumer_agent": "receptionist",
+    "end_user_identity": "user"
+  }
+}

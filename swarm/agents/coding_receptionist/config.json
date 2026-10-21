@@ -1,0 +1,43 @@
+{
+  "prompts": [ "../../coding/scripts/products_list.sh" ],
+  "command_registry": {
+    "shell_templates": {
+      "mkdir": {
+        "arguments": {
+          "path": {
+            "arg_type": "STRING",
+            "description": "Directory to create."
+          }
+        },
+        "command": "mkdir -p {{path}}"
+      },
+      "projects_list": {
+        "description": "Lists all ongoing projects under a given software product.",
+        "command": "swarm/coding/scripts/projects_list.sh {{product_name}}",
+        "arguments": {
+          "product_name": {
+            "arg_type": "STRING",
+            "description": "Name of the software product."
+          }
+        }
+      },
+      "project_directory_setup": {
+        "description": "Initializes a newly created directory for a project.",
+        "command": "../../../../coding/scripts/project_directory_setup.sh {{project_title}} {{project_description}}",
+        "arguments": {
+          "project_title": {
+            "arg_type": "STRING",
+            "description": "Brief one-line summary of the project."
+          },
+          "project_description": {
+            "arg_type": "STRING",
+            "description": "Description of the project."
+          }
+        }
+      }
+    },
+    "publish_message": {
+      "allow_list": ["coding_coordinator"]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "command_registry": {
+    "file_access_policy": {
+      "regex": "swarm/products/[^/]+/projects/[^/]+/(repository|data|research).*",
+      "scope": "local"
+    },
+    "delegate_request": {
+      "allow_list": ["coding_task_coordinator"]
+    },
+    "writes": {
+      "file_access_policy": {
+        "regex": "swarm/products/[^/]*/projects/[^/]*/(repository|data)/.*",
+        "scope": "local"
+      }
+    },
+    "shell_templates": {
+      "git_diff": {
+        "command": "../../../../coding/scripts/git_diff.sh",
+        "description": "Runs git diff in the repository."
+      },
+      "fail": {
+        "command":
+          "../../../../coding/scripts/attempt_state_set.sh Fail {{details}}",
+        "description": "Mark this task as failed.",
+        "arguments": {
+          "details": {
+            "arg_type": "STRING",
+            "description": "Summary of the failures."
+          }
+        }
+      },
+      "success": {
+        "description": "Mark this task as successfully accomplished.",
+        "command": "../../../../coding/scripts/attempt_state_set.sh Review"
+      }
+    }
+  },
+  "prompts": [
+    "../../coding/scripts/task_list_first_pending.sh",
+    "../../coding/scripts/list_research.sh",
+    "../../coding/scripts/git_diff.sh"
+  ]
+}
